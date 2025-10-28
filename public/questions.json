@@ -4,11 +4,13 @@
     "intro": "Every great startup solves a real problem. Let's identify what pain points your customers are experiencing.",
     "questions": [
       "What's the biggest challenge or frustration your target customers face?",
+      "How are they suffering? What emotions do they feel when facing this problem?",
       "How are they currently dealing with this problem? What workarounds do they use?",
       "Why is this problem worth solving? What's at stake if it goes unsolved?"
     ],
     "hints": [
       "Think about specific scenarios where this problem shows up in their daily life or work.",
+      "Focus on the emotional impact: frustrated, anxious, overwhelmed, embarrassed, angry, stressed, helpless.",
       "Good problems are urgent, frequent, and costly to ignore."
     ]
   },
