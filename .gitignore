@@ -16,7 +16,6 @@
 
 # misc
 .DS_Store
-*.pem
 
 # debug
 npm-debug.log*
@@ -36,3 +35,7 @@ next-env.d.ts
 
 # vite
 .vite
+
+# SSL certificates (mkcert)
+*.pem
+*.key
