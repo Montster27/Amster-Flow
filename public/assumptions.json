@@ -1,0 +1,91 @@
+{
+  "assumptionTemplates": {
+    "customer": {
+      "title": "Customer Assumptions",
+      "description": "Who do you believe your users are and what do they care about?",
+      "prompts": [
+        "Our target customers are...",
+        "They currently solve this problem by...",
+        "They care most about...",
+        "They are willing to pay because...",
+        "We can reach them through..."
+      ]
+    },
+    "problem": {
+      "title": "Problem Assumptions",
+      "description": "What problems do you assume are painful enough to solve?",
+      "prompts": [
+        "The problem is urgent because...",
+        "Customers experience this problem when...",
+        "The current workarounds fail because...",
+        "The cost of not solving this is...",
+        "This problem is getting worse because..."
+      ]
+    },
+    "solution": {
+      "title": "Solution Assumptions",
+      "description": "What do you assume about how users would adopt your solution?",
+      "prompts": [
+        "Our solution will work because...",
+        "Customers will adopt it because...",
+        "The key feature that matters most is...",
+        "Customers will switch from their current solution because...",
+        "Our unfair advantage is..."
+      ]
+    }
+  },
+  "interviewQuestions": {
+    "discovery": {
+      "category": "Problem Discovery",
+      "questions": [
+        "Tell me about the last time you experienced [problem].",
+        "How do you currently handle [situation]?",
+        "What have you tried in the past to solve this?",
+        "What's frustrating about your current approach?",
+        "If you had a magic wand, what would you change?"
+      ]
+    },
+    "behavior": {
+      "category": "Past Behavior",
+      "questions": [
+        "Walk me through the last time you tried to solve this problem.",
+        "What tools or products do you use today for this?",
+        "How much time/money do you spend on this currently?",
+        "What would happen if you didn't solve this problem?",
+        "Who else is involved in solving this problem?"
+      ]
+    },
+    "validation": {
+      "category": "Solution Validation",
+      "questions": [
+        "How would you use a solution like this in your daily workflow?",
+        "What would make you switch from your current solution?",
+        "What's the most important thing it would need to do?",
+        "How would you know if it's working well for you?",
+        "What would make you stop using it?"
+      ]
+    }
+  },
+  "ycGuidance": {
+    "dos": [
+      "Ask about past behavior, not hypothetical future behavior",
+      "Listen more than you talk",
+      "Ask follow-up questions to understand the 'why'",
+      "Take detailed notes during or immediately after",
+      "Thank them for their time and insights"
+    ],
+    "donts": [
+      "Don't pitch your solution during discovery",
+      "Don't ask leading questions",
+      "Don't ask what features they want",
+      "Don't ask 'would you use this?'",
+      "Don't take compliments as validation"
+    ],
+    "reminders": [
+      "You're trying to understand their world, not sell them yours",
+      "Bad interviews are where you do all the talking",
+      "Good interviews leave you surprised by something you learned",
+      "The goal is to invalidate your assumptions, not confirm them"
+    ]
+  }
+}

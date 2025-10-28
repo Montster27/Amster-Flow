@@ -1,0 +1,46 @@
+{
+  "problem": {
+    "title": "Problem",
+    "intro": "Every great startup solves a real problem. Let's identify what pain points your customers are experiencing.",
+    "questions": [
+      "What's the biggest challenge or frustration your target customers face?",
+      "How are they currently dealing with this problem? What workarounds do they use?",
+      "Why is this problem worth solving? What's at stake if it goes unsolved?"
+    ],
+    "hints": [
+      "Think about specific scenarios where this problem shows up in their daily life or work.",
+      "Good problems are urgent, frequent, and costly to ignore."
+    ]
+  },
+  "customerSegments": {
+    "title": "Customer Segments",
+    "intro": "Not everyone has the same problem. Let's figure out who specifically will benefit most from your solution.",
+    "questions": [
+      "Who experiences this problem most intensely? Describe them in detail.",
+      "What makes this group different from others who might also have the problem?",
+      "Can you narrow it down further? What's the most specific segment you could start with?"
+    ],
+    "hints": [
+      "Be specific: instead of 'small businesses,' try 'bakeries with 2-5 employees in urban areas.'",
+      "Your early adopters should be easy to reach and eager for a solution."
+    ]
+  },
+  "solution": {
+    "title": "Solution",
+    "intro": "Now that we know the problem and who has it, let's think about how you'll solve it.",
+    "questions": [
+      "What's the simplest way you could address this problem?",
+      "What are the key features or steps that make your solution work?",
+      "How is your approach different from what already exists?"
+    ],
+    "hints": [
+      "Start with the minimum viable solution—what's the smallest thing that could work?",
+      "Focus on solving the core problem, not building every feature you can imagine."
+    ]
+  },
+  "discovery": {
+    "title": "Customer Discovery",
+    "type": "discovery",
+    "intro": "Track your assumptions, conduct interviews, and iterate based on real customer feedback. Use the Y Combinator framework to validate your ideas systematically."
+  }
+}
