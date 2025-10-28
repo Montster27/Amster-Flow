@@ -19,11 +19,16 @@
     "intro": "Not everyone has the same problem. Let's figure out who specifically will benefit most from your solution.",
     "questions": [
       "Who experiences this problem most intensely? Describe them in detail.",
+      "Tell me about the first person who will buy this. Paint a specific picture.",
+      "What are they doing to solve the problem now?",
+      "Why do they want change? What's motivating them to find a better solution?",
       "What makes this group different from others who might also have the problem?",
       "Can you narrow it down further? What's the most specific segment you could start with?"
     ],
     "hints": [
       "Be specific: instead of 'small businesses,' try 'bakeries with 2-5 employees in urban areas.'",
+      "Think about a real individual: their role, daily routine, pain points, and what triggers their need for change.",
+      "Understanding their current solution reveals how urgent the problem is and what you're competing against.",
       "Your early adopters should be easy to reach and eager for a solution."
     ]
   },
