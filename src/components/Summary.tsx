@@ -13,7 +13,7 @@ interface SummaryProps {
 }
 
 export const Summary = ({ questionsData, modules, onStartOver, onContinue }: SummaryProps) => {
-  const { progress, setProgress } = useGuideStore();
+  const { progress } = useGuideStore();
   const { assumptions, interviews, iterations, reset: resetDiscovery } = useDiscoveryStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
