@@ -5,9 +5,12 @@
       "description": "Who do you believe your users are and what do they care about?",
       "prompts": [
         "Our target customers are...",
+        "Their primary motivation for solving this problem is...",
         "They currently solve this problem by...",
+        "The current way they do things involves...",
         "They care most about...",
         "They are willing to pay because...",
+        "The size of this market is approximately...",
         "We can reach them through..."
       ]
     },
@@ -19,7 +22,11 @@
         "Customers experience this problem when...",
         "The current workarounds fail because...",
         "The cost of not solving this is...",
-        "This problem is getting worse because..."
+        "Current alternatives cost approximately...",
+        "Competitors charge around...",
+        "This problem is getting worse because...",
+        "Over the next 3-5 years, this problem will become more important because...",
+        "The market trend suggests..."
       ]
     },
     "solution": {
@@ -30,6 +37,7 @@
         "Customers will adopt it because...",
         "The key feature that matters most is...",
         "Customers will switch from their current solution because...",
+        "Our pricing compared to alternatives is...",
         "Our unfair advantage is..."
       ]
     }
