@@ -11,7 +11,11 @@
         "They care most about...",
         "They are willing to pay because...",
         "The size of this market is approximately...",
-        "We can reach them through..."
+        "We can reach them through...",
+        "The decision maker is (one person, committee, team)...",
+        "Key influencers in the buying decision include...",
+        "Financial approval is required from...",
+        "Legal or compliance approval is needed because..."
       ]
     },
     "problem": {
