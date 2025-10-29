@@ -162,9 +162,13 @@ function App() {
     }, 3000);
   };
 
+  const handleViewSummary = () => {
+    setShowSummary(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar modules={modules} onModuleClick={handleModuleClick} />
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
 
       <main className="flex-1 overflow-y-auto">
         {showSummary ? (
