@@ -2,16 +2,107 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Improved readability and accessibility */
+:root {
+  --text-base-size: 16px;
+  --line-height-base: 1.6;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  font-size: var(--text-base-size);
+  line-height: var(--line-height-base);
+  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
+/* Improved heading readability */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.3;
+  font-weight: 600;
+  margin-bottom: 0.5em;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+/* Improved paragraph readability */
+p {
+  margin-bottom: 1em;
+  line-height: 1.7;
+}
+
+/* Better link contrast */
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Form inputs readability */
+input, textarea, select {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Code blocks readability */
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+  font-size: 0.9em;
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+/* Improved button text readability */
+button {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Better focus visibility for accessibility */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Improved list readability */
+ul, ol {
+  line-height: 1.7;
+  padding-left: 1.5em;
+}
+
+li {
+  margin-bottom: 0.5em;
+}
+
+/* Better contrast for secondary text */
+.text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-gray-500 {
+  color: var(--color-text-muted) !important;
 }

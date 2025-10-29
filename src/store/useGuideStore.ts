@@ -21,6 +21,7 @@ interface GuideState {
   saveAnswer: (module: string, questionIndex: number, answer: string) => void;
   markModuleComplete: (module: string) => void;
   getModuleProgress: (module: string) => ModuleProgress | undefined;
+  importProgress: (progress: Record<string, ModuleProgress>) => void;
   reset: () => void;
 }
 
@@ -84,6 +85,10 @@ export const useGuideStore = create<GuideState>()(
 
       getModuleProgress: (module) => {
         return get().progress[module];
+      },
+
+      importProgress: (progress) => {
+        set({ progress });
       },
 
       reset: () => set(initialState),

@@ -45,6 +45,9 @@ interface DiscoveryState {
   getValidatedAssumptions: () => Assumption[];
   getInvalidatedAssumptions: () => Assumption[];
 
+  // Import
+  importData: (data: { assumptions: Assumption[]; interviews: Interview[]; iterations: Iteration[] }) => void;
+
   // Reset
   reset: () => void;
 }
@@ -203,6 +206,15 @@ export const useDiscoveryStore = create<DiscoveryState>()(
 
       getInvalidatedAssumptions: () => {
         return get().getAssumptionsByStatus('invalidated');
+      },
+
+      // Import
+      importData: (data) => {
+        set({
+          assumptions: data.assumptions || [],
+          interviews: data.interviews || [],
+          iterations: data.iterations || [],
+        });
       },
 
       // Reset
