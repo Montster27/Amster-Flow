@@ -10,10 +10,9 @@ interface SummaryProps {
   questionsData: QuestionsData;
   modules: string[];
   onStartOver: () => void;
-  onContinue: () => void;
 }
 
-export const Summary = ({ questionsData, modules, onStartOver, onContinue }: SummaryProps) => {
+export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) => {
   const { progress } = useGuideStore();
   const { assumptions, interviews, iterations, reset: resetDiscovery } = useDiscoveryStore();
   const {
@@ -440,20 +439,6 @@ export const Summary = ({ questionsData, modules, onStartOver, onContinue }: Sum
         >
           Start Over
         </button>
-        <button
-          onClick={onContinue}
-          className="px-6 py-3 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all"
-          aria-label="Continue to additional modules"
-        >
-          Continue to Next Modules
-        </button>
-      </div>
-
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-sm text-gray-600">
-          💡 <strong>Next Steps:</strong> Modules 4-8 (Unique Value Proposition, Unfair Advantage,
-          Channels, Revenue Streams, and Cost Structure) are coming soon!
-        </p>
       </div>
     </div>
   );
