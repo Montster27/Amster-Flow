@@ -49,5 +49,10 @@
     "title": "Customer Discovery",
     "type": "discovery",
     "intro": "Track your assumptions, conduct interviews, and iterate based on real customer feedback. Use the Y Combinator framework to validate your ideas systematically."
+  },
+  "sectorMap": {
+    "title": "Sector Map",
+    "type": "sectorMap",
+    "intro": "Map your competitive landscape and understand the ecosystem around your target market. Identify key players, their relationships, and decision-making dynamics."
   }
 }
