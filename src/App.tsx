@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { Summary } from './components/Summary';
 import { DiscoveryModule } from './components/DiscoveryModule';
+import { SectorMapModule } from './components/SectorMapModule';
 import { useGuideStore } from './store/useGuideStore';
 
 export interface ModuleData {
@@ -10,7 +11,7 @@ export interface ModuleData {
   intro: string;
   questions?: string[];
   hints?: string[];
-  type?: 'standard' | 'discovery';
+  type?: 'standard' | 'discovery' | 'sectorMap';
 }
 
 export interface QuestionsData {
@@ -26,8 +27,8 @@ const validateQuestionsData = (data: any): data is QuestionsData => {
     if (typeof module.title !== 'string') return false;
     if (typeof module.intro !== 'string') return false;
 
-    // Discovery modules don't need questions/hints
-    if (module.type === 'discovery') {
+    // Discovery and Sector Map modules don't need questions/hints
+    if (module.type === 'discovery' || module.type === 'sectorMap') {
       return true;
     }
 
@@ -118,6 +119,7 @@ function App() {
   const modules = Object.keys(questionsData);
   const currentModuleData = questionsData[currentModule];
   const isDiscoveryModule = currentModuleData?.type === 'discovery';
+  const isSectorMapModule = currentModuleData?.type === 'sectorMap';
 
   const handleModuleComplete = () => {
     markModuleComplete(currentModule);
@@ -180,6 +182,8 @@ function App() {
           />
         ) : isDiscoveryModule ? (
           <DiscoveryModule />
+        ) : isSectorMapModule ? (
+          <SectorMapModule />
         ) : (
           <QuestionPanel
             module={currentModule}
