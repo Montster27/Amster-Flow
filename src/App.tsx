@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
-import { DiscoveryModule } from './components/DiscoveryModule';
-import { SectorMapModule } from './components/SectorMapModule';
 import { useGuideStore } from './store/useGuideStore';
+
+// Lazy load heavy modules
+const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
+const SectorMapModule = lazy(() => import('./components/SectorMapModule').then(m => ({ default: m.SectorMapModule })));
 
 export interface ModuleData {
   title: string;
@@ -198,9 +200,13 @@ function App() {
             onBack={handleBackFromReview}
           />
         ) : isDiscoveryModule ? (
-          <DiscoveryModule />
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
+            <DiscoveryModule />
+          </Suspense>
         ) : isSectorMapModule ? (
-          <SectorMapModule />
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
+            <SectorMapModule />
+          </Suspense>
         ) : (
           <QuestionPanel
             module={currentModule}

@@ -3,7 +3,6 @@ import { useDiscoveryStore } from '../store/useDiscoveryStore';
 import { useSectorMapStore } from '../store/useSectorMapStore';
 import { getModuleName } from '../utils/helpers';
 import { QuestionsData } from '../App';
-import jsPDF from 'jspdf';
 import { useRef } from 'react';
 
 interface SummaryProps {
@@ -156,7 +155,10 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    // Dynamically import jsPDF only when needed
+    const { default: jsPDF } = await import('jspdf');
+
     const doc = new jsPDF();
     let yPosition = 20;
     const lineHeight = 7;
