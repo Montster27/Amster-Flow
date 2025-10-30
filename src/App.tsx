@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
+import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
 import { DiscoveryModule } from './components/DiscoveryModule';
 import { SectorMapModule } from './components/SectorMapModule';
@@ -46,6 +47,7 @@ function App() {
   const [questionsData, setQuestionsData] = useState<QuestionsData | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
 
   const {
@@ -120,23 +122,45 @@ function App() {
   const currentModuleData = questionsData[currentModule];
   const isDiscoveryModule = currentModuleData?.type === 'discovery';
   const isSectorMapModule = currentModuleData?.type === 'sectorMap';
+  const isStandardModule = !isDiscoveryModule && !isSectorMapModule;
 
   const handleModuleComplete = () => {
+    // For standard modules (problem, customer segments, solution), show review page
+    if (isStandardModule) {
+      setShowReview(true);
+    } else {
+      // For special modules, proceed directly
+      proceedToNextModule();
+    }
+  };
+
+  const proceedToNextModule = () => {
     markModuleComplete(currentModule);
 
     // Move to next module or show summary
     const currentIndex = modules.indexOf(currentModule);
     if (currentIndex < modules.length - 1) {
       setCurrentModule(modules[currentIndex + 1]);
+      setShowReview(false);
     } else {
       setShowSummary(true);
+      setShowReview(false);
     }
+  };
+
+  const handleConfirmReview = () => {
+    proceedToNextModule();
+  };
+
+  const handleBackFromReview = () => {
+    setShowReview(false);
   };
 
   const handleModuleClick = (module: string) => {
     setCurrentModule(module);
     setCurrentQuestionIndex(0);
     setShowSummary(false);
+    setShowReview(false);
   };
 
   const handleStartOver = () => {
@@ -148,20 +172,6 @@ function App() {
     setShowSummary(false);
     setCurrentModule(modules[0]);
     setShowConfirmReset(false);
-  };
-
-  const handleContinue = () => {
-    // Show a toast/notification instead of alert
-    // For now, we'll use a temporary message approach
-    const message = document.createElement('div');
-    message.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 animate-fade-in';
-    message.textContent = 'Modules 4-8 are coming soon! Stay tuned.';
-    message.setAttribute('role', 'alert');
-    message.setAttribute('aria-live', 'polite');
-    document.body.appendChild(message);
-    setTimeout(() => {
-      message.remove();
-    }, 3000);
   };
 
   const handleViewSummary = () => {
@@ -178,7 +188,14 @@ function App() {
             questionsData={questionsData}
             modules={modules}
             onStartOver={handleStartOver}
-            onContinue={handleContinue}
+          />
+        ) : showReview && isStandardModule ? (
+          <ModuleReview
+            module={currentModule}
+            moduleTitle={currentModuleData.title}
+            questions={currentModuleData.questions!}
+            onConfirm={handleConfirmReview}
+            onBack={handleBackFromReview}
           />
         ) : isDiscoveryModule ? (
           <DiscoveryModule />
