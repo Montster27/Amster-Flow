@@ -32,6 +32,7 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
           key: module,
           title: questionsData[module]?.title,
           answers: progress[module]?.answers.map((answer) => ({
+            questionIndex: answer.questionIndex,
             question: questionsData[module]?.questions?.[answer.questionIndex],
             answer: answer.answer,
           })) || [],
@@ -261,8 +262,8 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
           importedData.modules.forEach((module: any) => {
             progressData[module.key] = {
               moduleName: module.key,
-              answers: module.answers.map((a: any, idx: number) => ({
-                questionIndex: idx,
+              answers: module.answers.map((a: any) => ({
+                questionIndex: a.questionIndex !== undefined ? a.questionIndex : module.answers.indexOf(a),
                 answer: a.answer,
               })),
               completed: true,
@@ -294,10 +295,18 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
         }
 
         alert('Data imported successfully!');
+        // Clear the file input so the same file can be loaded again
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         window.location.reload();
       } catch (error) {
         console.error('Failed to import data:', error);
         alert('Failed to import data. Please make sure the file is a valid Amster Flow export.');
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     reader.readAsText(file);
