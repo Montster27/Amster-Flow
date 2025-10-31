@@ -144,6 +144,45 @@ export const SectorMapModule = () => {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Who will use this?
+                </label>
+                <textarea
+                  value={firstTarget.whoWillUse || ''}
+                  onChange={(e) => updateFirstTarget({ whoWillUse: e.target.value })}
+                  placeholder="e.g., Sales team, Engineers, Marketing managers, Customer support agents"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Who has the budget to buy?
+                </label>
+                <input
+                  type="text"
+                  value={firstTarget.whoHasBudget || ''}
+                  onChange={(e) => updateFirstTarget({ whoHasBudget: e.target.value })}
+                  placeholder="e.g., VP of Sales, CFO, Head of Engineering"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Other roles that have influence
+                </label>
+                <textarea
+                  value={firstTarget.otherInfluencers || ''}
+                  onChange={(e) => updateFirstTarget({ otherInfluencers: e.target.value })}
+                  placeholder="e.g., IT Security, Legal, Operations team, End users who provide feedback"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows={2}
+                />
+              </div>
             </>
           )}
         </div>

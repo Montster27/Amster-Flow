@@ -4,6 +4,9 @@ export interface FirstTarget {
   description: string;
   companySize?: string; // For B2B
   location?: string;
+  whoWillUse?: string; // For B2B - end users
+  whoHasBudget?: string; // For B2B - decision maker with budget
+  otherInfluencers?: string; // For B2B - other influential roles
 }
 
 export interface Competitor {
