@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useDiscoveryStore } from '../../store/useDiscoveryStore';
-import { InterviewFormat } from '../../types/discovery';
+import { InterviewFormat, IntervieweeType } from '../../types/discovery';
 
 interface InterviewFormData {
   date: string;
   customerSegment: string;
   interviewee: string;
+  intervieweeType: IntervieweeType | '';
   format: InterviewFormat;
   duration: string;
   notes: string;
@@ -22,6 +23,7 @@ export const InterviewPlanner = () => {
     date: new Date().toISOString().split('T')[0],
     customerSegment: '',
     interviewee: '',
+    intervieweeType: '',
     format: 'video',
     duration: '',
     notes: '',
@@ -52,6 +54,7 @@ export const InterviewPlanner = () => {
       date: new Date(formData.date).toISOString(),
       customerSegment: formData.customerSegment,
       interviewee: formData.interviewee || undefined,
+      intervieweeType: formData.intervieweeType || undefined,
       format: formData.format,
       duration: formData.duration ? Number(formData.duration) : undefined,
       notes: formData.notes,
@@ -67,6 +70,7 @@ export const InterviewPlanner = () => {
       date: new Date().toISOString().split('T')[0],
       customerSegment: '',
       interviewee: '',
+      intervieweeType: '',
       format: 'video',
       duration: '',
       notes: '',
@@ -212,16 +216,33 @@ export const InterviewPlanner = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Interviewee Name (optional)
+              Interviewee Type
             </label>
-            <input
-              type="text"
-              value={formData.interviewee}
-              onChange={(e) => setFormData({ ...formData, interviewee: e.target.value })}
-              placeholder="Keep anonymous if preferred"
+            <select
+              value={formData.intervieweeType}
+              onChange={(e) => setFormData({ ...formData, intervieweeType: e.target.value as IntervieweeType })}
               className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            />
+            >
+              <option value="">Select type...</option>
+              <option value="potential-buyer">Potential Buyer</option>
+              <option value="competitor">Competitor</option>
+              <option value="substitute">Substitute</option>
+              <option value="knowledgeable">Someone Knowledgeable in the Field</option>
+            </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Interviewee Name (optional)
+          </label>
+          <input
+            type="text"
+            value={formData.interviewee}
+            onChange={(e) => setFormData({ ...formData, interviewee: e.target.value })}
+            placeholder="Keep anonymous if preferred"
+            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+          />
         </div>
 
         <div>

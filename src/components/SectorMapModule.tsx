@@ -102,6 +102,9 @@ export const SectorMapModule = () => {
       {/* First Target */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">First Target Customer</h2>
+        <p className="text-gray-600 text-sm mb-4">
+          What is the smallest homogeneous group that is the most in need for your solution and would be willing to accept the fewest features and be willing to pay for it.
+        </p>
 
         <div className="space-y-4">
           <div>
@@ -268,6 +271,50 @@ export const SectorMapModule = () => {
                   </button>
                 </div>
               </div>
+
+              {/* B2B Additional Questions */}
+              {customerType === 'business' && (
+                <div className="space-y-4 mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Who supplies the companies who would be your competitors?
+                    </label>
+                    <textarea
+                      value={competitor.supplierCompanies || ''}
+                      onChange={(e) => updateCompetitor(competitor.id, { supplierCompanies: e.target.value })}
+                      placeholder="List the key suppliers that provide to your competitors..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      What different companies/Industries use your competitors' products?
+                    </label>
+                    <textarea
+                      value={competitor.industryCustomers || ''}
+                      onChange={(e) => updateCompetitor(competitor.id, { industryCustomers: e.target.value })}
+                      placeholder="Describe the industries and types of companies that use this competitor's products..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Is there a major technical or regulatory change happening or about to happen?
+                    </label>
+                    <textarea
+                      value={competitor.technicalRegulatoryChange || ''}
+                      onChange={(e) => updateCompetitor(competitor.id, { technicalRegulatoryChange: e.target.value })}
+                      placeholder="Describe any major technical shifts, new regulations, or industry changes on the horizon..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 {/* Suppliers */}

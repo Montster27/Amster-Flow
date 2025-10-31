@@ -3,6 +3,7 @@
 export type AssumptionType = 'customer' | 'problem' | 'solution';
 export type AssumptionStatus = 'untested' | 'testing' | 'validated' | 'invalidated';
 export type InterviewFormat = 'in-person' | 'phone' | 'video' | 'survey';
+export type IntervieweeType = 'potential-buyer' | 'competitor' | 'substitute' | 'knowledgeable';
 export type ConfidenceLevel = 1 | 2 | 3 | 4 | 5; // 1=very low, 5=very high
 
 export interface Assumption {
@@ -24,6 +25,7 @@ export interface Interview {
   date: string; // ISO date string
   customerSegment: string;
   interviewee?: string;
+  intervieweeType?: IntervieweeType; // Type of person being interviewed
   format: InterviewFormat;
   duration?: number; // minutes
   notes: string;

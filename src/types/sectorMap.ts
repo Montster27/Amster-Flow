@@ -15,6 +15,9 @@ export interface Competitor {
   description: string;
   suppliers: string[];
   customers: string[];
+  supplierCompanies?: string; // For B2B - Who supplies the companies who would be your competitors?
+  industryCustomers?: string; // For B2B - What different companies/Industries use your competitors products
+  technicalRegulatoryChange?: string; // For B2B - Is there a major technical or regulatory change happening or about to happen?
   created: string;
 }
 

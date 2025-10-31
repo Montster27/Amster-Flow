@@ -398,6 +398,38 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
         </button>
       </div>
 
+      {/* Discovery Dashboard Stats */}
+      {(assumptions.length > 0 || interviews.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Customer Discovery Dashboard</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
+              <div className="text-2xl font-bold text-gray-800">{assumptions.length}</div>
+              <div className="text-sm text-gray-600">Total Assumptions</div>
+            </div>
+
+            <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+              <div className="text-2xl font-bold text-green-800">
+                {assumptions.filter((a) => a.status === 'validated').length}
+              </div>
+              <div className="text-sm text-green-700">Validated</div>
+            </div>
+
+            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+              <div className="text-2xl font-bold text-red-800">
+                {assumptions.filter((a) => a.status === 'invalidated').length}
+              </div>
+              <div className="text-sm text-red-700">Invalidated</div>
+            </div>
+
+            <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <div className="text-2xl font-bold text-blue-800">{interviews.length}</div>
+              <div className="text-sm text-blue-700">Interviews</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6 mb-8">
         {modules.map((module) => {
           const moduleData = questionsData[module];
