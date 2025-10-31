@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useGuideStore } from '../store/useGuideStore';
+import { useDiscoveryStore } from '../store/useDiscoveryStore';
+import { useSectorMapStore } from '../store/useSectorMapStore';
+import { findAllDuplicates, DuplicateMatch } from '../utils/deduplicationHelper';
+import { DuplicateWarning } from './DuplicateWarning';
+import { QuestionsData } from '../App';
 
 interface QuestionPanelProps {
   module: string;
@@ -8,6 +13,7 @@ interface QuestionPanelProps {
   questions: string[];
   hints: string[];
   onComplete: () => void;
+  questionsData: QuestionsData;
 }
 
 export const QuestionPanel = ({
@@ -17,12 +23,18 @@ export const QuestionPanel = ({
   questions,
   hints,
   onComplete,
+  questionsData,
 }: QuestionPanelProps) => {
-  const { currentQuestionIndex, saveAnswer, getModuleProgress, setCurrentQuestionIndex } =
+  const { currentQuestionIndex, saveAnswer, getModuleProgress, setCurrentQuestionIndex, progress: moduleProgress } =
     useGuideStore();
+
+  const { assumptions, interviews } = useDiscoveryStore();
+  const sectorMapStore = useSectorMapStore();
 
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(true);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentHint = hints[Math.min(currentQuestionIndex, hints.length - 1)];
@@ -36,7 +48,32 @@ export const QuestionPanel = ({
     );
     setAnswer(savedAnswer?.answer || '');
     setShowHint(false);
+    setDuplicates([]);
+    setShowDuplicateWarning(true);
   }, [currentQuestionIndex, module, getModuleProgress]);
+
+  // Check for duplicates when answer changes
+  useEffect(() => {
+    if (answer.length < 20) {
+      setDuplicates([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const discoveryData = { assumptions, interviews };
+      const matches = findAllDuplicates(
+        answer,
+        moduleProgress,
+        questionsData,
+        sectorMapStore,
+        discoveryData,
+        0.6
+      );
+      setDuplicates(matches);
+    }, 1000); // Debounce for 1 second
+
+    return () => clearTimeout(timer);
+  }, [answer, moduleProgress, questionsData, sectorMapStore, assumptions, interviews]);
 
   const handleSaveAndContinue = () => {
     if (answer.trim()) {
@@ -102,6 +139,14 @@ export const QuestionPanel = ({
           aria-labelledby="current-question"
           aria-required="true"
         />
+
+        {/* Duplicate Warning */}
+        {showDuplicateWarning && duplicates.length > 0 && (
+          <DuplicateWarning
+            duplicates={duplicates}
+            onDismiss={() => setShowDuplicateWarning(false)}
+          />
+        )}
       </div>
 
       {/* Hint */}

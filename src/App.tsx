@@ -215,6 +215,7 @@ function App() {
             questions={currentModuleData.questions!}
             hints={currentModuleData.hints!}
             onComplete={handleModuleComplete}
+            questionsData={questionsData}
           />
         )}
       </main>
