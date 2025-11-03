@@ -40,7 +40,7 @@ export function LoginPage() {
                 },
               },
             }}
-            providers={['google']}
+            providers={[]}
             redirectTo={`${window.location.origin}/dashboard`}
           />
         </div>
