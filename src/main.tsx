@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
+import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -30,6 +31,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute>
                 <ProjectPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <OrganizationSettingsPage />
               </ProtectedRoute>
             }
           />
