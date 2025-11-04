@@ -4,6 +4,7 @@ import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
 import { useGuideStore } from './store/useGuideStore';
+import { useProjectData } from './hooks/useProjectData';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
@@ -45,7 +46,11 @@ const validateQuestionsData = (data: any): data is QuestionsData => {
   });
 };
 
-function App() {
+interface AppProps {
+  projectId?: string;
+}
+
+function App({ projectId }: AppProps = {}) {
   const [questionsData, setQuestionsData] = useState<QuestionsData | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
@@ -59,6 +64,9 @@ function App() {
     setCurrentQuestionIndex,
     reset,
   } = useGuideStore();
+
+  // Sync with Supabase if projectId is provided
+  const { loading: loadingProjectData, error: projectDataError } = useProjectData(projectId);
 
   // Load questions.json on mount
   useEffect(() => {
@@ -86,13 +94,13 @@ function App() {
     loadQuestions();
   }, []);
 
-  if (loadingError) {
+  if (loadingError || projectDataError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Guide</h2>
-          <p className="text-gray-600 mb-4">{loadingError}</p>
+          <p className="text-gray-600 mb-4">{loadingError || projectDataError}</p>
           <button
             onClick={() => {
               setLoadingError(null);
@@ -109,12 +117,14 @@ function App() {
     );
   }
 
-  if (!questionsData) {
+  if (!questionsData || loadingProjectData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your guide...</p>
+          <p className="text-gray-600">
+            {!questionsData ? 'Loading your guide...' : 'Loading project data...'}
+          </p>
         </div>
       </div>
     );
