@@ -177,7 +177,7 @@ export function DashboardPage() {
                 onClick={() => navigate('/settings')}
                 className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
               >
-                Settings
+                Manage Team
               </button>
               <span className="text-sm text-gray-600">{user?.email}</span>
               <button
