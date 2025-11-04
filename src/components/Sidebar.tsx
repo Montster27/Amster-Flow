@@ -64,9 +64,20 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
         </nav>
       </div>
 
+      {/* Pivot or Proceed Button */}
+      <div className="pt-4 border-t border-gray-200 mt-4">
+        <button
+          disabled
+          className="w-full px-4 py-3 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+          aria-label="Pivot or Proceed (Coming Soon)"
+        >
+          Pivot or Proceed?
+        </button>
+      </div>
+
       {/* View Summary Button */}
       {onViewSummary && (
-        <div className="pt-4 border-t border-gray-200 mt-4">
+        <div className="mt-6">
           <button
             onClick={onViewSummary}
             className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 font-medium"
