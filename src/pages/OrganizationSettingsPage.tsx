@@ -83,7 +83,7 @@ export function OrganizationSettingsPage() {
 
       // Check if the function returned an error
       if (result && !result.success) {
-        setInviteError(result.error);
+        setInviteError(result.error || 'Failed to invite member');
         return;
       }
 
