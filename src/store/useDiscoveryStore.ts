@@ -229,6 +229,18 @@ export const useDiscoveryStore = create<DiscoveryState>()(
         interviews: state.interviews,
         iterations: state.iterations,
       }),
+      migrate: (persistedState: any, _version: number) => {
+        // Migrate old data to ensure all required fields exist
+        if (persistedState && persistedState.interviews) {
+          persistedState.interviews = persistedState.interviews.map((interview: any) => ({
+            ...interview,
+            assumptionsAddressed: interview.assumptionsAddressed || [],
+            keyInsights: interview.keyInsights || [],
+            followUpNeeded: interview.followUpNeeded ?? false,
+          }));
+        }
+        return persistedState;
+      },
     }
   )
 );

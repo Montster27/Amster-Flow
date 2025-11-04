@@ -100,11 +100,11 @@ export const InterviewLog = () => {
                         </span>
                       )}
                       <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                        {interview.assumptionsAddressed.length} assumption{interview.assumptionsAddressed.length !== 1 ? 's' : ''} tested
+                        {(interview.assumptionsAddressed || []).length} assumption{(interview.assumptionsAddressed || []).length !== 1 ? 's' : ''} tested
                       </span>
-                      {interview.keyInsights.length > 0 && (
+                      {(interview.keyInsights || []).length > 0 && (
                         <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                          {interview.keyInsights.length} insight{interview.keyInsights.length !== 1 ? 's' : ''}
+                          {(interview.keyInsights || []).length} insight{(interview.keyInsights || []).length !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
@@ -153,11 +153,11 @@ export const InterviewLog = () => {
               {expandedId === interview.id && (
                 <div className="border-t border-gray-200 p-4 bg-gray-50 space-y-4">
                   {/* Assumptions Tested */}
-                  {interview.assumptionsAddressed.length > 0 && (
+                  {(interview.assumptionsAddressed || []).length > 0 && (
                     <div>
                       <h4 className="font-medium text-gray-800 mb-2">Assumptions Tested:</h4>
                       <div className="space-y-1">
-                        {interview.assumptionsAddressed.map((assumptionId) => (
+                        {(interview.assumptionsAddressed || []).map((assumptionId) => (
                           <div
                             key={assumptionId}
                             className="text-sm text-gray-700 p-2 bg-white rounded border border-gray-200"
@@ -178,11 +178,11 @@ export const InterviewLog = () => {
                   </div>
 
                   {/* Key Insights */}
-                  {interview.keyInsights.length > 0 && (
+                  {(interview.keyInsights || []).length > 0 && (
                     <div>
                       <h4 className="font-medium text-gray-800 mb-2">Key Insights:</h4>
                       <ul className="space-y-1">
-                        {interview.keyInsights.map((insight, index) => (
+                        {(interview.keyInsights || []).map((insight, index) => (
                           <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
                             <span className="text-green-600 mt-0.5">💡</span>
                             <span>{insight}</span>
