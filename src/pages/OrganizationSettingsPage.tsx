@@ -72,16 +72,51 @@ export function OrganizationSettingsPage() {
     setInviteError(null);
 
     try {
-      // Check if user exists with this email
-      const { data: profile } = await supabase
+      // First, check if user exists in auth.users by calling a RPC function
+      // We need to check auth.users, not just profiles, because profile might not exist yet
+      const { data: authUser, error: authError } = await supabase.rpc('get_user_by_email', {
+        user_email: inviteEmail.toLowerCase()
+      });
+
+      if (authError || !authUser || authUser.length === 0) {
+        setInviteError('No user found with this email. They need to sign up first.');
+        return;
+      }
+
+      const userId = authUser[0].id;
+
+      // Check if profile exists, if not create it
+      let { data: profile } = await supabase
         .from('profiles')
         .select('id, email')
-        .eq('email', inviteEmail.toLowerCase())
+        .eq('id', userId)
         .maybeSingle();
 
       if (!profile) {
-        setInviteError('No user found with this email. They need to sign up first.');
-        return;
+        // Create profile for this user
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: inviteEmail.toLowerCase(),
+          });
+
+        if (profileError && profileError.code !== '23505') {
+          throw profileError;
+        }
+
+        // Fetch the profile again
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('id', userId)
+          .single();
+
+        profile = newProfile;
+      }
+
+      if (!profile) {
+        throw new Error('Failed to get or create profile');
       }
 
       // Check if already a member
