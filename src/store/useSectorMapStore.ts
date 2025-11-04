@@ -175,6 +175,10 @@ export const useSectorMapStore = create<SectorMapState>()(
         competitors: state.competitors,
         decisionMakers: state.decisionMakers,
       }),
+      migrate: (persistedState: any, _version: number) => {
+        // Migration for version 1 - just return the state as is
+        return persistedState;
+      },
     }
   )
 );
