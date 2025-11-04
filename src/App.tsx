@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
@@ -181,10 +182,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
+    <>
+      <Analytics />
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
 
-      <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
         {showSummary ? (
           <Summary
             questionsData={questionsData}
@@ -258,7 +261,8 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
