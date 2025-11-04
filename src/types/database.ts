@@ -549,6 +549,19 @@ export interface Database {
           email: string
         }>
       }
+      invite_user_to_organization: {
+        Args: {
+          p_organization_id: string
+          p_user_email: string
+          p_role: string
+        }
+        Returns: {
+          success: boolean
+          error?: string
+          user_id?: string
+          email?: string
+        }
+      }
       user_can_access_project: {
         Args: {
           project_uuid: string
