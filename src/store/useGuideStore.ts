@@ -101,6 +101,10 @@ export const useGuideStore = create<GuideState>()(
         currentQuestionIndex: state.currentQuestionIndex,
         progress: state.progress,
       }),
+      migrate: (persistedState: any, _version: number) => {
+        // Migration for version 1 - just return the state as is
+        return persistedState;
+      },
     }
   )
 );
