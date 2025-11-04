@@ -78,7 +78,15 @@ export function OrganizationSettingsPage() {
         user_email: inviteEmail.toLowerCase()
       });
 
+      console.log('RPC Response - Data:', authUser);
+      console.log('RPC Response - Error:', authError);
+      console.log('RPC Response - Type:', typeof authUser);
+      console.log('RPC Response - Is Array:', Array.isArray(authUser));
+
       if (authError || !authUser || authUser.length === 0) {
+        console.log('Failed check - authError:', authError);
+        console.log('Failed check - !authUser:', !authUser);
+        console.log('Failed check - authUser.length === 0:', authUser?.length === 0);
         setInviteError('No user found with this email. They need to sign up first.');
         return;
       }
