@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './useAuth';
 import { useGuideStore } from '../store/useGuideStore';
 import type { ModuleProgress } from '../store/useGuideStore';
 
@@ -10,7 +11,9 @@ import type { ModuleProgress } from '../store/useGuideStore';
 export function useProjectData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   const { progress, importProgress } = useGuideStore();
+  const initialLoadRef = useRef(false);
 
   // Load project data from Supabase on mount
   useEffect(() => {
@@ -24,29 +27,39 @@ export function useProjectData(projectId: string | undefined) {
         setLoading(true);
         setError(null);
 
-        // Load all modules for this project
-        const { data: modules, error: loadError } = await supabase
+        // Load all answer rows for this project
+        const { data: answerRows, error: loadError } = await supabase
           .from('project_modules')
           .select('*')
           .eq('project_id', projectId);
 
         if (loadError) throw loadError;
 
-        // Convert database format to store format
+        // Group answers by module name
         const progressData: Record<string, ModuleProgress> = {};
 
-        if (modules) {
-          for (const module of modules) {
-            progressData[module.module_name] = {
-              moduleName: module.module_name,
-              answers: module.answers || [],
-              completed: module.completed || false,
-            };
+        if (answerRows) {
+          for (const row of answerRows) {
+            const moduleName = row.module_name;
+
+            if (!progressData[moduleName]) {
+              progressData[moduleName] = {
+                moduleName,
+                answers: [],
+                completed: false,
+              };
+            }
+
+            progressData[moduleName].answers.push({
+              questionIndex: row.question_index,
+              answer: row.answer,
+            });
           }
         }
 
         // Import into store
         importProgress(progressData);
+        initialLoadRef.current = true;
       } catch (err) {
         console.error('Error loading project data:', err);
         setError('Failed to load project data');
@@ -60,25 +73,28 @@ export function useProjectData(projectId: string | undefined) {
 
   // Save progress to Supabase whenever it changes
   useEffect(() => {
-    if (!projectId || loading) return;
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveProgressToDatabase = async () => {
       try {
-        // Save each module's progress
+        // For each module, save each answer as a separate row
         for (const [moduleName, moduleProgress] of Object.entries(progress)) {
-          const { error: upsertError } = await supabase
-            .from('project_modules')
-            .upsert({
-              project_id: projectId,
-              module_name: moduleName,
-              answers: moduleProgress.answers,
-              completed: moduleProgress.completed,
-            }, {
-              onConflict: 'project_id,module_name',
-            });
+          for (const answer of moduleProgress.answers) {
+            const { error: upsertError } = await supabase
+              .from('project_modules')
+              .upsert({
+                project_id: projectId,
+                module_name: moduleName as 'problem' | 'customerSegments' | 'solution',
+                question_index: answer.questionIndex,
+                answer: answer.answer,
+                updated_by: user.id,
+              }, {
+                onConflict: 'project_id,module_name,question_index',
+              });
 
-          if (upsertError) {
-            console.error(`Error saving module ${moduleName}:`, upsertError);
+            if (upsertError) {
+              console.error(`Error saving answer:`, upsertError);
+            }
           }
         }
       } catch (err) {
@@ -90,7 +106,7 @@ export function useProjectData(projectId: string | undefined) {
     const timeoutId = setTimeout(saveProgressToDatabase, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [projectId, progress, loading]);
+  }, [projectId, user, progress, loading]);
 
   return { loading, error };
 }
