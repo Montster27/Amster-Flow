@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGuideStore } from '../store/useGuideStore';
 import { getModuleName } from '../utils/helpers';
 
@@ -9,11 +10,12 @@ interface SidebarProps {
 
 export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps) => {
   const { currentModule, progress } = useGuideStore();
+  const [showAbout, setShowAbout] = useState(false);
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
       <div className="flex-1">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Amster Flow</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">Initial Idea Eval</h2>
         <nav className="space-y-2" aria-label="Module navigation">
           {modules.map((module) => {
             const isActive = currentModule === module;
@@ -88,6 +90,64 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
             </svg>
             View Summary
           </button>
+        </div>
+      )}
+
+      {/* About/Help Button */}
+      <div className="mt-3">
+        <button
+          onClick={() => setShowAbout(true)}
+          className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2 font-medium text-sm"
+          aria-label="About and help information"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          About / Help
+        </button>
+      </div>
+
+      {/* About Modal */}
+      {showAbout && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowAbout(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="about-dialog-title"
+        >
+          <div
+            className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="about-dialog-title" className="text-xl font-bold text-gray-800 mb-4">
+              About Initial Idea Eval
+            </h3>
+            <div className="text-gray-700 space-y-3 mb-6">
+              <p>
+                <strong>This is an early beta release</strong> - save often and test functions before relying on them.
+              </p>
+              <p>
+                This model was created by combining the work of Richard Amster and his assumptions framework for MIT Sandbox and the work of Monty Sharma at Brown University.
+              </p>
+              <p>
+                The site is built and maintained by Monty Sharma.
+              </p>
+              <p className="text-sm">
+                For questions, send an email to{' '}
+                <a href="mailto:Monty_Sharma@brown.edu" className="text-blue-600 hover:underline">
+                  Monty_Sharma@brown.edu
+                </a>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAbout(false)}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+              aria-label="Close about dialog"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
