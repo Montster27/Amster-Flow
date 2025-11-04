@@ -173,6 +173,12 @@ export function DashboardPage() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/settings')}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+              >
+                Settings
+              </button>
               <span className="text-sm text-gray-600">{user?.email}</span>
               <button
                 onClick={handleSignOut}
