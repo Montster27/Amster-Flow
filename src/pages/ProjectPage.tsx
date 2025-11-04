@@ -91,9 +91,9 @@ export function ProjectPage() {
         </div>
       </div>
 
-      {/* Main App - with padding for header */}
+      {/* Main App - with padding for header and projectId */}
       <div className="pt-12">
-        <App />
+        <App projectId={projectId} />
       </div>
     </div>
   );
