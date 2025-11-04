@@ -72,78 +72,20 @@ export function OrganizationSettingsPage() {
     setInviteError(null);
 
     try {
-      // First, check if user exists in auth.users by calling a RPC function
-      // We need to check auth.users, not just profiles, because profile might not exist yet
-      const { data: authUser, error: authError } = await supabase.rpc('get_user_by_email', {
-        user_email: inviteEmail.toLowerCase()
+      // Use the invite_user_to_organization function to handle everything
+      const { data: result, error: inviteError } = await supabase.rpc('invite_user_to_organization', {
+        p_organization_id: organization.id,
+        p_user_email: inviteEmail.toLowerCase(),
+        p_role: inviteRole,
       });
 
-      console.log('RPC Response - Data:', authUser);
-      console.log('RPC Response - Error:', authError);
-      console.log('RPC Response - Type:', typeof authUser);
-      console.log('RPC Response - Is Array:', Array.isArray(authUser));
+      if (inviteError) throw inviteError;
 
-      if (authError || !authUser || authUser.length === 0) {
-        console.log('Failed check - authError:', authError);
-        console.log('Failed check - !authUser:', !authUser);
-        console.log('Failed check - authUser.length === 0:', authUser?.length === 0);
-        setInviteError('No user found with this email. They need to sign up first.');
+      // Check if the function returned an error
+      if (result && !result.success) {
+        setInviteError(result.error);
         return;
       }
-
-      const userId = authUser[0].id;
-
-      // Check if profile exists, if not create it
-      let { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!profile) {
-        // Create profile for this user
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: inviteEmail.toLowerCase(),
-          });
-
-        if (profileError && profileError.code !== '23505') {
-          throw profileError;
-        }
-
-        // Fetch the profile again
-        const { data: newProfile } = await supabase
-          .from('profiles')
-          .select('id, email')
-          .eq('id', userId)
-          .single();
-
-        profile = newProfile;
-      }
-
-      if (!profile) {
-        throw new Error('Failed to get or create profile');
-      }
-
-      // Check if already a member
-      const existingMember = members.find(m => m.user_id === profile.id);
-      if (existingMember) {
-        setInviteError('This user is already a member of this organization.');
-        return;
-      }
-
-      // Add member
-      const { error } = await supabase
-        .from('organization_members')
-        .insert({
-          organization_id: organization.id,
-          user_id: profile.id,
-          role: inviteRole,
-        });
-
-      if (error) throw error;
 
       // Reload members
       const { data: updatedMembers } = await supabase
