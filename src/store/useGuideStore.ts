@@ -95,6 +95,12 @@ export const useGuideStore = create<GuideState>()(
     }),
     {
       name: 'amster-flow-storage',
+      version: 1,
+      partialize: (state) => ({
+        currentModule: state.currentModule,
+        currentQuestionIndex: state.currentQuestionIndex,
+        progress: state.progress,
+      }),
     }
   )
 );

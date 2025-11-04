@@ -222,6 +222,13 @@ export const useDiscoveryStore = create<DiscoveryState>()(
     }),
     {
       name: 'amster-flow-discovery-storage',
+      version: 1,
+      partialize: (state) => ({
+        currentView: state.currentView,
+        assumptions: state.assumptions,
+        interviews: state.interviews,
+        iterations: state.iterations,
+      }),
     }
   )
 );

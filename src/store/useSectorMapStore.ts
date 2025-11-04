@@ -168,6 +168,13 @@ export const useSectorMapStore = create<SectorMapState>()(
     }),
     {
       name: 'amster-flow-sector-map-storage',
+      version: 1,
+      partialize: (state) => ({
+        customerType: state.customerType,
+        firstTarget: state.firstTarget,
+        competitors: state.competitors,
+        decisionMakers: state.decisionMakers,
+      }),
     }
   )
 );
