@@ -1,6 +1,7 @@
 import { useGuideStore } from '../store/useGuideStore';
 import { useDiscoveryStore } from '../store/useDiscoveryStore';
 import { useSectorMapStore } from '../store/useSectorMapStore';
+import { InterviewLog } from './discovery/InterviewLog';
 import { getModuleName } from '../utils/helpers';
 import { QuestionsData } from '../App';
 import { useRef } from 'react';
@@ -473,6 +474,13 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
           );
         })}
       </div>
+
+      {/* Interview Log Section */}
+      {interviews.length > 0 && (
+        <div className="mb-8">
+          <InterviewLog />
+        </div>
+      )}
 
       <div className="flex gap-4">
         <button
