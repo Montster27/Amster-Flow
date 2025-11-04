@@ -540,6 +540,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
+      get_user_by_email: {
+        Args: {
+          user_email: string
+        }
+        Returns: Array<{
+          id: string
+          email: string
+        }>
+      }
       user_can_access_project: {
         Args: {
           project_uuid: string
