@@ -23,20 +23,27 @@ export function DashboardPage() {
 
     const initializeUser = async () => {
       try {
-        // 1. Check if profile exists
-        const { data: profile } = await supabase
+        // 1. Check if profile exists (use maybeSingle to avoid 406 error)
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         // 2. Create profile if it doesn't exist
-        if (!profile) {
-          await supabase.from('profiles').insert({
-            id: user.id,
-            email: user.email!,
-            full_name: user.user_metadata?.full_name || null,
-          });
+        if (!profile && !profileError) {
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email!,
+              full_name: user.user_metadata?.full_name || null,
+            });
+
+          // Ignore conflict errors (profile already exists)
+          if (insertError && insertError.code !== '23505') {
+            console.error('Error creating profile:', insertError);
+          }
         }
 
         // 3. Check if user is a member of any organization
@@ -62,14 +69,24 @@ export function DashboardPage() {
             .select()
             .single();
 
-          if (orgError) throw orgError;
+          if (orgError) {
+            console.error('Error creating organization:', orgError);
+            throw orgError;
+          }
 
           // Add user as owner
-          await supabase.from('organization_members').insert({
-            organization_id: newOrg.id,
-            user_id: user.id,
-            role: 'owner',
-          });
+          const { error: memberError } = await supabase
+            .from('organization_members')
+            .insert({
+              organization_id: newOrg.id,
+              user_id: user.id,
+              role: 'owner',
+            });
+
+          if (memberError) {
+            console.error('Error adding organization member:', memberError);
+            throw memberError;
+          }
 
           currentOrg = newOrg;
         }
