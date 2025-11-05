@@ -73,7 +73,7 @@ GRANT EXECUTE ON FUNCTION invite_user_to_organization(UUID, TEXT, TEXT) TO authe
 
 -- Test the function
 SELECT * FROM invite_user_to_organization(
-  '00000000-0000-0000-0000-000000000000'::UUID, -- Replace with actual org ID
+  '77c1e364-209d-4454-bf1b-bddbef6d81d4'::UUID, -- Replace with actual org ID
   'monty.sharma@gmail.com',
   'editor'
 );

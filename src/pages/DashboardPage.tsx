@@ -51,17 +51,23 @@ export function DashboardPage() {
         }
 
         // 3. Load ALL organizations user is a member of
+        // Query memberships first, then load organizations separately to avoid RLS issues
         const { data: memberships } = await supabase
           .from('organization_members')
-          .select('organization_id, organizations(*)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
+          .select('organization_id')
+          .eq('user_id', user.id);
 
         let allOrgs: Organization[] = [];
 
         if (memberships && memberships.length > 0) {
-          // User has organizations
-          allOrgs = memberships.map(m => m.organizations as Organization);
+          // Load organizations separately
+          const orgIds = memberships.map(m => m.organization_id);
+          const { data: orgsData } = await supabase
+            .from('organizations')
+            .select('*')
+            .in('id', orgIds);
+
+          allOrgs = orgsData || [];
         } else {
           // Create first organization for user
           const { data: newOrg, error: orgError } = await supabase
