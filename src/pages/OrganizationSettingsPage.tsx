@@ -64,7 +64,7 @@ export function OrganizationSettingsPage() {
           .from('organization_members')
           .select('*')
           .eq('organization_id', org.id)
-          .order('created_at', { ascending: true });
+          .order('joined_at', { ascending: true });
 
         console.log('Member rows:', memberRows);
         console.log('Member error:', memberError);
@@ -139,7 +139,7 @@ export function OrganizationSettingsPage() {
         .from('organization_members')
         .select('*')
         .eq('organization_id', organization.id)
-        .order('created_at', { ascending: true });
+        .order('joined_at', { ascending: true });
 
       if (memberRows && memberRows.length > 0) {
         // Load profiles separately
