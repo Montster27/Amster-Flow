@@ -60,23 +60,39 @@ export function OrganizationSettingsPage() {
         setCurrentUserRole(userRole);
 
         // Load all members (split query to avoid RLS join blocking)
-        const { data: memberRows } = await supabase
+        const { data: memberRows, error: memberError } = await supabase
           .from('organization_members')
           .select('*')
           .eq('organization_id', org.id)
           .order('created_at', { ascending: true });
 
+        console.log('Member rows:', memberRows);
+        console.log('Member error:', memberError);
+
+        if (memberError) {
+          console.error('Failed to load members:', memberError);
+          throw memberError;
+        }
+
         if (!memberRows || memberRows.length === 0) {
+          console.log('No members found for org:', org.id);
           setMembers([]);
           return;
         }
 
         // Load profiles separately
         const userIds = memberRows.map(m => m.user_id);
-        const { data: profileRows } = await supabase
+        const { data: profileRows, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .in('id', userIds);
+
+        console.log('Profile rows:', profileRows);
+        console.log('Profile error:', profileError);
+
+        if (profileError) {
+          console.error('Failed to load profiles:', profileError);
+        }
 
         // Combine members with profiles
         const membersWithProfiles = memberRows.map(member => ({
@@ -84,6 +100,7 @@ export function OrganizationSettingsPage() {
           profiles: profileRows?.find(p => p.id === member.user_id) || { id: member.user_id, email: 'Unknown', full_name: null },
         }));
 
+        console.log('Members with profiles:', membersWithProfiles);
         setMembers(membersWithProfiles as MemberWithProfile[]);
       } catch (error) {
         console.error('Error loading organization:', error);
