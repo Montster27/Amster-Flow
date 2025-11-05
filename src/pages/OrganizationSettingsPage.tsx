@@ -29,10 +29,10 @@ export function OrganizationSettingsPage() {
 
     const loadOrganizationAndMembers = async () => {
       try {
-        // Get user's organization
+        // Get user's organization membership (split query to avoid RLS join blocking)
         const { data: memberships } = await supabase
           .from('organization_members')
-          .select('organization_id, role, organizations(*)')
+          .select('organization_id, role')
           .eq('user_id', user.id)
           .limit(1);
 
@@ -41,20 +41,50 @@ export function OrganizationSettingsPage() {
           return;
         }
 
-        const org = memberships[0].organizations as Organization;
         const userRole = memberships[0].role;
+        const orgId = memberships[0].organization_id;
+
+        // Load organization separately
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('id', orgId)
+          .single();
+
+        if (!org) {
+          navigate('/dashboard');
+          return;
+        }
 
         setOrganization(org);
         setCurrentUserRole(userRole);
 
-        // Load all members
-        const { data: orgMembers } = await supabase
+        // Load all members (split query to avoid RLS join blocking)
+        const { data: memberRows } = await supabase
           .from('organization_members')
-          .select('*, profiles(*)')
+          .select('*')
           .eq('organization_id', org.id)
           .order('created_at', { ascending: true });
 
-        setMembers(orgMembers as MemberWithProfile[] || []);
+        if (!memberRows || memberRows.length === 0) {
+          setMembers([]);
+          return;
+        }
+
+        // Load profiles separately
+        const userIds = memberRows.map(m => m.user_id);
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        // Combine members with profiles
+        const membersWithProfiles = memberRows.map(member => ({
+          ...member,
+          profiles: profileRows?.find(p => p.id === member.user_id) || { id: member.user_id, email: 'Unknown', full_name: null },
+        }));
+
+        setMembers(membersWithProfiles as MemberWithProfile[]);
       } catch (error) {
         console.error('Error loading organization:', error);
       } finally {
@@ -87,14 +117,31 @@ export function OrganizationSettingsPage() {
         return;
       }
 
-      // Reload members
-      const { data: updatedMembers } = await supabase
+      // Reload members (split query to avoid RLS join blocking)
+      const { data: memberRows } = await supabase
         .from('organization_members')
-        .select('*, profiles(*)')
+        .select('*')
         .eq('organization_id', organization.id)
         .order('created_at', { ascending: true });
 
-      setMembers(updatedMembers as MemberWithProfile[] || []);
+      if (memberRows && memberRows.length > 0) {
+        // Load profiles separately
+        const userIds = memberRows.map(m => m.user_id);
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        // Combine members with profiles
+        const membersWithProfiles = memberRows.map(member => ({
+          ...member,
+          profiles: profileRows?.find(p => p.id === member.user_id) || { id: member.user_id, email: 'Unknown', full_name: null },
+        }));
+
+        setMembers(membersWithProfiles as MemberWithProfile[]);
+      } else {
+        setMembers([]);
+      }
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('editor');
