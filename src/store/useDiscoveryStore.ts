@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import {
   Assumption,
   Interview,
@@ -59,10 +58,8 @@ const initialState = {
   iterations: [],
 };
 
-export const useDiscoveryStore = create<DiscoveryState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+export const useDiscoveryStore = create<DiscoveryState>()((set, get) => ({
+  ...initialState,
 
       // UI Actions
       setCurrentView: (view) => set({ currentView: view }),
@@ -217,11 +214,6 @@ export const useDiscoveryStore = create<DiscoveryState>()(
         });
       },
 
-      // Reset
-      reset: () => set(initialState),
-    }),
-    {
-      name: 'amster-flow-discovery-storage',
-    }
-  )
-);
+  // Reset
+  reset: () => set(initialState),
+}));
