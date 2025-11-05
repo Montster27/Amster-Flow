@@ -3,26 +3,21 @@ import { useDiscoveryStore } from '../store/useDiscoveryStore';
 import { useSectorMapStore } from '../store/useSectorMapStore';
 import { getModuleName } from '../utils/helpers';
 import { QuestionsData } from '../App';
-import { useRef } from 'react';
 
 interface SummaryProps {
   questionsData: QuestionsData;
   modules: string[];
-  onStartOver: () => void;
 }
 
-export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) => {
+export const Summary = ({ questionsData, modules }: SummaryProps) => {
   const { progress } = useGuideStore();
-  const { assumptions, interviews, iterations, reset: resetDiscovery } = useDiscoveryStore();
+  const { assumptions, interviews, iterations } = useDiscoveryStore();
   const {
     customerType,
     firstTarget,
     competitors,
     decisionMakers,
-    reset: resetSectorMap,
   } = useSectorMapStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleExport = () => {
     const exportData = {
       modules: modules
@@ -246,87 +241,6 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
     doc.save(`amster-flow-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const handleLoadData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const importedData = JSON.parse(content);
-
-        // Import module progress
-        if (importedData.modules) {
-          const progressData: Record<string, any> = {};
-          importedData.modules.forEach((module: any) => {
-            progressData[module.key] = {
-              moduleName: module.key,
-              answers: module.answers.map((a: any) => ({
-                questionIndex: a.questionIndex !== undefined ? a.questionIndex : module.answers.indexOf(a),
-                answer: a.answer,
-              })),
-              completed: true,
-            };
-          });
-          const { importProgress } = useGuideStore.getState();
-          importProgress(progressData);
-        }
-
-        // Import discovery data
-        if (importedData.discovery) {
-          const { importData } = useDiscoveryStore.getState();
-          importData({
-            assumptions: importedData.discovery.assumptions || [],
-            interviews: importedData.discovery.interviews || [],
-            iterations: importedData.discovery.iterations || [],
-          });
-        }
-
-        // Import sector map data
-        if (importedData.sectorMap) {
-          const { importData } = useSectorMapStore.getState();
-          importData({
-            customerType: importedData.sectorMap.customerType || 'business',
-            firstTarget: importedData.sectorMap.firstTarget || { description: '' },
-            competitors: importedData.sectorMap.competitors || [],
-            decisionMakers: importedData.sectorMap.decisionMakers || [],
-          });
-        }
-
-        alert('Data imported successfully!');
-        // Clear the file input so the same file can be loaded again
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        window.location.reload();
-      } catch (error) {
-        console.error('Failed to import data:', error);
-        alert('Failed to import data. Please make sure the file is a valid Amster Flow export.');
-        // Clear the file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleClearAll = () => {
-    if (
-      confirm(
-        'Are you sure you want to clear ALL data? This will delete all your answers, assumptions, interviews, sector map, and iterations. This action cannot be undone.'
-      )
-    ) {
-      const { reset } = useGuideStore.getState();
-      reset();
-      resetDiscovery();
-      resetSectorMap();
-      alert('All data has been cleared.');
-      window.location.reload();
-    }
-  };
-
   return (
     <div className="flex-1 p-8 max-w-4xl mx-auto">
       <div className="mb-8">
@@ -341,28 +255,13 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
         <button
           onClick={handleExport}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 font-medium"
-          aria-label="Save and export canvas as JSON file"
+          aria-label="Export canvas as JSON file"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
           </svg>
-          Save (JSON)
+          Export JSON
         </button>
-
-        <label className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-2 cursor-pointer font-medium">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          Load Data
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleLoadData}
-            className="hidden"
-            aria-label="Load previously saved data"
-          />
-        </label>
 
         <button
           onClick={handleExportPDF}
@@ -384,17 +283,6 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           Export Text
-        </button>
-
-        <button
-          onClick={handleClearAll}
-          className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-all flex items-center gap-2 font-medium"
-          aria-label="Clear all data and start over"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Clear All
         </button>
       </div>
 
@@ -472,16 +360,6 @@ export const Summary = ({ questionsData, modules, onStartOver }: SummaryProps) =
             </section>
           );
         })}
-      </div>
-
-      <div className="flex gap-4">
-        <button
-          onClick={onStartOver}
-          className="px-6 py-3 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-          aria-label="Start over and clear all progress"
-        >
-          Start Over
-        </button>
       </div>
     </div>
   );
