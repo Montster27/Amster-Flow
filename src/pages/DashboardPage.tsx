@@ -11,11 +11,15 @@ export function DashboardPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
+
+  // Get current organization from list
+  const organization = organizations.find(org => org.id === currentOrgId) || null;
 
   // Initialize: Ensure user has an organization
   useEffect(() => {
@@ -46,18 +50,18 @@ export function DashboardPage() {
           }
         }
 
-        // 3. Check if user is a member of any organization
+        // 3. Load ALL organizations user is a member of
         const { data: memberships } = await supabase
           .from('organization_members')
           .select('organization_id, organizations(*)')
           .eq('user_id', user.id)
-          .limit(1);
+          .order('created_at', { ascending: true });
 
-        let currentOrg: Organization | null = null;
+        let allOrgs: Organization[] = [];
 
         if (memberships && memberships.length > 0) {
-          // User has an organization
-          currentOrg = memberships[0].organizations as Organization;
+          // User has organizations
+          allOrgs = memberships.map(m => m.organizations as Organization);
         } else {
           // Create first organization for user
           const { data: newOrg, error: orgError } = await supabase
@@ -88,17 +92,22 @@ export function DashboardPage() {
             throw memberError;
           }
 
-          currentOrg = newOrg;
+          allOrgs = [newOrg];
         }
 
-        setOrganization(currentOrg);
+        setOrganizations(allOrgs);
 
-        // 4. Load projects for this organization
-        if (currentOrg) {
+        // 4. Set current organization (from localStorage or first one)
+        const savedOrgId = localStorage.getItem('currentOrgId');
+        const selectedOrg = allOrgs.find(org => org.id === savedOrgId) || allOrgs[0];
+        setCurrentOrgId(selectedOrg.id);
+
+        // 5. Load projects for selected organization
+        if (selectedOrg) {
           const { data: projectsData } = await supabase
             .from('projects')
             .select('*')
-            .eq('organization_id', currentOrg.id)
+            .eq('organization_id', selectedOrg.id)
             .order('created_at', { ascending: false });
 
           setProjects(projectsData || []);
@@ -112,6 +121,28 @@ export function DashboardPage() {
 
     initializeUser();
   }, [user]);
+
+  // Reload projects when organization changes
+  useEffect(() => {
+    if (!currentOrgId) return;
+
+    const loadProjects = async () => {
+      const { data: projectsData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('organization_id', currentOrgId)
+        .order('created_at', { ascending: false });
+
+      setProjects(projectsData || []);
+    };
+
+    loadProjects();
+  }, [currentOrgId]);
+
+  const handleSwitchOrganization = (orgId: string) => {
+    setCurrentOrgId(orgId);
+    localStorage.setItem('currentOrgId', orgId);
+  };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,9 +197,28 @@ export function DashboardPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
-              {organization && (
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
+              </div>
+
+              {/* Organization Switcher */}
+              {organizations.length > 1 && organization && (
+                <div className="relative">
+                  <select
+                    value={currentOrgId || ''}
+                    onChange={(e) => handleSwitchOrganization(e.target.value)}
+                    className="px-3 py-1.5 pr-8 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+                  >
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {organizations.length === 1 && organization && (
                 <p className="text-sm text-gray-600">{organization.name}</p>
               )}
             </div>
