@@ -57,7 +57,6 @@ function App({ projectId }: AppProps = {}) {
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [showConfirmReset, setShowConfirmReset] = useState(false);
 
   const {
     currentModule,
@@ -179,17 +178,6 @@ function App({ projectId }: AppProps = {}) {
     setShowReview(false);
   };
 
-  const handleStartOver = () => {
-    setShowConfirmReset(true);
-  };
-
-  const confirmReset = () => {
-    reset();
-    setShowSummary(false);
-    setCurrentModule(modules[0]);
-    setShowConfirmReset(false);
-  };
-
   const handleViewSummary = () => {
     setShowSummary(true);
   };
@@ -203,7 +191,6 @@ function App({ projectId }: AppProps = {}) {
           <Summary
             questionsData={questionsData}
             modules={modules}
-            onStartOver={handleStartOver}
           />
         ) : showReview && isStandardModule ? (
           <ModuleReview
@@ -233,45 +220,6 @@ function App({ projectId }: AppProps = {}) {
           />
         )}
       </main>
-
-      {/* Confirmation Modal */}
-      {showConfirmReset && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowConfirmReset(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-dialog-title"
-        >
-          <div
-            className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="confirm-dialog-title" className="text-xl font-bold text-gray-800 mb-2">
-              Start Over?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure? This will clear all your answers and progress.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConfirmReset(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all"
-                aria-label="Cancel and keep answers"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReset}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
-                aria-label="Confirm and delete all answers"
-              >
-                Yes, Start Over
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
