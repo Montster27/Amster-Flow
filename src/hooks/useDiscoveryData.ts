@@ -63,7 +63,7 @@ export function useDiscoveryData(projectId: string | undefined) {
           created: row.created_at,
           lastUpdated: row.updated_at,
           status: row.status,
-          confidence: row.confidence,
+          confidence: (row.confidence || 3) as 1 | 2 | 3 | 4 | 5,
           evidence: row.evidence || [],
         }));
 
