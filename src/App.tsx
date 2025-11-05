@@ -63,7 +63,6 @@ function App({ projectId }: AppProps = {}) {
     setCurrentModule,
     markModuleComplete,
     setCurrentQuestionIndex,
-    reset,
   } = useGuideStore();
 
   // Sync with Supabase if projectId is provided
