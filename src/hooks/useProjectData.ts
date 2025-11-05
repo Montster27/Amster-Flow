@@ -12,7 +12,7 @@ export function useProjectData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { progress, importProgress } = useGuideStore();
+  const { progress, importProgress, reset } = useGuideStore();
   const initialLoadRef = useRef(false);
 
   // Load project data from Supabase on mount
@@ -24,6 +24,10 @@ export function useProjectData(projectId: string | undefined) {
 
     const loadProjectData = async () => {
       try {
+        // Reset store immediately when projectId changes to clear old data
+        reset();
+        initialLoadRef.current = false;
+
         setLoading(true);
         setError(null);
 
