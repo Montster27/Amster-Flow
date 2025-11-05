@@ -52,20 +52,26 @@ export function DashboardPage() {
 
         // 3. Load ALL organizations user is a member of
         // Query memberships first, then load organizations separately to avoid RLS issues
-        const { data: memberships } = await supabase
+        const { data: memberships, error: memberError } = await supabase
           .from('organization_members')
           .select('organization_id')
           .eq('user_id', user.id);
+
+        console.log('Memberships:', memberships);
+        console.log('Member error:', memberError);
 
         let allOrgs: Organization[] = [];
 
         if (memberships && memberships.length > 0) {
           // Load organizations separately
           const orgIds = memberships.map(m => m.organization_id);
-          const { data: orgsData } = await supabase
+          const { data: orgsData, error: orgsError } = await supabase
             .from('organizations')
             .select('*')
             .in('id', orgIds);
+
+          console.log('Organizations:', orgsData);
+          console.log('Orgs error:', orgsError);
 
           allOrgs = orgsData || [];
         } else {
@@ -101,21 +107,27 @@ export function DashboardPage() {
           allOrgs = [newOrg];
         }
 
+        console.log('All orgs loaded:', allOrgs);
         setOrganizations(allOrgs);
 
         // 4. Set current organization (from localStorage or first one)
         const savedOrgId = localStorage.getItem('currentOrgId');
+        console.log('Saved org ID from localStorage:', savedOrgId);
         const selectedOrg = allOrgs.find(org => org.id === savedOrgId) || allOrgs[0];
+        console.log('Selected org:', selectedOrg);
         setCurrentOrgId(selectedOrg.id);
+        console.log('Current org ID set to:', selectedOrg.id);
 
         // 5. Load projects for selected organization
         if (selectedOrg) {
-          const { data: projectsData } = await supabase
+          const { data: projectsData, error: projectsError } = await supabase
             .from('projects')
             .select('*')
             .eq('organization_id', selectedOrg.id)
             .order('created_at', { ascending: false });
 
+          console.log('Projects loaded:', projectsData);
+          console.log('Projects error:', projectsError);
           setProjects(projectsData || []);
         }
       } catch (error) {
@@ -130,15 +142,22 @@ export function DashboardPage() {
 
   // Reload projects when organization changes
   useEffect(() => {
-    if (!currentOrgId) return;
+    if (!currentOrgId) {
+      console.log('No currentOrgId, skipping project load');
+      return;
+    }
+
+    console.log('Loading projects for org:', currentOrgId);
 
     const loadProjects = async () => {
-      const { data: projectsData } = await supabase
+      const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
         .eq('organization_id', currentOrgId)
         .order('created_at', { ascending: false });
 
+      console.log('Projects reloaded:', projectsData);
+      console.log('Projects reload error:', projectsError);
       setProjects(projectsData || []);
     };
 
