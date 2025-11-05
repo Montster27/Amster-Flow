@@ -5,6 +5,7 @@ import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
 import { useGuideStore } from './store/useGuideStore';
 import { useProjectData } from './hooks/useProjectData';
+import { useDiscoveryData } from './hooks/useDiscoveryData';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
@@ -67,6 +68,7 @@ function App({ projectId }: AppProps = {}) {
 
   // Sync with Supabase if projectId is provided
   const { loading: loadingProjectData, error: projectDataError } = useProjectData(projectId);
+  const { loading: loadingDiscoveryData, error: discoveryDataError } = useDiscoveryData(projectId);
 
   // Load questions.json on mount
   useEffect(() => {
@@ -94,13 +96,13 @@ function App({ projectId }: AppProps = {}) {
     loadQuestions();
   }, []);
 
-  if (loadingError || projectDataError) {
+  if (loadingError || projectDataError || discoveryDataError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Guide</h2>
-          <p className="text-gray-600 mb-4">{loadingError || projectDataError}</p>
+          <p className="text-gray-600 mb-4">{loadingError || projectDataError || discoveryDataError}</p>
           <button
             onClick={() => {
               setLoadingError(null);
@@ -117,7 +119,7 @@ function App({ projectId }: AppProps = {}) {
     );
   }
 
-  if (!questionsData || loadingProjectData) {
+  if (!questionsData || loadingProjectData || loadingDiscoveryData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

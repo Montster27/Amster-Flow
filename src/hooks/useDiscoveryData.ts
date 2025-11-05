@@ -1,0 +1,239 @@
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './useAuth';
+import { useDiscoveryStore } from '../store/useDiscoveryStore';
+import type { Assumption, Interview, Iteration } from '../types/discovery';
+
+/**
+ * Hook to sync discovery data (assumptions, interviews, iterations) with Supabase
+ * Loads data on mount and saves changes to database
+ */
+export function useDiscoveryData(projectId: string | undefined) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { assumptions, interviews, iterations, importData, reset } = useDiscoveryStore();
+  const initialLoadRef = useRef(false);
+
+  // Load discovery data from Supabase on mount
+  useEffect(() => {
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+
+    const loadDiscoveryData = async () => {
+      try {
+        // Reset store immediately when projectId changes to clear old data
+        reset();
+        initialLoadRef.current = false;
+
+        setLoading(true);
+        setError(null);
+
+        // Load assumptions
+        const { data: assumptionsData, error: assumptionsError } = await supabase
+          .from('project_assumptions')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (assumptionsError) throw assumptionsError;
+
+        // Load interviews
+        const { data: interviewsData, error: interviewsError } = await supabase
+          .from('project_interviews')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (interviewsError) throw interviewsError;
+
+        // Load iterations
+        const { data: iterationsData, error: iterationsError } = await supabase
+          .from('project_iterations')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (iterationsError) throw iterationsError;
+
+        // Convert database rows to app format
+        const assumptions: Assumption[] = (assumptionsData || []).map(row => ({
+          id: row.id,
+          type: row.type,
+          description: row.description,
+          created: row.created_at,
+          lastUpdated: row.updated_at,
+          status: row.status,
+          confidence: row.confidence,
+          evidence: row.evidence || [],
+        }));
+
+        const interviews: Interview[] = (interviewsData || []).map(row => ({
+          id: row.id,
+          date: row.date,
+          customerSegment: row.customer_segment,
+          assumptionsAddressed: row.assumptions_addressed || [],
+          keyLearnings: row.key_learnings || [],
+          painPoints: row.pain_points || [],
+          desiredOutcomes: row.desired_outcomes || [],
+          currentSolutions: row.current_solutions || [],
+          notes: row.notes || '',
+        }));
+
+        const iterations: Iteration[] = (iterationsData || []).map(row => ({
+          id: row.id,
+          version: row.version,
+          date: row.date,
+          changes: row.changes || [],
+          reasoning: row.reasoning || '',
+          validatedAssumptions: row.validated_assumptions || [],
+          invalidatedAssumptions: row.invalidated_assumptions || [],
+        }));
+
+        // Import into store
+        importData({ assumptions, interviews, iterations });
+        initialLoadRef.current = true;
+      } catch (err) {
+        console.error('Error loading discovery data:', err);
+        setError('Failed to load discovery data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDiscoveryData();
+  }, [projectId, importData, reset]);
+
+  // Save assumptions to Supabase whenever they change
+  useEffect(() => {
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
+
+    const saveAssumptions = async () => {
+      try {
+        // Delete all existing assumptions for this project
+        await supabase
+          .from('project_assumptions')
+          .delete()
+          .eq('project_id', projectId);
+
+        // Insert all current assumptions
+        if (assumptions.length > 0) {
+          const rows = assumptions.map(assumption => ({
+            id: assumption.id,
+            project_id: projectId,
+            type: assumption.type,
+            description: assumption.description,
+            status: assumption.status,
+            confidence: assumption.confidence,
+            evidence: assumption.evidence,
+            created_at: assumption.created,
+            updated_at: assumption.lastUpdated,
+            created_by: user.id,
+          }));
+
+          const { error: insertError } = await supabase
+            .from('project_assumptions')
+            .insert(rows);
+
+          if (insertError) {
+            console.error('Error saving assumptions:', insertError);
+          }
+        }
+      } catch (err) {
+        console.error('Error saving assumptions:', err);
+      }
+    };
+
+    const timeoutId = setTimeout(saveAssumptions, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [projectId, user, assumptions, loading]);
+
+  // Save interviews to Supabase whenever they change
+  useEffect(() => {
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
+
+    const saveInterviews = async () => {
+      try {
+        // Delete all existing interviews for this project
+        await supabase
+          .from('project_interviews')
+          .delete()
+          .eq('project_id', projectId);
+
+        // Insert all current interviews
+        if (interviews.length > 0) {
+          const rows = interviews.map(interview => ({
+            id: interview.id,
+            project_id: projectId,
+            date: interview.date,
+            customer_segment: interview.customerSegment,
+            assumptions_addressed: interview.assumptionsAddressed,
+            key_learnings: interview.keyLearnings,
+            pain_points: interview.painPoints,
+            desired_outcomes: interview.desiredOutcomes,
+            current_solutions: interview.currentSolutions,
+            notes: interview.notes,
+            created_by: user.id,
+          }));
+
+          const { error: insertError } = await supabase
+            .from('project_interviews')
+            .insert(rows);
+
+          if (insertError) {
+            console.error('Error saving interviews:', insertError);
+          }
+        }
+      } catch (err) {
+        console.error('Error saving interviews:', err);
+      }
+    };
+
+    const timeoutId = setTimeout(saveInterviews, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [projectId, user, interviews, loading]);
+
+  // Save iterations to Supabase whenever they change
+  useEffect(() => {
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
+
+    const saveIterations = async () => {
+      try {
+        // Delete all existing iterations for this project
+        await supabase
+          .from('project_iterations')
+          .delete()
+          .eq('project_id', projectId);
+
+        // Insert all current iterations
+        if (iterations.length > 0) {
+          const rows = iterations.map(iteration => ({
+            id: iteration.id,
+            project_id: projectId,
+            version: iteration.version,
+            date: iteration.date,
+            changes: iteration.changes,
+            reasoning: iteration.reasoning,
+            validated_assumptions: iteration.validatedAssumptions,
+            invalidated_assumptions: iteration.invalidatedAssumptions,
+            created_by: user.id,
+          }));
+
+          const { error: insertError } = await supabase
+            .from('project_iterations')
+            .insert(rows);
+
+          if (insertError) {
+            console.error('Error saving iterations:', insertError);
+          }
+        }
+      } catch (err) {
+        console.error('Error saving iterations:', err);
+      }
+    };
+
+    const timeoutId = setTimeout(saveIterations, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [projectId, user, iterations, loading]);
+
+  return { loading, error };
+}
