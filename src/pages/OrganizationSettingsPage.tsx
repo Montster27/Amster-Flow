@@ -16,6 +16,7 @@ export function OrganizationSettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export function OrganizationSettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'owner' | 'editor' | 'viewer'>('editor');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -102,8 +104,9 @@ export function OrganizationSettingsPage() {
 
         console.log('Members with profiles:', membersWithProfiles);
         setMembers(membersWithProfiles as MemberWithProfile[]);
-      } catch (error) {
-        console.error('Error loading organization:', error);
+      } catch (err) {
+        console.error('Error loading organization:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load organization settings. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -117,16 +120,20 @@ export function OrganizationSettingsPage() {
     if (!user || !organization || currentUserRole !== 'owner') return;
 
     setInviteError(null);
+    setSuccessMessage(null);
 
     try {
       // Use the invite_user_to_organization function to handle everything
       const { data: result, error: inviteError } = await supabase.rpc('invite_user_to_organization', {
         p_organization_id: organization.id,
-        p_user_email: inviteEmail.toLowerCase(),
+        p_user_email: inviteEmail.toLowerCase().trim(),
         p_role: inviteRole,
       });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error('RPC error:', inviteError);
+        throw new Error('Failed to invite member. Please try again.');
+      }
 
       // Check if the function returned an error
       if (result && !result.success) {
@@ -135,19 +142,28 @@ export function OrganizationSettingsPage() {
       }
 
       // Reload members (split query to avoid RLS join blocking)
-      const { data: memberRows } = await supabase
+      const { data: memberRows, error: membersError } = await supabase
         .from('organization_members')
         .select('*')
         .eq('organization_id', organization.id)
         .order('joined_at', { ascending: true });
 
+      if (membersError) {
+        console.error('Error reloading members:', membersError);
+        throw new Error('Member invited but failed to reload member list. Please refresh the page.');
+      }
+
       if (memberRows && memberRows.length > 0) {
         // Load profiles separately
         const userIds = memberRows.map(m => m.user_id);
-        const { data: profileRows } = await supabase
+        const { data: profileRows, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
           .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error loading profiles:', profilesError);
+        }
 
         // Combine members with profiles
         const membersWithProfiles = memberRows.map(member => ({
@@ -159,17 +175,25 @@ export function OrganizationSettingsPage() {
       } else {
         setMembers([]);
       }
+
+      // Show success message
+      setSuccessMessage(`Successfully invited ${inviteEmail} to your organization!`);
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('editor');
-    } catch (error) {
-      console.error('Error inviting member:', error);
-      setInviteError('Failed to invite member. Please try again.');
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Error inviting member:', err);
+      setInviteError(err instanceof Error ? err.message : 'Failed to invite member. Please try again.');
     }
   };
 
   const handleChangeRole = async (memberId: string, newRole: 'owner' | 'editor' | 'viewer') => {
     if (!organization || currentUserRole !== 'owner') return;
+
+    setSuccessMessage(null);
 
     try {
       const { error } = await supabase
@@ -177,24 +201,33 @@ export function OrganizationSettingsPage() {
         .update({ role: newRole })
         .eq('id', memberId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error changing role:', error);
+        throw new Error('Failed to change role. Please try again.');
+      }
 
       // Update local state
       setMembers(members.map(m =>
         m.id === memberId ? { ...m, role: newRole } : m
       ));
-    } catch (error) {
-      console.error('Error changing role:', error);
-      alert('Failed to change role. Please try again.');
+
+      setSuccessMessage('Member role updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error changing role:', err);
+      setError(err instanceof Error ? err.message : 'Failed to change role. Please try again.');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
   const handleRemoveMember = async (memberId: string, memberEmail: string) => {
     if (!organization || currentUserRole !== 'owner') return;
 
-    if (!confirm(`Remove ${memberEmail} from this organization?`)) {
+    if (!confirm(`Remove ${memberEmail} from this organization? They will lose access to all projects.`)) {
       return;
     }
+
+    setSuccessMessage(null);
 
     try {
       const { error } = await supabase
@@ -202,12 +235,18 @@ export function OrganizationSettingsPage() {
         .delete()
         .eq('id', memberId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error removing member:', error);
+        throw new Error('Failed to remove member. Please try again.');
+      }
 
       setMembers(members.filter(m => m.id !== memberId));
-    } catch (error) {
-      console.error('Error removing member:', error);
-      alert('Failed to remove member. Please try again.');
+      setSuccessMessage(`Successfully removed ${memberEmail} from your organization.`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Error removing member:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove member. Please try again.');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -222,6 +261,32 @@ export function OrganizationSettingsPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Settings</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -256,6 +321,18 @@ export function OrganizationSettingsPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-green-800 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {successMessage}
+            </p>
+          </div>
+        )}
+
         {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}

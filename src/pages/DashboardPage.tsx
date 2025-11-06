@@ -11,12 +11,14 @@ export function DashboardPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
 
   // Get current organization from list
   const organization = organizations.find(org => org.id === currentOrgId) || null;
@@ -60,6 +62,13 @@ export function DashboardPage() {
         console.log('Memberships:', memberships);
         console.log('Member error:', memberError);
 
+        // CRITICAL: Only create org if query succeeded AND returned empty
+        // Don't create if there was an error (prevents duplicate creation)
+        if (memberError) {
+          console.error('Error loading memberships:', memberError);
+          throw new Error('Failed to load your organizations. Please refresh the page.');
+        }
+
         let allOrgs: Organization[] = [];
 
         if (memberships && memberships.length > 0) {
@@ -73,49 +82,99 @@ export function DashboardPage() {
           console.log('Organizations:', orgsData);
           console.log('Orgs error:', orgsError);
 
+          if (orgsError) {
+            console.error('Error loading organizations:', orgsError);
+            throw new Error('Failed to load your organizations. Please refresh the page.');
+          }
+
           allOrgs = orgsData || [];
         } else {
-          // Create first organization for user
-          const { data: newOrg, error: orgError } = await supabase
+          // No memberships found - create first organization
+          // Double-check by querying orgs created by this user to prevent duplicates
+          const { data: existingOrgs } = await supabase
             .from('organizations')
-            .insert({
-              name: `${user.email?.split('@')[0]}'s Team`,
-              created_by: user.id,
-            })
-            .select()
-            .single();
+            .select('*')
+            .eq('created_by', user.id)
+            .limit(1);
 
-          if (orgError) {
-            console.error('Error creating organization:', orgError);
-            throw orgError;
+          if (existingOrgs && existingOrgs.length > 0) {
+            // User created an org but isn't a member - fix the membership
+            const existingOrg = existingOrgs[0];
+            console.log('Found orphaned organization, adding user as member:', existingOrg.id);
+
+            const { error: addMemberError } = await supabase
+              .from('organization_members')
+              .insert({
+                organization_id: existingOrg.id,
+                user_id: user.id,
+                role: 'owner',
+              });
+
+            if (addMemberError && addMemberError.code !== '23505') {
+              // Ignore duplicate key errors
+              console.error('Error adding user to existing org:', addMemberError);
+            }
+
+            allOrgs = [existingOrg];
+          } else {
+            // Truly no organization - create one
+            console.log('Creating first organization for user');
+            const { data: newOrg, error: orgError } = await supabase
+              .from('organizations')
+              .insert({
+                name: `${user.email?.split('@')[0]}'s Team`,
+                created_by: user.id,
+              })
+              .select()
+              .single();
+
+            if (orgError) {
+              console.error('Error creating organization:', orgError);
+              throw new Error('Failed to create your organization. Please try again.');
+            }
+
+            // Add user as owner
+            const { error: newMemberError } = await supabase
+              .from('organization_members')
+              .insert({
+                organization_id: newOrg.id,
+                user_id: user.id,
+                role: 'owner',
+              });
+
+            if (newMemberError) {
+              console.error('Error adding organization member:', newMemberError);
+              throw new Error('Failed to set up your organization. Please try again.');
+            }
+
+            allOrgs = [newOrg];
           }
-
-          // Add user as owner
-          const { error: memberError } = await supabase
-            .from('organization_members')
-            .insert({
-              organization_id: newOrg.id,
-              user_id: user.id,
-              role: 'owner',
-            });
-
-          if (memberError) {
-            console.error('Error adding organization member:', memberError);
-            throw memberError;
-          }
-
-          allOrgs = [newOrg];
         }
 
         console.log('All orgs loaded:', allOrgs);
+
+        if (allOrgs.length === 0) {
+          throw new Error('No organizations found. Please contact support.');
+        }
+
         setOrganizations(allOrgs);
 
-        // 4. Set current organization (from localStorage or first one)
+        // 4. Set current organization (validate localStorage or use first one)
         const savedOrgId = localStorage.getItem('currentOrgId');
         console.log('Saved org ID from localStorage:', savedOrgId);
-        const selectedOrg = allOrgs.find(org => org.id === savedOrgId) || allOrgs[0];
+
+        // Validate that saved org ID exists in user's orgs
+        const selectedOrg = (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) || allOrgs[0];
+
+        // Clear invalid localStorage value
+        if (savedOrgId && !allOrgs.find(org => org.id === savedOrgId)) {
+          console.log('Clearing invalid org ID from localStorage');
+          localStorage.removeItem('currentOrgId');
+        }
+
         console.log('Selected org:', selectedOrg);
         setCurrentOrgId(selectedOrg.id);
+        localStorage.setItem('currentOrgId', selectedOrg.id);
         console.log('Current org ID set to:', selectedOrg.id);
 
         // 5. Load projects for selected organization
@@ -126,12 +185,17 @@ export function DashboardPage() {
             .eq('organization_id', selectedOrg.id)
             .order('created_at', { ascending: false });
 
+          if (projectsError) {
+            console.error('Error loading projects:', projectsError);
+            throw new Error('Failed to load projects. Please refresh the page.');
+          }
+
           console.log('Projects loaded:', projectsData);
-          console.log('Projects error:', projectsError);
           setProjects(projectsData || []);
         }
-      } catch (error) {
-        console.error('Error initializing user:', error);
+      } catch (err) {
+        console.error('Error initializing user:', err);
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -173,30 +237,36 @@ export function DashboardPage() {
     e.preventDefault();
     if (!user || !organization || !newProjectName.trim()) return;
 
+    setCreateProjectError(null);
+
     try {
       const { data: newProject, error } = await supabase
         .from('projects')
         .insert({
           organization_id: organization.id,
-          name: newProjectName,
-          description: newProjectDescription || null,
+          name: newProjectName.trim(),
+          description: newProjectDescription.trim() || null,
           created_by: user.id,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating project:', error);
+        throw new Error('Failed to create project. Please try again.');
+      }
 
       setProjects([newProject, ...projects]);
       setShowCreateProject(false);
       setNewProjectName('');
       setNewProjectDescription('');
+      setCreateProjectError(null);
 
       // Navigate to the project
       navigate(`/project/${newProject.id}`);
-    } catch (error) {
-      console.error('Error creating project:', error);
-      alert('Failed to create project. Please try again.');
+    } catch (err) {
+      console.error('Error creating project:', err);
+      setCreateProjectError(err instanceof Error ? err.message : 'Failed to create project. Please try again.');
     }
   };
 
@@ -211,6 +281,32 @@ export function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+            >
+              Retry
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -356,10 +452,18 @@ export function DashboardPage() {
                   placeholder="Brief description of your project..."
                 />
               </div>
+              {createProjectError && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-800">{createProjectError}</p>
+                </div>
+              )}
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowCreateProject(false)}
+                  onClick={() => {
+                    setShowCreateProject(false);
+                    setCreateProjectError(null);
+                  }}
                   className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all"
                 >
                   Cancel
