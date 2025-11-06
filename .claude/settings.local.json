@@ -29,7 +29,9 @@
       "Bash(git log:*)",
       "WebSearch",
       "Bash(cat:*)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Read(//private/tmp/**)",
+      "Bash(~/.local/bin/supabase --version)"
     ],
     "deny": [],
     "ask": []

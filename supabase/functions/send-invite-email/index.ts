@@ -40,8 +40,12 @@ serve(async (req) => {
       );
     }
 
-    // Determine app URL (use provided or fallback to localhost for dev)
-    const loginUrl = appUrl || 'http://localhost:5173/login';
+    // Determine app URL with priority:
+    // 1. Use provided appUrl from request (for testing)
+    // 2. Use APP_URL environment variable (production)
+    // 3. Fallback to localhost (local development)
+    const defaultUrl = Deno.env.get('APP_URL') || 'http://localhost:5173/login';
+    const loginUrl = appUrl || defaultUrl;
 
     // Send email via Resend
     const res = await fetch('https://api.resend.com/emails', {
