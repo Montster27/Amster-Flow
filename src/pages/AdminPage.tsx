@@ -29,6 +29,8 @@ export function AdminPage() {
   const [projects, setProjects] = useState<ProjectWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ userId: string; email: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -176,6 +178,39 @@ export function AdminPage() {
     navigate('/login');
   };
 
+  const handleDeleteUser = async (userId: string, email: string) => {
+    setDeleteConfirm({ userId, email });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteConfirm) return;
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      // Call the delete_user_admin function
+      const { data, error: deleteError } = await supabase.rpc('delete_user_admin', {
+        user_id: deleteConfirm.userId
+      });
+
+      if (deleteError) throw deleteError;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
+      // Remove user from local state
+      setUsers(users.filter(u => u.id !== deleteConfirm.userId));
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (adminLoading || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -313,12 +348,20 @@ export function AdminPage() {
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => navigate(`/admin/user/${user.id}`)}
-                            className="text-blue-600 hover:text-blue-700 hover:underline"
-                          >
-                            View Details
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => navigate(`/admin/user/${user.id}`)}
+                              className="text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.email)}
+                              className="text-red-600 hover:text-red-700 hover:underline font-semibold"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -408,6 +451,63 @@ export function AdminPage() {
           </>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => !deleting && setDeleteConfirm(null)}
+        >
+          <div
+            className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="text-red-500 text-5xl mb-4">⚠️</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete User</h3>
+              <p className="text-gray-600">
+                Are you sure you want to delete the user:
+              </p>
+              <p className="text-lg font-semibold text-gray-900 mt-2">
+                {deleteConfirm.email}
+              </p>
+              <p className="text-sm text-red-600 mt-4">
+                This action cannot be undone. All user data, projects, and memberships will be permanently deleted.
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteUser}
+                disabled={deleting}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete User'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

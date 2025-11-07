@@ -602,6 +602,16 @@ export interface Database {
           email?: string
         }
       }
+      delete_user_admin: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          success: boolean
+          error?: string
+          message?: string
+        }
+      }
       user_can_access_project: {
         Args: {
           project_uuid: string
