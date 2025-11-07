@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useGuideStore } from '../store/useGuideStore';
-import { useDiscoveryStore } from '../store/useDiscoveryStore';
-import { useSectorMapStore } from '../store/useSectorMapStore';
+import { useGuideStore } from '../contexts/GuideContext';
+import { useDiscoveryStore } from '../contexts/DiscoveryContext';
+import { useSectorMapStore } from '../contexts/SectorMapContext';
 import { findAllDuplicates, DuplicateMatch } from '../utils/deduplicationHelper';
 import { DuplicateWarning } from './DuplicateWarning';
 import { QuestionsData } from '../App';
@@ -26,10 +26,10 @@ export const QuestionPanel = ({
   questionsData,
 }: QuestionPanelProps) => {
   const { currentQuestionIndex, saveAnswer, getModuleProgress, setCurrentQuestionIndex, progress: moduleProgress } =
-    useGuideStore();
+    useGuide();
 
-  const { assumptions, interviews } = useDiscoveryStore();
-  const sectorMapStore = useSectorMapStore();
+  const { assumptions, interviews } = useDiscovery();
+  const sectorMapStore = useSectorMap();
 
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);

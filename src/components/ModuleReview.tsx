@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuideStore } from '../store/useGuideStore';
+import { useGuideStore } from '../contexts/GuideContext';
 
 interface ModuleReviewProps {
   module: string;
@@ -16,7 +16,7 @@ export const ModuleReview = ({
   onConfirm,
   onBack,
 }: ModuleReviewProps) => {
-  const { progress, saveAnswer } = useGuideStore();
+  const { progress, saveAnswer } = useGuide();
   const moduleProgress = progress[module];
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');

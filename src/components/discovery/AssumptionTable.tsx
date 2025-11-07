@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useDiscoveryStore } from '../../store/useDiscoveryStore';
+import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
 import { AssumptionType, ConfidenceLevel, AssumptionStatus } from '../../types/discovery';
 
 interface AssumptionForm {
@@ -15,7 +15,7 @@ export const AssumptionTable = () => {
     deleteAssumption,
     updateAssumptionConfidence,
     updateAssumptionStatus,
-  } = useDiscoveryStore();
+  } = useDiscovery();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

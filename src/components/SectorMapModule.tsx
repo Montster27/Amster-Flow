@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSectorMapStore } from '../store/useSectorMapStore';
+import { useSectorMapStore } from '../contexts/SectorMapContext';
 import { DecisionMaker } from '../types/sectorMap';
 
 export const SectorMapModule = () => {
@@ -19,7 +19,7 @@ export const SectorMapModule = () => {
     removeCustomerFromCompetitor,
     addDecisionMaker,
     deleteDecisionMaker,
-  } = useSectorMapStore();
+  } = useSectorMap();
 
   const [newCompetitorName, setNewCompetitorName] = useState('');
   const [newCompetitorDesc, setNewCompetitorDesc] = useState('');

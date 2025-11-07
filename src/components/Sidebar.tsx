@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuideStore } from '../store/useGuideStore';
+import { useGuideStore } from '../contexts/GuideContext';
 import { getModuleName } from '../utils/helpers';
 
 interface SidebarProps {
@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps) => {
-  const { currentModule, progress } = useGuideStore();
+  const { currentModule, progress } = useGuide();
   const [showAbout, setShowAbout] = useState(false);
 
   return (

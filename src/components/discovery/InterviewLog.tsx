@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useDiscoveryStore } from '../../store/useDiscoveryStore';
+import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
 import { Interview } from '../../types/discovery';
 
 export const InterviewLog = () => {
-  const { interviews, assumptions, deleteInterview, setCurrentView } = useDiscoveryStore();
+  const { interviews, assumptions, deleteInterview, setCurrentView } = useDiscovery();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const getAssumptionText = (assumptionId: string) => {

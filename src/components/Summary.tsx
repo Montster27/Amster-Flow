@@ -1,6 +1,6 @@
-import { useGuideStore } from '../store/useGuideStore';
-import { useDiscoveryStore } from '../store/useDiscoveryStore';
-import { useSectorMapStore } from '../store/useSectorMapStore';
+import { useGuideStore } from '../contexts/GuideContext';
+import { useDiscoveryStore } from '../contexts/DiscoveryContext';
+import { useSectorMapStore } from '../contexts/SectorMapContext';
 import { getModuleName } from '../utils/helpers';
 import { QuestionsData } from '../App';
 
@@ -10,14 +10,14 @@ interface SummaryProps {
 }
 
 export const Summary = ({ questionsData, modules }: SummaryProps) => {
-  const { progress } = useGuideStore();
-  const { assumptions, interviews, iterations } = useDiscoveryStore();
+  const { progress } = useGuide();
+  const { assumptions, interviews, iterations } = useDiscovery();
   const {
     customerType,
     firstTarget,
     competitors,
     decisionMakers,
-  } = useSectorMapStore();
+  } = useSectorMap();
   const handleExport = () => {
     const exportData = {
       modules: modules

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useSectorMapStore } from '../store/useSectorMapStore';
+import { useSectorMap } from '../contexts/SectorMapContext';
 import type { Competitor, DecisionMaker, FirstTarget, CustomerType } from '../types/sectorMap';
 
 /**
@@ -19,7 +19,7 @@ export function useSectorMapData(projectId: string | undefined) {
     decisionMakers,
     importData,
     reset,
-  } = useSectorMapStore();
+  } = useSectorMap();
   const initialLoadRef = useRef(false);
 
   // Load sector map data from Supabase on mount
