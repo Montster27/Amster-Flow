@@ -10,6 +10,9 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
+import { AdminPage } from './pages/AdminPage'
+import { AdminUserDetail } from './pages/AdminUserDetail'
+import { AdminProjectDetail } from './pages/AdminProjectDetail'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -38,6 +41,32 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <ProjectPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Admin routes */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute>
+                        <AdminPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/user/:userId"
+                    element={
+                      <ProtectedRoute>
+                        <AdminUserDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/project/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        <AdminProjectDetail />
                       </ProtectedRoute>
                     }
                   />
