@@ -26,7 +26,13 @@
       "Bash(mkcert -install:*)",
       "Bash(mkcert:*)",
       "Read(//Users/montysharma/Desktop/**)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "WebSearch",
+      "Bash(cat:*)",
+      "WebFetch(domain:supabase.com)",
+      "Read(//private/tmp/**)",
+      "Bash(~/.local/bin/supabase --version)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

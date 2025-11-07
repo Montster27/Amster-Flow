@@ -1,10 +1,12 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
 import { useGuideStore } from './store/useGuideStore';
+import { useProjectData } from './hooks/useProjectData';
+import { useDiscoveryData } from './hooks/useDiscoveryData';
+import { useSectorMapData } from './hooks/useSectorMapData';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
@@ -46,20 +48,27 @@ const validateQuestionsData = (data: any): data is QuestionsData => {
   });
 };
 
-function App() {
+interface AppProps {
+  projectId?: string;
+}
+
+function App({ projectId }: AppProps = {}) {
   const [questionsData, setQuestionsData] = useState<QuestionsData | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [showConfirmReset, setShowConfirmReset] = useState(false);
 
   const {
     currentModule,
     setCurrentModule,
     markModuleComplete,
     setCurrentQuestionIndex,
-    reset,
   } = useGuideStore();
+
+  // Sync with Supabase if projectId is provided
+  const { loading: loadingProjectData, error: projectDataError } = useProjectData(projectId);
+  const { loading: loadingDiscoveryData, error: discoveryDataError } = useDiscoveryData(projectId);
+  const { loading: loadingSectorMapData, error: sectorMapDataError } = useSectorMapData(projectId);
 
   // Load questions.json on mount
   useEffect(() => {
@@ -87,13 +96,13 @@ function App() {
     loadQuestions();
   }, []);
 
-  if (loadingError) {
+  if (loadingError || projectDataError || discoveryDataError || sectorMapDataError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Guide</h2>
-          <p className="text-gray-600 mb-4">{loadingError}</p>
+          <p className="text-gray-600 mb-4">{loadingError || projectDataError || discoveryDataError || sectorMapDataError}</p>
           <button
             onClick={() => {
               setLoadingError(null);
@@ -110,12 +119,14 @@ function App() {
     );
   }
 
-  if (!questionsData) {
+  if (!questionsData || loadingProjectData || loadingDiscoveryData || loadingSectorMapData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your guide...</p>
+          <p className="text-gray-600">
+            {!questionsData ? 'Loading your guide...' : 'Loading project data...'}
+          </p>
         </div>
       </div>
     );
@@ -166,33 +177,19 @@ function App() {
     setShowReview(false);
   };
 
-  const handleStartOver = () => {
-    setShowConfirmReset(true);
-  };
-
-  const confirmReset = () => {
-    reset();
-    setShowSummary(false);
-    setCurrentModule(modules[0]);
-    setShowConfirmReset(false);
-  };
-
   const handleViewSummary = () => {
     setShowSummary(true);
   };
 
   return (
-    <>
-      <Analytics />
-      <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
 
-        <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
         {showSummary ? (
           <Summary
             questionsData={questionsData}
             modules={modules}
-            onStartOver={handleStartOver}
           />
         ) : showReview && isStandardModule ? (
           <ModuleReview
@@ -222,47 +219,7 @@ function App() {
           />
         )}
       </main>
-
-      {/* Confirmation Modal */}
-      {showConfirmReset && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowConfirmReset(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-dialog-title"
-        >
-          <div
-            className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="confirm-dialog-title" className="text-xl font-bold text-gray-800 mb-2">
-              Start Over?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure? This will clear all your answers and progress.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConfirmReset(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all"
-                aria-label="Cancel and keep answers"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmReset}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
-                aria-label="Confirm and delete all answers"
-              >
-                Yes, Start Over
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      </div>
-    </>
+    </div>
   );
 }
 
