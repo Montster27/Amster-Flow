@@ -55,10 +55,10 @@ export function DashboardPage() {
         }
 
         // 3. Load ALL organizations user is a member of
-        // Query memberships first, then load organizations separately to avoid RLS issues
+        // Query memberships first (including role), then load organizations separately to avoid RLS issues
         const { data: memberships, error: memberError } = await supabase
           .from('organization_members')
-          .select('organization_id')
+          .select('organization_id, role')
           .eq('user_id', user.id);
 
 
@@ -154,15 +154,29 @@ export function DashboardPage() {
 
         setOrganizations(allOrgs);
 
-        // 4. Set current organization (validate localStorage or use first one)
+        // 4. Set current organization - prioritize orgs where user can edit
         const savedOrgId = localStorage.getItem('currentOrgId');
 
-        // Validate that saved org ID exists in user's orgs
-        const selectedOrg = (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) || allOrgs[0];
+        let selectedOrg: Organization;
 
-        // Clear invalid localStorage value
-        if (savedOrgId && !allOrgs.find(org => org.id === savedOrgId)) {
-          localStorage.removeItem('currentOrgId');
+        if (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) {
+          // Use saved org if it still exists
+          selectedOrg = allOrgs.find(org => org.id === savedOrgId)!;
+        } else {
+          // Clear invalid localStorage value
+          if (savedOrgId) {
+            localStorage.removeItem('currentOrgId');
+          }
+
+          // Prioritize organizations where user has owner or editor role
+          const editableOrgIds = memberships
+            ?.filter(m => m.role === 'owner' || m.role === 'editor')
+            .map(m => m.organization_id) || [];
+
+          const editableOrg = allOrgs.find(org => editableOrgIds.includes(org.id));
+
+          // Use editable org if available, otherwise fall back to first org
+          selectedOrg = editableOrg || allOrgs[0];
         }
 
         setCurrentOrgId(selectedOrg.id);
