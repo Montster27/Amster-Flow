@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSectorMapStore } from '../contexts/SectorMapContext';
+import { useSectorMap } from '../contexts/SectorMapContext';
 import { DecisionMaker } from '../types/sectorMap';
 
 export const SectorMapModule = () => {

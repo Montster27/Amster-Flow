@@ -1,4 +1,4 @@
-import { useDiscoveryStore } from '../contexts/DiscoveryContext';
+import { useDiscovery } from '../contexts/DiscoveryContext';
 import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewPlanner } from './discovery/InterviewPlanner';
 import { InterviewLog } from './discovery/InterviewLog';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { InterviewFormat, IntervieweeType } from '../../types/discovery';
 
 interface InterviewFormData {
