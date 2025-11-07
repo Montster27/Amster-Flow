@@ -193,6 +193,43 @@ export interface Database {
           }
         ]
       }
+      project_module_completion: {
+        Row: {
+          id: string
+          project_id: string
+          module_name: string
+          completed: boolean
+          completed_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          module_name: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          module_name?: string
+          completed?: boolean
+          completed_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_module_completion_project_id_fkey"
+            columns: ["project_id"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       project_assumptions: {
         Row: {
           id: string
