@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 export interface Answer {
   questionIndex: number;
@@ -104,18 +104,32 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     setProgress(initialState.progress);
   }, []);
 
-  const value: GuideState = {
-    currentModule,
-    currentQuestionIndex,
-    progress,
-    setCurrentModule,
-    setCurrentQuestionIndex,
-    saveAnswer,
-    markModuleComplete,
-    getModuleProgress,
-    importProgress,
-    reset,
-  };
+  const value: GuideState = useMemo(
+    () => ({
+      currentModule,
+      currentQuestionIndex,
+      progress,
+      setCurrentModule,
+      setCurrentQuestionIndex,
+      saveAnswer,
+      markModuleComplete,
+      getModuleProgress,
+      importProgress,
+      reset,
+    }),
+    [
+      currentModule,
+      currentQuestionIndex,
+      progress,
+      setCurrentModule,
+      setCurrentQuestionIndex,
+      saveAnswer,
+      markModuleComplete,
+      getModuleProgress,
+      importProgress,
+      reset,
+    ]
+  );
 
   return <GuideContext.Provider value={value}>{children}</GuideContext.Provider>;
 }

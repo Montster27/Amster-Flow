@@ -90,13 +90,12 @@ BEGIN
   -- NOTE: This uses pg_net which must be enabled in Supabase
   -- The email sending happens asynchronously and won't block the response
   BEGIN
-    -- Get the Edge Function URL from Supabase settings
-    -- Replace 'YOUR_PROJECT_REF' with your actual Supabase project reference
-    -- You can find this in your Supabase project URL: https://YOUR_PROJECT_REF.supabase.co
-    v_function_url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/send-invite-email';
+    -- Get the Edge Function URL from database settings
+    -- Set this using: ALTER DATABASE postgres SET app.supabase_url = 'https://YOUR_PROJECT_REF.supabase.co';
+    v_function_url := current_setting('app.supabase_url', true) || '/functions/v1/send-invite-email';
 
     -- Get service role key (this should be set as a database setting)
-    -- For security, store this in Supabase Vault or as a database setting
+    -- Set this using: ALTER DATABASE postgres SET app.supabase_service_role_key = 'your-service-role-key';
     v_service_role_key := current_setting('app.supabase_service_role_key', true);
 
     IF v_service_role_key IS NOT NULL THEN
@@ -113,7 +112,7 @@ BEGIN
             'organizationName', v_org_name,
             'inviterEmail', v_inviter_email,
             'role', p_role,
-            'appUrl', 'https://your-app-url.vercel.app/login'  -- Update with your production URL
+            'appUrl', current_setting('app.frontend_url', true)
           )
         );
     ELSE
@@ -154,10 +153,17 @@ DO $$
 BEGIN
     RAISE NOTICE '✅ Invite function updated with email notifications!';
     RAISE NOTICE '';
-    RAISE NOTICE '⚠️  IMPORTANT: You must configure the following:';
-    RAISE NOTICE '   1. Replace YOUR_PROJECT_REF with your Supabase project reference';
-    RAISE NOTICE '   2. Set the service role key as a database setting';
-    RAISE NOTICE '   3. Update the appUrl to your production URL';
+    RAISE NOTICE '⚠️  IMPORTANT: Configure the following database settings:';
+    RAISE NOTICE '';
+    RAISE NOTICE '   1. Supabase URL:';
+    RAISE NOTICE '      ALTER DATABASE postgres SET app.supabase_url = ''https://YOUR_PROJECT_REF.supabase.co'';';
+    RAISE NOTICE '';
+    RAISE NOTICE '   2. Service role key (from Supabase dashboard):';
+    RAISE NOTICE '      ALTER DATABASE postgres SET app.supabase_service_role_key = ''your-service-role-key'';';
+    RAISE NOTICE '';
+    RAISE NOTICE '   3. Frontend URL:';
+    RAISE NOTICE '      ALTER DATABASE postgres SET app.frontend_url = ''https://your-app-url.vercel.app/login'';';
     RAISE NOTICE '';
     RAISE NOTICE '📧 Emails will be sent via the send-invite-email Edge Function';
+    RAISE NOTICE '🔒 All sensitive values are stored as database settings, not hardcoded';
 END $$;

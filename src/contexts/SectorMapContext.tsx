@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import {
   CustomerType,
   FirstTarget,
@@ -162,26 +162,48 @@ export function SectorMapProvider({ children }: { children: ReactNode }) {
     setDecisionMakers(initialState.decisionMakers);
   }, []);
 
-  const value: SectorMapState = {
-    customerType,
-    firstTarget,
-    competitors,
-    decisionMakers,
-    setCustomerType,
-    updateFirstTarget,
-    addCompetitor,
-    updateCompetitor,
-    deleteCompetitor,
-    addSupplierToCompetitor,
-    removeSupplierFromCompetitor,
-    addCustomerToCompetitor,
-    removeCustomerFromCompetitor,
-    addDecisionMaker,
-    updateDecisionMaker,
-    deleteDecisionMaker,
-    importData,
-    reset,
-  };
+  const value: SectorMapState = useMemo(
+    () => ({
+      customerType,
+      firstTarget,
+      competitors,
+      decisionMakers,
+      setCustomerType,
+      updateFirstTarget,
+      addCompetitor,
+      updateCompetitor,
+      deleteCompetitor,
+      addSupplierToCompetitor,
+      removeSupplierFromCompetitor,
+      addCustomerToCompetitor,
+      removeCustomerFromCompetitor,
+      addDecisionMaker,
+      updateDecisionMaker,
+      deleteDecisionMaker,
+      importData,
+      reset,
+    }),
+    [
+      customerType,
+      firstTarget,
+      competitors,
+      decisionMakers,
+      setCustomerType,
+      updateFirstTarget,
+      addCompetitor,
+      updateCompetitor,
+      deleteCompetitor,
+      addSupplierToCompetitor,
+      removeSupplierFromCompetitor,
+      addCustomerToCompetitor,
+      removeCustomerFromCompetitor,
+      addDecisionMaker,
+      updateDecisionMaker,
+      deleteDecisionMaker,
+      importData,
+      reset,
+    ]
+  );
 
   return <SectorMapContext.Provider value={value}>{children}</SectorMapContext.Provider>;
 }
