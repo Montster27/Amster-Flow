@@ -53,17 +53,11 @@ BEGIN
     );
   END IF;
 
-  -- Delete from auth.users (this will cascade to profiles due to FK)
-  -- Note: This requires the auth.delete_user function or direct access
-  -- Since we can't directly delete from auth.users in a SECURITY DEFINER function,
-  -- we'll delete the profile and let Supabase handle the rest
-
-  -- Delete the user's profile (this should cascade to related data)
+  -- Delete the user's profile (this will cascade to all related data)
   DELETE FROM public.profiles WHERE id = user_id;
 
-  -- Also delete from auth.users using admin privileges
-  -- This requires the service role key in production
-  DELETE FROM auth.users WHERE id = user_id;
+  -- Note: To fully delete from auth.users, you need to use Supabase Admin API
+  -- or manually delete from the Supabase dashboard after profile deletion
 
   RETURN json_build_object(
     'success', true,

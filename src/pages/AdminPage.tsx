@@ -189,14 +189,32 @@ export function AdminPage() {
     setError(null);
 
     try {
-      // Call the delete_user_admin function
-      const { data, error: deleteError } = await supabase.rpc('delete_user_admin', {
-        user_id: deleteConfirm.userId
-      });
+      // Get the current session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (deleteError) throw deleteError;
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
 
-      if (!data.success) {
+      // Call the Edge Function to delete user
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/delete-user-admin`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            userId: deleteConfirm.userId
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to delete user');
       }
 
