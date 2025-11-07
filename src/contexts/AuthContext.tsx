@@ -64,11 +64,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     if (!error && data.user) {
       // Create profile entry
-      await supabase.from('profiles').insert({
+      const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         email: data.user.email!,
         full_name: fullName || null,
       });
+
+      // Log profile creation errors but don't fail signup
+      // (profile may already exist from previous signup attempt or trigger)
+      if (profileError && profileError.code !== '23505') {
+        console.error('Error creating profile:', profileError);
+      }
     }
 
     return { error };

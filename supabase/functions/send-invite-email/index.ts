@@ -2,14 +2,28 @@
 // Deploy with: supabase functions deploy send-invite-email
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173';
 
-// CORS headers for local testing
+// CORS headers - restrict to app URL only
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': APP_URL,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// HTML escape function to prevent XSS
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,6 +32,28 @@ serve(async (req) => {
   }
 
   try {
+    // CRITICAL: Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Verify Resend API key is configured
     if (!RESEND_API_KEY) {
       throw new Error('RESEND_API_KEY environment variable is not set');
@@ -78,7 +114,7 @@ serve(async (req) => {
     </p>
 
     <p style="font-size: 16px; margin-bottom: 20px;">
-      <strong>${inviterEmail}</strong> has invited you to join <strong>${organizationName}</strong> as a <strong style="color: #2563eb;">${role}</strong>.
+      <strong>${escapeHtml(inviterEmail)}</strong> has invited you to join <strong>${escapeHtml(organizationName)}</strong> as a <strong style="color: #2563eb;">${escapeHtml(role)}</strong>.
     </p>
 
     <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin: 25px 0;">
@@ -109,14 +145,14 @@ serve(async (req) => {
 
     <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 8px; margin-top: 25px;">
       <p style="margin: 0; color: #92400e; font-size: 14px;">
-        <strong>⚠️ Important:</strong> If you don't have an ArmsterFlow account yet, you'll need to sign up using this email address (<strong>${invitedEmail}</strong>) first.
+        <strong>⚠️ Important:</strong> If you don't have an ArmsterFlow account yet, you'll need to sign up using this email address (<strong>${escapeHtml(invitedEmail)}</strong>) first.
       </p>
     </div>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
 
     <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
-      <strong>What you can do as a ${role}:</strong>
+      <strong>What you can do as a ${escapeHtml(role)}:</strong>
     </p>
 
     <ul style="font-size: 14px; color: #666; padding-left: 20px;">
@@ -139,7 +175,7 @@ serve(async (req) => {
   </div>
 
   <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-    <p style="margin: 5px 0;">This invitation was sent by ${inviterEmail}</p>
+    <p style="margin: 5px 0;">This invitation was sent by ${escapeHtml(inviterEmail)}</p>
     <p style="margin: 5px 0;">If you didn't expect this invitation, you can safely ignore this email.</p>
   </div>
 
@@ -156,8 +192,6 @@ serve(async (req) => {
       console.error('Resend API error:', data);
       throw new Error(data.message || 'Failed to send email');
     }
-
-    console.log('Email sent successfully:', data);
 
     return new Response(
       JSON.stringify({
@@ -176,8 +210,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        error: error.message || 'Failed to send invitation email',
-        details: error.toString()
+        error: 'Failed to send invitation email'
       }),
       {
         status: 500,

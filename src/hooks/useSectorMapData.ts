@@ -21,6 +21,7 @@ export function useSectorMapData(projectId: string | undefined) {
     reset,
   } = useSectorMap();
   const initialLoadRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   // Load sector map data from Supabase on mount
   useEffect(() => {
@@ -113,8 +114,12 @@ export function useSectorMapData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveFirstTarget = async () => {
+      if (isSavingRef.current) return;
+
       try {
-        const { error: upsertError } = await supabase
+        isSavingRef.current = true;
+
+        await supabase
           .from('project_first_target')
           .upsert({
             project_id: projectId,
@@ -126,12 +131,8 @@ export function useSectorMapData(projectId: string | undefined) {
           }, {
             onConflict: 'project_id',
           });
-
-        if (upsertError) {
-          console.error('Error saving first target:', upsertError);
-        }
-      } catch (err) {
-        console.error('Error saving first target:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 
@@ -144,7 +145,11 @@ export function useSectorMapData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveCompetitors = async () => {
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // Delete all existing competitors for this project
         await supabase
           .from('project_competitors')
@@ -164,16 +169,12 @@ export function useSectorMapData(projectId: string | undefined) {
             created_at: competitor.created,
           }));
 
-          const { error: insertError } = await supabase
+          await supabase
             .from('project_competitors')
             .insert(rows);
-
-          if (insertError) {
-            console.error('Error saving competitors:', insertError);
-          }
         }
-      } catch (err) {
-        console.error('Error saving competitors:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 
@@ -186,7 +187,11 @@ export function useSectorMapData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveDecisionMakers = async () => {
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // Delete all existing decision makers for this project
         await supabase
           .from('project_decision_makers')
@@ -205,16 +210,12 @@ export function useSectorMapData(projectId: string | undefined) {
             created_at: dm.created,
           }));
 
-          const { error: insertError } = await supabase
+          await supabase
             .from('project_decision_makers')
             .insert(rows);
-
-          if (insertError) {
-            console.error('Error saving decision makers:', insertError);
-          }
         }
-      } catch (err) {
-        console.error('Error saving decision makers:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 

@@ -14,6 +14,7 @@ export function useDiscoveryData(projectId: string | undefined) {
   const { user } = useAuth();
   const { assumptions, interviews, iterations, importData, reset } = useDiscovery();
   const initialLoadRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   // Load discovery data from Supabase on mount
   useEffect(() => {
@@ -114,7 +115,11 @@ export function useDiscoveryData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveAssumptions = async () => {
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // Delete all existing assumptions for this project
         await supabase
           .from('project_assumptions')
@@ -136,16 +141,12 @@ export function useDiscoveryData(projectId: string | undefined) {
             created_by: user.id,
           }));
 
-          const { error: insertError } = await supabase
+          await supabase
             .from('project_assumptions')
             .insert(rows);
-
-          if (insertError) {
-            console.error('Error saving assumptions:', insertError);
-          }
         }
-      } catch (err) {
-        console.error('Error saving assumptions:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 
@@ -158,7 +159,11 @@ export function useDiscoveryData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveInterviews = async () => {
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // Delete all existing interviews for this project
         await supabase
           .from('project_interviews')
@@ -185,16 +190,12 @@ export function useDiscoveryData(projectId: string | undefined) {
             created_by: user.id,
           }));
 
-          const { error: insertError } = await supabase
+          await supabase
             .from('project_interviews')
             .insert(rows);
-
-          if (insertError) {
-            console.error('Error saving interviews:', insertError);
-          }
         }
-      } catch (err) {
-        console.error('Error saving interviews:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 
@@ -207,7 +208,11 @@ export function useDiscoveryData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveIterations = async () => {
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // Delete all existing iterations for this project
         await supabase
           .from('project_iterations')
@@ -230,16 +235,12 @@ export function useDiscoveryData(projectId: string | undefined) {
             created_by: user.id,
           }));
 
-          const { error: insertError } = await supabase
+          await supabase
             .from('project_iterations')
             .insert(rows);
-
-          if (insertError) {
-            console.error('Error saving iterations:', insertError);
-          }
         }
-      } catch (err) {
-        console.error('Error saving iterations:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 

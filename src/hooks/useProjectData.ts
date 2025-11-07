@@ -14,6 +14,7 @@ export function useProjectData(projectId: string | undefined) {
   const { user } = useAuth();
   const { progress, importProgress, reset } = useGuide();
   const initialLoadRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   // Load project data from Supabase on mount
   useEffect(() => {
@@ -80,11 +81,16 @@ export function useProjectData(projectId: string | undefined) {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
     const saveProgressToDatabase = async () => {
+      // Prevent concurrent saves
+      if (isSavingRef.current) return;
+
       try {
+        isSavingRef.current = true;
+
         // For each module, save each answer as a separate row
         for (const [moduleName, moduleProgress] of Object.entries(progress)) {
           for (const answer of moduleProgress.answers) {
-            const { error: upsertError } = await supabase
+            await supabase
               .from('project_modules')
               .upsert({
                 project_id: projectId,
@@ -95,14 +101,10 @@ export function useProjectData(projectId: string | undefined) {
               }, {
                 onConflict: 'project_id,module_name,question_index',
               });
-
-            if (upsertError) {
-              console.error(`Error saving answer:`, upsertError);
-            }
           }
         }
-      } catch (err) {
-        console.error('Error saving progress:', err);
+      } finally {
+        isSavingRef.current = false;
       }
     };
 

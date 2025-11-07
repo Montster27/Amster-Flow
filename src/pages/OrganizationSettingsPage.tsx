@@ -68,8 +68,6 @@ export function OrganizationSettingsPage() {
           .eq('organization_id', org.id)
           .order('joined_at', { ascending: true });
 
-        console.log('Member rows:', memberRows);
-        console.log('Member error:', memberError);
 
         if (memberError) {
           console.error('Failed to load members:', memberError);
@@ -77,7 +75,6 @@ export function OrganizationSettingsPage() {
         }
 
         if (!memberRows || memberRows.length === 0) {
-          console.log('No members found for org:', org.id);
           setMembers([]);
           return;
         }
@@ -89,8 +86,6 @@ export function OrganizationSettingsPage() {
           .select('*')
           .in('id', userIds);
 
-        console.log('Profile rows:', profileRows);
-        console.log('Profile error:', profileError);
 
         if (profileError) {
           console.error('Failed to load profiles:', profileError);
@@ -102,7 +97,6 @@ export function OrganizationSettingsPage() {
           profiles: profileRows?.find(p => p.id === member.user_id) || { id: member.user_id, email: 'Unknown', full_name: null },
         }));
 
-        console.log('Members with profiles:', membersWithProfiles);
         setMembers(membersWithProfiles as MemberWithProfile[]);
       } catch (err) {
         console.error('Error loading organization:', err);

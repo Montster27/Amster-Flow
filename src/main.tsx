@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { GuideProvider } from './contexts/GuideContext'
 import { SectorMapProvider } from './contexts/SectorMapContext'
 import { DiscoveryProvider } from './contexts/DiscoveryContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -13,43 +14,45 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <GuideProvider>
-        <SectorMapProvider>
-          <DiscoveryProvider>
-            <BrowserRouter>
-        <Routes>
-          {/* Public route */}
-          <Route path="/login" element={<LoginPage />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <GuideProvider>
+          <SectorMapProvider>
+            <DiscoveryProvider>
+              <BrowserRouter>
+                <Routes>
+                  {/* Public route */}
+                  <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/project/:projectId"
-            element={
-              <ProtectedRoute>
-                <ProjectPage />
-              </ProtectedRoute>
-            }
-          />
+                  {/* Protected routes */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        <ProjectPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-          {/* Redirect root to dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  {/* Redirect root to dashboard */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* 404 - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-          </DiscoveryProvider>
-        </SectorMapProvider>
-      </GuideProvider>
-    </AuthProvider>
+                  {/* 404 - redirect to dashboard */}
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </DiscoveryProvider>
+          </SectorMapProvider>
+        </GuideProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

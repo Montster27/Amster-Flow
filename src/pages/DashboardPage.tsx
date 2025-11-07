@@ -59,8 +59,6 @@ export function DashboardPage() {
           .select('organization_id')
           .eq('user_id', user.id);
 
-        console.log('Memberships:', memberships);
-        console.log('Member error:', memberError);
 
         // CRITICAL: Only create org if query succeeded AND returned empty
         // Don't create if there was an error (prevents duplicate creation)
@@ -79,8 +77,6 @@ export function DashboardPage() {
             .select('*')
             .in('id', orgIds);
 
-          console.log('Organizations:', orgsData);
-          console.log('Orgs error:', orgsError);
 
           if (orgsError) {
             console.error('Error loading organizations:', orgsError);
@@ -100,7 +96,6 @@ export function DashboardPage() {
           if (existingOrgs && existingOrgs.length > 0) {
             // User created an org but isn't a member - fix the membership
             const existingOrg = existingOrgs[0];
-            console.log('Found orphaned organization, adding user as member:', existingOrg.id);
 
             const { error: addMemberError } = await supabase
               .from('organization_members')
@@ -118,7 +113,6 @@ export function DashboardPage() {
             allOrgs = [existingOrg];
           } else {
             // Truly no organization - create one
-            console.log('Creating first organization for user');
             const { data: newOrg, error: orgError } = await supabase
               .from('organizations')
               .insert({
@@ -151,7 +145,6 @@ export function DashboardPage() {
           }
         }
 
-        console.log('All orgs loaded:', allOrgs);
 
         if (allOrgs.length === 0) {
           throw new Error('No organizations found. Please contact support.');
@@ -161,21 +154,17 @@ export function DashboardPage() {
 
         // 4. Set current organization (validate localStorage or use first one)
         const savedOrgId = localStorage.getItem('currentOrgId');
-        console.log('Saved org ID from localStorage:', savedOrgId);
 
         // Validate that saved org ID exists in user's orgs
         const selectedOrg = (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) || allOrgs[0];
 
         // Clear invalid localStorage value
         if (savedOrgId && !allOrgs.find(org => org.id === savedOrgId)) {
-          console.log('Clearing invalid org ID from localStorage');
           localStorage.removeItem('currentOrgId');
         }
 
-        console.log('Selected org:', selectedOrg);
         setCurrentOrgId(selectedOrg.id);
         localStorage.setItem('currentOrgId', selectedOrg.id);
-        console.log('Current org ID set to:', selectedOrg.id);
 
         // 5. Load projects for selected organization
         if (selectedOrg) {
@@ -190,7 +179,6 @@ export function DashboardPage() {
             throw new Error('Failed to load projects. Please refresh the page.');
           }
 
-          console.log('Projects loaded:', projectsData);
           setProjects(projectsData || []);
         }
       } catch (err) {
@@ -207,21 +195,17 @@ export function DashboardPage() {
   // Reload projects when organization changes
   useEffect(() => {
     if (!currentOrgId) {
-      console.log('No currentOrgId, skipping project load');
       return;
     }
 
-    console.log('Loading projects for org:', currentOrgId);
 
     const loadProjects = async () => {
-      const { data: projectsData, error: projectsError } = await supabase
+      const { data: projectsData } = await supabase
         .from('projects')
         .select('*')
         .eq('organization_id', currentOrgId)
         .order('created_at', { ascending: false });
 
-      console.log('Projects reloaded:', projectsData);
-      console.log('Projects reload error:', projectsError);
       setProjects(projectsData || []);
     };
 

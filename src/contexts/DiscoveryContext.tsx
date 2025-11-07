@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import {
   Assumption,
   Interview,
@@ -209,32 +209,60 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
     setIterations(initialState.iterations);
   }, []);
 
-  const value: DiscoveryState = {
-    currentView,
-    setCurrentView,
-    assumptions,
-    addAssumption,
-    updateAssumption,
-    deleteAssumption,
-    updateAssumptionConfidence,
-    updateAssumptionStatus,
-    addEvidenceToAssumption,
-    interviews,
-    addInterview,
-    updateInterview,
-    deleteInterview,
-    getInterviewsForAssumption,
-    iterations,
-    addIteration,
-    getLatestIteration,
-    getAssumptionsByType,
-    getAssumptionsByStatus,
-    getUntestedAssumptions,
-    getValidatedAssumptions,
-    getInvalidatedAssumptions,
-    importData,
-    reset,
-  };
+  const value: DiscoveryState = useMemo(
+    () => ({
+      currentView,
+      setCurrentView,
+      assumptions,
+      addAssumption,
+      updateAssumption,
+      deleteAssumption,
+      updateAssumptionConfidence,
+      updateAssumptionStatus,
+      addEvidenceToAssumption,
+      interviews,
+      addInterview,
+      updateInterview,
+      deleteInterview,
+      getInterviewsForAssumption,
+      iterations,
+      addIteration,
+      getLatestIteration,
+      getAssumptionsByType,
+      getAssumptionsByStatus,
+      getUntestedAssumptions,
+      getValidatedAssumptions,
+      getInvalidatedAssumptions,
+      importData,
+      reset,
+    }),
+    [
+      currentView,
+      setCurrentView,
+      assumptions,
+      addAssumption,
+      updateAssumption,
+      deleteAssumption,
+      updateAssumptionConfidence,
+      updateAssumptionStatus,
+      addEvidenceToAssumption,
+      interviews,
+      addInterview,
+      updateInterview,
+      deleteInterview,
+      getInterviewsForAssumption,
+      iterations,
+      addIteration,
+      getLatestIteration,
+      getAssumptionsByType,
+      getAssumptionsByStatus,
+      getUntestedAssumptions,
+      getValidatedAssumptions,
+      getInvalidatedAssumptions,
+      importData,
+      reset,
+    ]
+  );
 
   return <DiscoveryContext.Provider value={value}>{children}</DiscoveryContext.Provider>;
 }
