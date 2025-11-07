@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useGuide } from '../contexts/GuideContext';
-import { useDiscovery } from '../contexts/DiscoveryContext';
-import { useSectorMap } from '../contexts/SectorMapContext';
-import { findAllDuplicates, DuplicateMatch } from '../utils/deduplicationHelper';
-import { DuplicateWarning } from './DuplicateWarning';
-import { QuestionsData } from '../App';
 
 interface QuestionPanelProps {
   module: string;
@@ -13,7 +8,6 @@ interface QuestionPanelProps {
   questions: string[];
   hints: string[];
   onComplete: () => void;
-  questionsData: QuestionsData;
 }
 
 export const QuestionPanel = ({
@@ -23,18 +17,12 @@ export const QuestionPanel = ({
   questions,
   hints,
   onComplete,
-  questionsData,
 }: QuestionPanelProps) => {
-  const { currentQuestionIndex, saveAnswer, getModuleProgress, setCurrentQuestionIndex, progress: moduleProgress } =
+  const { currentQuestionIndex, saveAnswer, getModuleProgress, setCurrentQuestionIndex } =
     useGuide();
-
-  const { assumptions, interviews } = useDiscovery();
-  const sectorMapStore = useSectorMap();
 
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
-  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(true);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentHint = hints[Math.min(currentQuestionIndex, hints.length - 1)];
@@ -48,32 +36,7 @@ export const QuestionPanel = ({
     );
     setAnswer(savedAnswer?.answer || '');
     setShowHint(false);
-    setDuplicates([]);
-    setShowDuplicateWarning(true);
   }, [currentQuestionIndex, module, getModuleProgress]);
-
-  // Check for duplicates when answer changes
-  useEffect(() => {
-    if (answer.length < 20) {
-      setDuplicates([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const discoveryData = { assumptions, interviews };
-      const matches = findAllDuplicates(
-        answer,
-        moduleProgress,
-        questionsData,
-        sectorMapStore,
-        discoveryData,
-        0.6
-      );
-      setDuplicates(matches);
-    }, 1000); // Debounce for 1 second
-
-    return () => clearTimeout(timer);
-  }, [answer, moduleProgress, questionsData, sectorMapStore, assumptions, interviews]);
 
   const handleSaveAndContinue = () => {
     if (answer.trim()) {
@@ -139,14 +102,6 @@ export const QuestionPanel = ({
           aria-labelledby="current-question"
           aria-required="true"
         />
-
-        {/* Duplicate Warning */}
-        {showDuplicateWarning && duplicates.length > 0 && (
-          <DuplicateWarning
-            duplicates={duplicates}
-            onDismiss={() => setShowDuplicateWarning(false)}
-          />
-        )}
       </div>
 
       {/* Hint */}
