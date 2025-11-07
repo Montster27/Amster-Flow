@@ -40,6 +40,14 @@ export function useProjectData(projectId: string | undefined) {
 
         if (loadError) throw loadError;
 
+        // Load module completion status
+        const { data: completionRows, error: completionError } = await supabase
+          .from('project_module_completion')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (completionError) throw completionError;
+
         // Group answers by module name
         const progressData: Record<string, ModuleProgress> = {};
 
@@ -59,6 +67,22 @@ export function useProjectData(projectId: string | undefined) {
               questionIndex: row.question_index,
               answer: row.answer,
             });
+          }
+        }
+
+        // Apply completion status from completion tracking table
+        if (completionRows) {
+          for (const row of completionRows) {
+            if (progressData[row.module_name]) {
+              progressData[row.module_name].completed = row.completed;
+            } else {
+              // Module has completion status but no answers yet
+              progressData[row.module_name] = {
+                moduleName: row.module_name,
+                answers: [],
+                completed: row.completed,
+              };
+            }
           }
         }
 
@@ -102,6 +126,17 @@ export function useProjectData(projectId: string | undefined) {
                 onConflict: 'project_id,module_name,question_index',
               });
           }
+
+          // Save module completion status
+          await supabase
+            .from('project_module_completion')
+            .upsert({
+              project_id: projectId,
+              module_name: moduleName,
+              completed: moduleProgress.completed,
+            }, {
+              onConflict: 'project_id,module_name',
+            });
         }
       } finally {
         isSavingRef.current = false;
