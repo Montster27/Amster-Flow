@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import {
   CustomerType,
   FirstTarget,
@@ -46,10 +45,8 @@ const initialState: SectorMapData = {
   decisionMakers: [],
 };
 
-export const useSectorMapStore = create<SectorMapState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+export const useSectorMapStore = create<SectorMapState>()((set, get) => ({
+  ...initialState,
 
       // Customer type actions
       setCustomerType: (type) => set({ customerType: type }),
@@ -164,21 +161,5 @@ export const useSectorMapStore = create<SectorMapState>()(
         });
       },
 
-      reset: () => set(initialState),
-    }),
-    {
-      name: 'amster-flow-sector-map-storage',
-      version: 1,
-      partialize: (state) => ({
-        customerType: state.customerType,
-        firstTarget: state.firstTarget,
-        competitors: state.competitors,
-        decisionMakers: state.decisionMakers,
-      }),
-      migrate: (persistedState: any, _version: number) => {
-        // Migration for version 1 - just return the state as is
-        return persistedState;
-      },
-    }
-  )
-);
+  reset: () => set(initialState),
+}));

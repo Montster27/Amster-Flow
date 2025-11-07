@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import {
   Assumption,
   Interview,
@@ -59,10 +58,8 @@ const initialState = {
   iterations: [],
 };
 
-export const useDiscoveryStore = create<DiscoveryState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+export const useDiscoveryStore = create<DiscoveryState>()((set, get) => ({
+  ...initialState,
 
       // UI Actions
       setCurrentView: (view) => set({ currentView: view }),
@@ -217,30 +214,6 @@ export const useDiscoveryStore = create<DiscoveryState>()(
         });
       },
 
-      // Reset
-      reset: () => set(initialState),
-    }),
-    {
-      name: 'amster-flow-discovery-storage',
-      version: 1,
-      partialize: (state) => ({
-        currentView: state.currentView,
-        assumptions: state.assumptions,
-        interviews: state.interviews,
-        iterations: state.iterations,
-      }),
-      migrate: (persistedState: any, _version: number) => {
-        // Migrate old data to ensure all required fields exist
-        if (persistedState && persistedState.interviews) {
-          persistedState.interviews = persistedState.interviews.map((interview: any) => ({
-            ...interview,
-            assumptionsAddressed: interview.assumptionsAddressed || [],
-            keyInsights: interview.keyInsights || [],
-            followUpNeeded: interview.followUpNeeded ?? false,
-          }));
-        }
-        return persistedState;
-      },
-    }
-  )
-);
+  // Reset
+  reset: () => set(initialState),
+}));
