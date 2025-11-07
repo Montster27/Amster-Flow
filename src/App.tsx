@@ -215,7 +215,6 @@ function App({ projectId }: AppProps = {}) {
             questions={currentModuleData.questions!}
             hints={currentModuleData.hints!}
             onComplete={handleModuleComplete}
-            questionsData={questionsData}
           />
         )}
       </main>

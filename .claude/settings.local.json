@@ -36,7 +36,10 @@
       "Bash(for file in /Users/montysharma/Documents/ArmsterFlow/src/components/QuestionPanel.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/Sidebar.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/ModuleReview.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/Summary.tsx)",
       "Bash(do)",
       "Bash(done)",
-      "Bash(for:*)"
+      "Bash(for:*)",
+      "Bash(while read file)",
+      "Bash(do sed -i '' '/console\\.log/d' \"$file\" done)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
