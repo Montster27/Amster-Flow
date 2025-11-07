@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 
@@ -9,6 +10,7 @@ type Organization = Database['public']['Tables']['organizations']['Row'];
 
 export function DashboardPage() {
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -329,6 +331,14 @@ export function DashboardPage() {
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{user?.email}</span>
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="px-4 py-2 text-sm font-semibold text-red-600 hover:text-red-700 hover:underline"
+                >
+                  Admin
+                </button>
+              )}
               <button
                 onClick={handleSignOut}
                 className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
