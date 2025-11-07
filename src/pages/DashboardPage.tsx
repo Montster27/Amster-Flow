@@ -214,10 +214,10 @@ export function DashboardPage() {
     loadProjects();
   }, [currentOrgId]);
 
-  const handleSwitchOrganization = (orgId: string) => {
-    setCurrentOrgId(orgId);
-    localStorage.setItem('currentOrgId', orgId);
-  };
+  // const handleSwitchOrganization = (orgId: string) => {
+  //   setCurrentOrgId(orgId);
+  //   localStorage.setItem('currentOrgId', orgId);
+  // };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,26 +308,6 @@ export function DashboardPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
               </div>
-
-              {/* Organization Switcher */}
-              {organizations.length > 1 && organization && (
-                <div className="relative">
-                  <select
-                    value={currentOrgId || ''}
-                    onChange={(e) => handleSwitchOrganization(e.target.value)}
-                    className="px-3 py-1.5 pr-8 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
-                  >
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>
-                        {org.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {organizations.length === 1 && organization && (
-                <p className="text-sm text-gray-600">{organization.name}</p>
-              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{user?.email}</span>
