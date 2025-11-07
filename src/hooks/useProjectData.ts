@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useGuideStore } from '../store/useGuideStore';
-import type { ModuleProgress } from '../store/useGuideStore';
+import { useGuide } from '../contexts/GuideContext';
+import type { ModuleProgress } from '../contexts/GuideContext';
 
 /**
  * Hook to sync project data with Supabase
@@ -12,7 +12,7 @@ export function useProjectData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { progress, importProgress, reset } = useGuideStore();
+  const { progress, importProgress, reset } = useGuide();
   const initialLoadRef = useRef(false);
 
   // Load project data from Supabase on mount

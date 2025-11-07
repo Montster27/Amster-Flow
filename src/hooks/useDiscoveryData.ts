@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useDiscoveryStore } from '../store/useDiscoveryStore';
+import { useDiscovery } from '../contexts/DiscoveryContext';
 import type { Assumption, Interview, Iteration } from '../types/discovery';
 
 /**
@@ -12,7 +12,7 @@ export function useDiscoveryData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { assumptions, interviews, iterations, importData, reset } = useDiscoveryStore();
+  const { assumptions, interviews, iterations, importData, reset } = useDiscovery();
   const initialLoadRef = useRef(false);
 
   // Load discovery data from Supabase on mount

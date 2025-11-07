@@ -32,7 +32,11 @@
       "WebFetch(domain:supabase.com)",
       "Read(//private/tmp/**)",
       "Bash(~/.local/bin/supabase --version)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(for file in /Users/montysharma/Documents/ArmsterFlow/src/components/QuestionPanel.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/Sidebar.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/ModuleReview.tsx /Users/montysharma/Documents/ArmsterFlow/src/components/Summary.tsx)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(for:*)"
     ],
     "deny": [],
     "ask": []

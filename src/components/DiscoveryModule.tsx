@@ -1,11 +1,11 @@
-import { useDiscoveryStore } from '../store/useDiscoveryStore';
+import { useDiscoveryStore } from '../contexts/DiscoveryContext';
 import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewPlanner } from './discovery/InterviewPlanner';
 import { InterviewLog } from './discovery/InterviewLog';
 import { IterationDashboard } from './discovery/IterationDashboard';
 
 export const DiscoveryModule = () => {
-  const { currentView, setCurrentView } = useDiscoveryStore();
+  const { currentView, setCurrentView } = useDiscovery();
 
   const tabs = [
     { id: 'assumptions' as const, label: 'Assumptions', icon: '📋' },

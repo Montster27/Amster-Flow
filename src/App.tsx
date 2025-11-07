@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
-import { useGuideStore } from './store/useGuideStore';
+import { useGuideStore } from './contexts/GuideContext';
 import { useProjectData } from './hooks/useProjectData';
 import { useDiscoveryData } from './hooks/useDiscoveryData';
 import { useSectorMapData } from './hooks/useSectorMapData';
@@ -63,7 +63,7 @@ function App({ projectId }: AppProps = {}) {
     setCurrentModule,
     markModuleComplete,
     setCurrentQuestionIndex,
-  } = useGuideStore();
+  } = useGuide();
 
   // Sync with Supabase if projectId is provided
   const { loading: loadingProjectData, error: projectDataError } = useProjectData(projectId);

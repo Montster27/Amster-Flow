@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useDiscoveryStore } from '../../store/useDiscoveryStore';
+import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
 import { InterviewFormat, IntervieweeType } from '../../types/discovery';
 
 interface InterviewFormData {
@@ -18,7 +18,7 @@ interface InterviewFormData {
 }
 
 export const InterviewPlanner = () => {
-  const { assumptions, addInterview, setCurrentView } = useDiscoveryStore();
+  const { assumptions, addInterview, setCurrentView } = useDiscovery();
   const [formData, setFormData] = useState<InterviewFormData>({
     date: new Date().toISOString().split('T')[0],
     customerSegment: '',

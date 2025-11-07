@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDiscoveryStore } from '../../store/useDiscoveryStore';
+import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
 
 export const IterationDashboard = () => {
   const {
@@ -10,7 +10,7 @@ export const IterationDashboard = () => {
     getUntestedAssumptions,
     getValidatedAssumptions,
     getInvalidatedAssumptions,
-  } = useDiscoveryStore();
+  } = useDiscovery();
 
   const [showIterationForm, setShowIterationForm] = useState(false);
   const [iterationData, setIterationData] = useState({
