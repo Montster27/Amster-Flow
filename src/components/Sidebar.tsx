@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuideStore } from '../contexts/GuideContext';
+import { useGuide } from '../contexts/GuideContext';
 import { getModuleName } from '../utils/helpers';
 
 interface SidebarProps {

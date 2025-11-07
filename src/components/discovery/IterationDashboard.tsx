@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDiscoveryStore } from '../../contexts/DiscoveryContext';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 
 export const IterationDashboard = () => {
   const {

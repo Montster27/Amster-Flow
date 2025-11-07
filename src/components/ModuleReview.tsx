@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGuideStore } from '../contexts/GuideContext';
+import { useGuide } from '../contexts/GuideContext';
 
 interface ModuleReviewProps {
   module: string;

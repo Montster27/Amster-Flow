@@ -1,6 +1,6 @@
-import { useGuideStore } from '../contexts/GuideContext';
-import { useDiscoveryStore } from '../contexts/DiscoveryContext';
-import { useSectorMapStore } from '../contexts/SectorMapContext';
+import { useGuide } from '../contexts/GuideContext';
+import { useDiscovery } from '../contexts/DiscoveryContext';
+import { useSectorMap } from '../contexts/SectorMapContext';
 import { getModuleName } from '../utils/helpers';
 import { QuestionsData } from '../App';
 

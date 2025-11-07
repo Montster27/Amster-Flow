@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useGuideStore } from '../contexts/GuideContext';
-import { useDiscoveryStore } from '../contexts/DiscoveryContext';
-import { useSectorMapStore } from '../contexts/SectorMapContext';
+import { useGuide } from '../contexts/GuideContext';
+import { useDiscovery } from '../contexts/DiscoveryContext';
+import { useSectorMap } from '../contexts/SectorMapContext';
 import { findAllDuplicates, DuplicateMatch } from '../utils/deduplicationHelper';
 import { DuplicateWarning } from './DuplicateWarning';
 import { QuestionsData } from '../App';

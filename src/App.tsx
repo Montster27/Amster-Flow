@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
-import { useGuideStore } from './contexts/GuideContext';
+import { useGuide } from './contexts/GuideContext';
 import { useProjectData } from './hooks/useProjectData';
 import { useDiscoveryData } from './hooks/useDiscoveryData';
 import { useSectorMapData } from './hooks/useSectorMapData';
