@@ -1,0 +1,32 @@
+==================================================
+CONFIRM YOUR ARMSTERFLOW ACCOUNT
+==================================================
+
+Welcome to ArmsterFlow! 🎉
+
+Thank you for signing up! You're just one click away from starting your journey to validate your business ideas with our streamlined Lean Canvas platform.
+
+CONFIRM YOUR EMAIL
+-------------------
+Click the link below to confirm your email address and activate your account:
+
+{{ .ConfirmationURL }}
+
+WHAT'S NEXT?
+------------
+✓ Build your Lean Canvas step-by-step through guided modules
+✓ Track customer discovery with interview notes and assumptions
+✓ Map your competitive landscape with sector analysis
+✓ Collaborate with your team in real-time
+
+💡 PRO TIP
+----------
+You'll have access to a demo project "Walking on the Sun" to see how ArmsterFlow works. Plus, you'll automatically get your own workspace to start building!
+
+==================================================
+
+This confirmation link will expire in 24 hours.
+
+If you didn't create an account with ArmsterFlow, you can safely ignore this email.
+
+© 2025 ArmsterFlow. All rights reserved.
