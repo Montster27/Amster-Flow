@@ -39,6 +39,12 @@ export function LoginPage() {
                   },
                 },
               },
+              style: {
+                anchor: {
+                  fontWeight: 'bold',
+                  fontSize: '1.125rem', // 2 points bigger (from default ~14px to ~18px)
+                },
+              },
             }}
             providers={[]}
             redirectTo={`${window.location.origin}/dashboard`}
