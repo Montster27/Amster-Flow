@@ -175,8 +175,42 @@ export function DashboardPage() {
 
           const editableOrg = allOrgs.find(org => editableOrgIds.includes(org.id));
 
-          // Use editable org if available, otherwise fall back to first org
-          selectedOrg = editableOrg || allOrgs[0];
+          // If no editable org exists, create one for the user
+          if (!editableOrg) {
+            const { data: newOrg, error: orgError } = await supabase
+              .from('organizations')
+              .insert({
+                name: `${user.email?.split('@')[0]}'s Team`,
+                created_by: user.id,
+              })
+              .select()
+              .single();
+
+            if (orgError) {
+              console.error('Error creating organization:', orgError);
+              throw new Error('Failed to create your organization. Please try again.');
+            }
+
+            // Add user as owner
+            const { error: newMemberError } = await supabase
+              .from('organization_members')
+              .insert({
+                organization_id: newOrg.id,
+                user_id: user.id,
+                role: 'owner',
+              });
+
+            if (newMemberError) {
+              console.error('Error adding organization member:', newMemberError);
+              throw new Error('Failed to set up your organization. Please try again.');
+            }
+
+            allOrgs.push(newOrg);
+            setOrganizations(allOrgs);
+            selectedOrg = newOrg;
+          } else {
+            selectedOrg = editableOrg;
+          }
         }
 
         setCurrentOrgId(selectedOrg.id);

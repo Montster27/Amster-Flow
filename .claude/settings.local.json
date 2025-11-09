@@ -39,7 +39,8 @@
       "Bash(for:*)",
       "Bash(while read file)",
       "Bash(do sed -i '' '/console\\.log/d' \"$file\" done)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__zen__analyze"
     ],
     "deny": [],
     "ask": []
