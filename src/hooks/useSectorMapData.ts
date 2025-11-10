@@ -79,7 +79,7 @@ export function useSectorMapData(projectId: string | undefined) {
           description: row.description || '',
           suppliers: row.suppliers || [],
           customers: row.customers || [],
-          created: row.created_at,
+          created: row.created_at || new Date().toISOString(),
         }));
 
         const loadedDecisionMakers: DecisionMaker[] = (decisionMakersData || []).map(row => ({
@@ -87,7 +87,7 @@ export function useSectorMapData(projectId: string | undefined) {
           role: row.role,
           influence: row.influence || 'influencer',
           description: row.description || '',
-          created: row.created_at,
+          created: row.created_at || new Date().toISOString(),
         }));
 
         importData({
