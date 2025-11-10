@@ -2,6 +2,7 @@ import { useDiscovery } from '../contexts/DiscoveryContext';
 import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewSystemWrapper } from './discovery/InterviewSystemWrapper';
 import { IterationDashboard } from './discovery/IterationDashboard';
+import { AssumptionBoard } from './discovery/AssumptionBoard';
 
 interface DiscoveryModuleProps {
   projectId?: string;
@@ -14,7 +15,8 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
     { id: 'assumptions' as const, label: 'Assumptions', icon: '📋' },
     { id: 'planner' as const, label: 'Interview Planner', icon: '📝' },
     { id: 'log' as const, label: 'Interview Log', icon: '💬' },
-    { id: 'dashboard' as const, label: 'Dashboard', icon: '📊' },
+    { id: 'board' as const, label: 'Validation Board', icon: '📊' },
+    { id: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
   ];
 
   return (
@@ -53,6 +55,7 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
       <div className="min-h-[600px]">
         {currentView === 'assumptions' && <AssumptionTable />}
         {(currentView === 'planner' || currentView === 'log') && <InterviewSystemWrapper projectId={projectId} />}
+        {currentView === 'board' && <AssumptionBoard projectId={projectId} />}
         {currentView === 'dashboard' && <IterationDashboard />}
       </div>
     </div>
