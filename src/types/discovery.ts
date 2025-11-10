@@ -57,3 +57,79 @@ export interface InterviewTemplate {
   category: string;
   questions: string[];
 }
+
+// ============================================================================
+// ENHANCED INTERVIEW SYSTEM (New Structured Approach)
+// ============================================================================
+
+export type IntervieweeTypeEnhanced = 'customer' | 'partner' | 'regulator' | 'expert' | 'other';
+export type ValidationEffect = 'supports' | 'contradicts' | 'neutral';
+export type InterviewStatus = 'draft' | 'completed';
+
+// Enhanced Assumption with additional tracking fields
+export interface EnhancedAssumption extends Assumption {
+  category: 'problem' | 'solution' | 'customer' | 'price' | 'channel';
+  evidenceCount: number;
+  supportingCount: number;
+  contradictingCount: number;
+  lastInterviewDate?: string;
+}
+
+// Tag linking interview insights to assumptions
+export interface AssumptionTag {
+  assumptionId: string;
+  validationEffect: ValidationEffect;
+  confidenceChange: number; // -2 to +2
+  quote?: string; // Optional supporting quote
+}
+
+// Enhanced Interview with structured fields
+export interface EnhancedInterview {
+  id: string;
+
+  // Metadata
+  intervieweeType: IntervieweeTypeEnhanced;
+  segmentName: string;
+  date: string; // ISO date string
+  context: string;
+  status: InterviewStatus;
+
+  // Key Findings
+  mainPainPoints: string;
+  problemImportance: ConfidenceLevel; // 1-5 Likert scale
+  problemImportanceQuote?: string;
+  currentAlternatives: string;
+  memorableQuotes: string[];
+  surprisingFeedback: string;
+
+  // Assumption Tags
+  assumptionTags: AssumptionTag[];
+
+  // Reflection
+  studentReflection: string;
+  mentorFeedback?: string;
+
+  // System fields
+  created: string; // ISO date string
+  lastUpdated: string;
+}
+
+// Synthesis result from multiple interviews
+export interface InterviewSynthesis {
+  interviewIds: string[];
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  patterns: {
+    mostMentionedPainPoint: string;
+    mostInvalidatedAssumption?: string;
+    mostDiscussedSegments: string[];
+  };
+  assumptionSummaries: {
+    assumptionId: string;
+    supportingEvidence: string[];
+    contradictingEvidence: string[];
+    netEffect: ValidationEffect;
+  }[];
+}
