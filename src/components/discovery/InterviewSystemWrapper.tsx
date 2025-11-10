@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EnhancedInterviewDashboard } from './EnhancedInterviewDashboard';
 import { EnhancedInterviewForm } from './EnhancedInterviewForm';
 import { SynthesisMode } from './SynthesisMode';
+import { InterviewGuidance } from './InterviewGuidance';
 import { useEnhancedInterviews } from '../../hooks/useEnhancedInterviews';
 import { EnhancedInterview } from '../../types/discovery';
 
@@ -118,13 +119,19 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
           <SynthesisMode projectId={projectId} />
         </div>
       ) : (
-        <EnhancedInterviewDashboard
-          interviews={enhancedInterviews}
-          onNewInterview={handleNewInterview}
-          onBatchSynthesis={handleBatchSynthesis}
-          onEditInterview={handleEditInterview}
-          onDeleteInterview={handleDeleteInterview}
-        />
+        <div className="space-y-6">
+          {/* Y Combinator Guidance */}
+          <InterviewGuidance />
+
+          {/* Enhanced Interview Dashboard */}
+          <EnhancedInterviewDashboard
+            interviews={enhancedInterviews}
+            onNewInterview={handleNewInterview}
+            onBatchSynthesis={handleBatchSynthesis}
+            onEditInterview={handleEditInterview}
+            onDeleteInterview={handleDeleteInterview}
+          />
+        </div>
       )}
     </div>
   );
