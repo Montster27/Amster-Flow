@@ -1,7 +1,6 @@
 import { useDiscovery } from '../contexts/DiscoveryContext';
 import { AssumptionTable } from './discovery/AssumptionTable';
-import { InterviewPlanner } from './discovery/InterviewPlanner';
-import { InterviewLog } from './discovery/InterviewLog';
+import { InterviewSystemWrapper } from './discovery/InterviewSystemWrapper';
 import { IterationDashboard } from './discovery/IterationDashboard';
 
 export const DiscoveryModule = () => {
@@ -49,8 +48,7 @@ export const DiscoveryModule = () => {
       {/* Content Area */}
       <div className="min-h-[600px]">
         {currentView === 'assumptions' && <AssumptionTable />}
-        {currentView === 'planner' && <InterviewPlanner />}
-        {currentView === 'log' && <InterviewLog />}
+        {(currentView === 'planner' || currentView === 'log') && <InterviewSystemWrapper />}
         {currentView === 'dashboard' && <IterationDashboard />}
       </div>
     </div>
