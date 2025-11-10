@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
-import { ActorCategory, Actor } from '../../types/visualSectorMap';
+import { ActorCategory } from '../../types/visualSectorMap';
 import { ActorNode } from './ActorNode';
 
 interface VisualCanvasProps {
