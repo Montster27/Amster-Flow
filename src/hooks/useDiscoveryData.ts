@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useDiscovery } from '../contexts/DiscoveryContext';
-import type { Assumption, Interview, Iteration } from '../types/discovery';
+import type { Assumption, Interview, Iteration, AssumptionType, AssumptionStatus } from '../types/discovery';
 
 /**
  * Hook to sync discovery data (assumptions, interviews, iterations) with Supabase
@@ -59,11 +59,11 @@ export function useDiscoveryData(projectId: string | undefined) {
         // Convert database rows to app format
         const assumptions: Assumption[] = (assumptionsData || []).map(row => ({
           id: row.id,
-          type: row.type,
+          type: row.type as AssumptionType,
           description: row.description,
           created: row.created_at,
           lastUpdated: row.updated_at,
-          status: row.status,
+          status: row.status as AssumptionStatus,
           confidence: (row.confidence || 3) as 1 | 2 | 3 | 4 | 5,
           evidence: row.evidence || [],
         }));
