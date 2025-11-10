@@ -50,10 +50,6 @@ export const VisualSectorMapTool = () => {
         return (
           <InsightsSummary
             onBack={() => setCurrentStep('annotations')}
-            onExport={() => {
-              // Handle export
-              console.log('Export triggered');
-            }}
           />
         );
       default:

@@ -4,16 +4,14 @@ import {
   LayerType,
   LAYER_LABELS,
   LAYER_DESCRIPTIONS,
-  ANNOTATION_ICONS,
 } from '../../types/visualSectorMap';
 import { VisualCanvas } from './VisualCanvas';
 
 interface InsightsSummaryProps {
   onBack: () => void;
-  onExport: () => void;
 }
 
-export const InsightsSummary = ({ onBack, onExport }: InsightsSummaryProps) => {
+export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
   const {
     scope,
     actors,
@@ -31,18 +29,7 @@ export const InsightsSummary = ({ onBack, onExport }: InsightsSummaryProps) => {
   // Analytics
   const painPoints = annotations.filter((a) => a.type === 'pain-point');
   const opportunities = annotations.filter((a) => a.type === 'opportunity');
-  const uncertainties = annotations.filter((a) => a.type === 'uncertainty');
   const needsInterview = annotations.filter((a) => a.status === 'needs-interview');
-
-  const actorsByCategory = actors.reduce((acc, actor) => {
-    acc[actor.category] = (acc[actor.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const connectionsByType = connections.reduce((acc, conn) => {
-    acc[conn.type] = (acc[conn.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
 
   // Find most connected actors
   const actorConnectionCounts = actors.map((actor) => ({
