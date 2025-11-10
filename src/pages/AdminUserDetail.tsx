@@ -205,7 +205,7 @@ export function AdminUserDetail() {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -215,7 +215,7 @@ export function AdminUserDetail() {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -240,7 +240,7 @@ export function AdminUserDetail() {
                         <div>
                           <h3 className="font-semibold text-gray-900">{org.name}</h3>
                           <p className="text-sm text-gray-500">
-                            Created {org.created_at ? new Date(org.created_at).toLocaleDateString()} : "N/A"
+                            Created {org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                         <span
@@ -297,7 +297,7 @@ export function AdminUserDetail() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          Created {project.created_at ? new Date(project.created_at).toLocaleDateString()} : "N/A"
+                          Created {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
                         </p>
                       </div>
                       <button
