@@ -120,9 +120,6 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Y Combinator Guidance */}
-          <InterviewGuidance />
-
           {/* Enhanced Interview Dashboard */}
           <EnhancedInterviewDashboard
             interviews={enhancedInterviews}
@@ -131,6 +128,9 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
             onEditInterview={handleEditInterview}
             onDeleteInterview={handleDeleteInterview}
           />
+
+          {/* Y Combinator Guidance */}
+          <InterviewGuidance />
         </div>
       )}
     </div>
