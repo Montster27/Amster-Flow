@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(npm run build:*)",
+      "Bash(supabase --version:*)",
+      "Bash(supabase status:*)",
+      "Bash(supabase projects:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase db dump:*)",
+      "Bash(supabase db --help:*)",
+      "Bash(supabase db pull --help:*)",
+      "Bash(supabase db pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
