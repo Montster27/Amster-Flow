@@ -46,20 +46,20 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
       {/* Left Panel - Connection Controls */}
       <div className="w-96 bg-white border-r border-gray-200 flex flex-col relative">
         {/* Header */}
-        <div className="px-6 py-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-800 mb-1">
             Step 3: Connect Actors
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-gray-600">
             Draw relationships between actors to map value flows, information exchange, and regulatory connections.
           </p>
         </div>
 
         {/* Connection Form - Add padding bottom for fixed footer */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 pb-40 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 py-3 pb-40 space-y-2">
           {/* Source Actor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               1. Select source actor:
             </label>
             <select
@@ -78,7 +78,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Target Actor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               2. Select target actor:
             </label>
             <select
@@ -99,7 +99,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Connection Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               3. Connection type:
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -109,7 +109,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
                   <button
                     key={type}
                     onClick={() => setConnectionType(type)}
-                    className={`px-3 py-2 rounded-lg font-medium text-sm transition-all border-2 ${
+                    className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all border-2 ${
                       isSelected
                         ? 'bg-blue-100 border-blue-400 text-blue-800 shadow-md'
                         : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
@@ -124,7 +124,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Layer */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               4. Layer:
             </label>
             <div className="space-y-1">
@@ -134,7 +134,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
                   <button
                     key={l}
                     onClick={() => setLayer(l)}
-                    className={`w-full px-3 py-2 rounded-lg font-medium text-sm transition-all border-2 text-left ${
+                    className={`w-full px-3 py-1.5 rounded-lg font-medium text-xs transition-all border-2 text-left ${
                       isSelected
                         ? 'bg-indigo-100 border-indigo-400 text-indigo-800 shadow-md'
                         : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
@@ -149,15 +149,15 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               5. Describe the connection:
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Seniors pay hospitals for healthcare services"
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows={3}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              rows={2}
             />
           </div>
 
@@ -165,7 +165,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
           <button
             onClick={handleAddConnection}
             disabled={!canAddConnection}
-            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
+            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
               canAddConnection
                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -176,11 +176,11 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Existing Connections List */}
           {connections.length > 0 && (
-            <div className="pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
+            <div className="pt-2 border-t border-gray-200">
+              <h3 className="text-xs font-medium text-gray-700 mb-1">
                 Connections ({connections.length}):
               </h3>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
+              <div className="space-y-1 max-h-24 overflow-y-auto">
                 {connections.map((conn) => {
                   const source = actors.find((a) => a.id === conn.sourceActorId);
                   const target = actors.find((a) => a.id === conn.targetActorId);
@@ -204,17 +204,17 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
         </div>
 
         {/* Footer - Fixed at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white px-6 py-4 border-t border-gray-200 space-y-3 shadow-lg">
+        <div className="absolute bottom-0 left-0 right-0 bg-white px-6 py-3 border-t border-gray-200 space-y-2 shadow-lg">
           <button
             onClick={onBack}
-            className="w-full px-4 py-2 rounded-lg font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
+            className="w-full px-4 py-2 rounded-lg font-medium text-sm text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
           >
             ← Back to Actors
           </button>
           <button
             onClick={onContinue}
             disabled={!canContinue}
-            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all ${
+            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
               canContinue
                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
