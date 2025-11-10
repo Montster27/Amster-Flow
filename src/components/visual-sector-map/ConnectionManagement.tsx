@@ -56,7 +56,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
         </div>
 
         {/* Connection Form */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Source Actor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,7 +180,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
               <h3 className="text-sm font-medium text-gray-700 mb-2">
                 Connections ({connections.length}):
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-48 overflow-y-auto">
                 {connections.map((conn) => {
                   const source = actors.find((a) => a.id === conn.sourceActorId);
                   const target = actors.find((a) => a.id === conn.targetActorId);
