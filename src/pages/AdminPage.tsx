@@ -51,7 +51,7 @@ export function AdminPage() {
         // Get all profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
           .order('created_at', { ascending: false });
 
         if (profilesError) throw profilesError;
@@ -77,7 +77,6 @@ export function AdminPage() {
 
           return {
             ...profile,
-            is_admin: profile.is_admin || false,
             org_count: orgCount,
             project_count: projectCount,
           };
