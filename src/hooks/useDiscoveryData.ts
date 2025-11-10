@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useDiscovery } from '../contexts/DiscoveryContext';
-import type { Assumption, Interview, Iteration, AssumptionType, AssumptionStatus } from '../types/discovery';
+import type { Assumption, Interview, Iteration, AssumptionType, AssumptionStatus, IntervieweeType, InterviewFormat } from '../types/discovery';
 
 /**
  * Hook to sync discovery data (assumptions, interviews, iterations) with Supabase
@@ -73,8 +73,8 @@ export function useDiscoveryData(projectId: string | undefined) {
           date: row.date,
           customerSegment: row.customer_segment,
           interviewee: row.interviewee || undefined,
-          intervieweeType: row.interviewee_type || undefined,
-          format: row.format || 'in-person',
+          intervieweeType: row.interviewee_type ? row.interviewee_type as IntervieweeType : undefined,
+          format: (row.format || 'in-person') as InterviewFormat,
           duration: row.duration || undefined,
           notes: row.notes || '',
           assumptionsAddressed: row.assumptions_addressed || [],
