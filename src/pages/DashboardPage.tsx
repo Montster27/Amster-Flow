@@ -420,7 +420,7 @@ export function DashboardPage() {
                   <p className="text-gray-600 text-sm mb-4">{project.description}</p>
                 )}
                 <div className="text-xs text-gray-500">
-                  Created {new Date(project.created_at).toLocaleDateString()}
+                  Created {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
                 </div>
               </div>
             ))}

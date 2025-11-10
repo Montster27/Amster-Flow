@@ -94,14 +94,16 @@ export function AdminProjectDetail() {
         setOrganization(orgData);
 
         // Get creator
-        const { data: creatorData, error: creatorError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', projectData.created_by)
-          .single();
+        if (projectData.created_by) {
+          const { data: creatorData, error: creatorError } = await supabase
+            .from('profiles')
+            .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
+            .eq('id', projectData.created_by)
+            .single();
 
-        if (creatorError) throw creatorError;
-        setCreator(creatorData);
+          if (creatorError) throw creatorError;
+          setCreator(creatorData);
+        }
 
         // Get organization members
         const { data: membersData, error: membersError } = await supabase
@@ -285,21 +287,21 @@ export function AdminProjectDetail() {
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Created</label>
                   <p className="text-gray-900">
-                    {new Date(project.created_at).toLocaleDateString('en-US', {
+                    {project.created_at ? new Date(project.created_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Last Updated</label>
                   <p className="text-gray-900">
-                    {new Date(project.updated_at).toLocaleDateString('en-US', {
+                    {project.updated_at ? new Date(project.updated_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </p>
                 </div>
               </div>

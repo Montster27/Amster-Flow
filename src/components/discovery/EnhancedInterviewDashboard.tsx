@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { EnhancedInterview, IntervieweeTypeEnhanced, ValidationEffect } from '../../types/discovery';
+import { EnhancedInterview, IntervieweeTypeEnhanced } from '../../types/discovery';
 
 // TODO: Will integrate with DiscoveryContext once we add enhanced interview methods
 interface EnhancedInterviewDashboardProps {
@@ -86,16 +86,17 @@ export const EnhancedInterviewDashboard = ({
     return parts.length > 0 ? parts.join(', ') : 'No assumptions tagged';
   };
 
-  const getValidationEffectColor = (effect: ValidationEffect) => {
-    switch (effect) {
-      case 'supports':
-        return 'text-green-700 bg-green-50 border-green-200';
-      case 'contradicts':
-        return 'text-red-700 bg-red-50 border-red-200';
-      case 'neutral':
-        return 'text-gray-700 bg-gray-50 border-gray-200';
-    }
-  };
+  // Helper for validation effect colors (currently unused but available for future use)
+  // const getValidationEffectColor = (effect: ValidationEffect) => {
+  //   switch (effect) {
+  //     case 'supports':
+  //       return 'text-green-700 bg-green-50 border-green-200';
+  //     case 'contradicts':
+  //       return 'text-red-700 bg-red-50 border-red-200';
+  //     case 'neutral':
+  //       return 'text-gray-700 bg-gray-50 border-gray-200';
+  //   }
+  // };
 
   return (
     <div>

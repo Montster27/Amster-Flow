@@ -79,15 +79,15 @@ export function useSectorMapData(projectId: string | undefined) {
           description: row.description || '',
           suppliers: row.suppliers || [],
           customers: row.customers || [],
-          created: row.created_at,
+          created: row.created_at || new Date().toISOString(),
         }));
 
         const loadedDecisionMakers: DecisionMaker[] = (decisionMakersData || []).map(row => ({
           id: row.id,
           role: row.role,
-          influence: row.influence || 'influencer',
+          influence: (row.influence || 'influencer') as 'decision-maker' | 'influencer' | 'payer',
           description: row.description || '',
-          created: row.created_at,
+          created: row.created_at || new Date().toISOString(),
         }));
 
         importData({
