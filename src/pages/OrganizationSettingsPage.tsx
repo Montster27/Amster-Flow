@@ -130,8 +130,9 @@ export function OrganizationSettingsPage() {
       }
 
       // Check if the function returned an error
-      if (result && !result.success) {
-        setInviteError(result.error || 'Failed to invite member');
+      const resultObj = result as { success?: boolean; error?: string } | null;
+      if (resultObj && !resultObj.success) {
+        setInviteError(resultObj.error || 'Failed to invite member');
         return;
       }
 

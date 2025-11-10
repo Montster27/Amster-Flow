@@ -77,6 +77,7 @@ export function AdminPage() {
 
           return {
             ...profile,
+            is_admin: profile.is_admin || false,
             org_count: orgCount,
             project_count: projectCount,
           };
@@ -363,7 +364,7 @@ export function AdminPage() {
                           {user.project_count}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.created_at).toLocaleDateString()}
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-3">
@@ -447,10 +448,10 @@ export function AdminPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.created_at).toLocaleDateString()}
+                          {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.updated_at).toLocaleDateString()}
+                          {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button

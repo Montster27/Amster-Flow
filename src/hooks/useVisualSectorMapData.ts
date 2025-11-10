@@ -52,7 +52,7 @@ export function useVisualSectorMapData(projectId: string | undefined) {
 
         // If data exists, import it
         if (data?.data) {
-          const visualSectorMapData = data.data as VisualSectorMapData;
+          const visualSectorMapData = data.data as unknown as VisualSectorMapData;
           importData(visualSectorMapData);
         }
 
@@ -86,7 +86,7 @@ export function useVisualSectorMapData(projectId: string | undefined) {
           .from('project_visual_sector_map')
           .upsert({
             project_id: projectId,
-            data: currentData,
+            data: currentData as any,
             updated_by: user.id,
           }, {
             onConflict: 'project_id',

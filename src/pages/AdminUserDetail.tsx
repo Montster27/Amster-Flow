@@ -201,7 +201,7 @@ export function AdminUserDetail() {
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Account Created</label>
                   <p className="text-lg text-gray-900">
-                    {new Date(profile.created_at).toLocaleDateString('en-US', {
+                    {profile.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -211,7 +211,7 @@ export function AdminUserDetail() {
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Last Updated</label>
                   <p className="text-lg text-gray-900">
-                    {new Date(profile.updated_at).toLocaleDateString('en-US', {
+                    {profile.updated_at ? new Date(profile.updated_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -240,7 +240,7 @@ export function AdminUserDetail() {
                         <div>
                           <h3 className="font-semibold text-gray-900">{org.name}</h3>
                           <p className="text-sm text-gray-500">
-                            Created {new Date(org.created_at).toLocaleDateString()}
+                            Created {org.created_at ? new Date(org.created_at).toLocaleDateString()} : "N/A"
                           </p>
                         </div>
                         <span
@@ -297,7 +297,7 @@ export function AdminUserDetail() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          Created {new Date(project.created_at).toLocaleDateString()}
+                          Created {project.created_at ? new Date(project.created_at).toLocaleDateString()} : "N/A"
                         </p>
                       </div>
                       <button
