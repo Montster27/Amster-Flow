@@ -51,7 +51,7 @@ export function AdminPage() {
         // Get all profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
           .order('created_at', { ascending: false });
 
         if (profilesError) throw profilesError;
@@ -363,7 +363,7 @@ export function AdminPage() {
                           {user.project_count}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.created_at).toLocaleDateString()}
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-3">
@@ -447,10 +447,10 @@ export function AdminPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.created_at).toLocaleDateString()}
+                          {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(project.updated_at).toLocaleDateString()}
+                          {project.updated_at ? new Date(project.updated_at).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
