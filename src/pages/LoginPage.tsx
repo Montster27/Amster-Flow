@@ -47,6 +47,7 @@ export function LoginPage() {
               },
             }}
             providers={[]}
+            onlyThirdPartyProviders={false}
             redirectTo={`${window.location.origin}/dashboard`}
           />
         </div>
