@@ -15,7 +15,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(supabase db push:*)",
+      "Bash(git rm:*)",
+      "Bash(supabase gen types:*)",
+      "Bash(src/types/database.ts)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
