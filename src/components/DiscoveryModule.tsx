@@ -13,8 +13,7 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
 
   const tabs = [
     { id: 'assumptions' as const, label: 'Assumptions', icon: '📋' },
-    { id: 'planner' as const, label: 'Interview Planner', icon: '📝' },
-    { id: 'log' as const, label: 'Interview Log', icon: '💬' },
+    { id: 'interviews' as const, label: 'Interviews', icon: '💬' },
     { id: 'board' as const, label: 'Validation Board', icon: '📊' },
     { id: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
   ];
@@ -54,7 +53,7 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
       {/* Content Area */}
       <div className="min-h-[600px]">
         {currentView === 'assumptions' && <AssumptionTable />}
-        {(currentView === 'planner' || currentView === 'log') && <InterviewSystemWrapper projectId={projectId} />}
+        {currentView === 'interviews' && <InterviewSystemWrapper projectId={projectId} />}
         {currentView === 'board' && <AssumptionBoard projectId={projectId} />}
         {currentView === 'dashboard' && <IterationDashboard />}
       </div>
