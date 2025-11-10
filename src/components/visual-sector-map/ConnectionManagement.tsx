@@ -44,7 +44,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
   return (
     <div className="h-screen flex bg-gray-50">
       {/* Left Panel - Connection Controls */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-96 bg-white border-r border-gray-200 flex flex-col relative">
         {/* Header */}
         <div className="px-6 py-6 border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
@@ -55,8 +55,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
           </p>
         </div>
 
-        {/* Connection Form */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* Connection Form - Add padding bottom for fixed footer */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 pb-40 space-y-3">
           {/* Source Actor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,7 +180,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
               <h3 className="text-sm font-medium text-gray-700 mb-2">
                 Connections ({connections.length}):
               </h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-32 overflow-y-auto">
                 {connections.map((conn) => {
                   const source = actors.find((a) => a.id === conn.sourceActorId);
                   const target = actors.find((a) => a.id === conn.targetActorId);
@@ -203,8 +203,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 space-y-3">
+        {/* Footer - Fixed at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white px-6 py-4 border-t border-gray-200 space-y-3 shadow-lg">
           <button
             onClick={onBack}
             className="w-full px-4 py-2 rounded-lg font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
