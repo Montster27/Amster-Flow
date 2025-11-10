@@ -97,7 +97,7 @@ export function AdminProjectDetail() {
         if (projectData.created_by) {
           const { data: creatorData, error: creatorError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
             .eq('id', projectData.created_by)
             .single();
 

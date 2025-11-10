@@ -46,7 +46,7 @@ export function AdminUserDetail() {
         // Get user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
           .eq('id', userId)
           .single();
 
