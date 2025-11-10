@@ -10,7 +10,7 @@ import { useSectorMapData } from './hooks/useSectorMapData';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
-const SectorMapModule = lazy(() => import('./components/SectorMapModule').then(m => ({ default: m.SectorMapModule })));
+const VisualSectorMapTool = lazy(() => import('./components/visual-sector-map/VisualSectorMapTool').then(m => ({ default: m.VisualSectorMapTool })));
 
 export interface ModuleData {
   title: string;
@@ -205,7 +205,7 @@ function App({ projectId }: AppProps = {}) {
           </Suspense>
         ) : isSectorMapModule ? (
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
-            <SectorMapModule />
+            <VisualSectorMapTool />
           </Suspense>
         ) : (
           <QuestionPanel
