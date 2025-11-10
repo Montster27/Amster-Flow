@@ -2,11 +2,23 @@ import { useState, useEffect } from 'react';
 import { InterviewLog } from './InterviewLog';
 import { InterviewPlanner } from './InterviewPlanner';
 import { EnhancedInterviewDashboard } from './EnhancedInterviewDashboard';
+import { EnhancedInterviewForm } from './EnhancedInterviewForm';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { useEnhancedInterviews } from '../../hooks/useEnhancedInterviews';
 import { EnhancedInterview } from '../../types/discovery';
 
-export const InterviewSystemWrapper = () => {
-  // const { setCurrentView } = useDiscovery(); // Not needed in wrapper, used in ClassicInterviewView
+interface InterviewSystemWrapperProps {
+  projectId?: string;
+}
+
+export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProps) => {
+  const {
+    interviews: enhancedInterviews,
+    loading,
+    addInterview,
+    updateInterview,
+    deleteInterview,
+  } = useEnhancedInterviews(projectId);
 
   // Load preference from localStorage
   const [useEnhancedSystem, setUseEnhancedSystem] = useState<boolean>(() => {
@@ -14,8 +26,10 @@ export const InterviewSystemWrapper = () => {
     return saved !== null ? JSON.parse(saved) : false; // Default to classic for now
   });
 
-  // Mock enhanced interview data (will be replaced with actual data from context/database)
-  const [enhancedInterviews] = useState<EnhancedInterview[]>([]);
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [editingInterview, setEditingInterview] = useState<EnhancedInterview | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
 
   // Save preference to localStorage whenever it changes
   useEffect(() => {
@@ -26,21 +40,59 @@ export const InterviewSystemWrapper = () => {
     setUseEnhancedSystem(prev => !prev);
   };
 
-  // Enhanced system handlers (placeholder - will connect to actual API)
+  // Enhanced system handlers
   const handleNewInterview = () => {
-    alert('Enhanced interview form coming soon! Full implementation available in the guide.');
+    setEditingInterview(undefined);
+    setShowForm(true);
   };
 
   const handleBatchSynthesis = () => {
     alert('Batch synthesis coming soon! Full implementation available in the guide.');
   };
 
-  const handleEditInterview = () => {
-    alert('Edit interview coming soon!');
+  const handleEditInterview = (id: string) => {
+    const interview = enhancedInterviews.find(i => i.id === id);
+    if (interview) {
+      setEditingInterview(interview);
+      setShowForm(true);
+    }
   };
 
-  const handleDeleteInterview = () => {
-    alert('Delete interview coming soon!');
+  const handleDeleteInterview = async (id: string) => {
+    const success = await deleteInterview(id);
+    if (!success) {
+      alert('Failed to delete interview. Please try again.');
+    }
+  };
+
+  const handleSaveInterview = async (interviewData: Omit<EnhancedInterview, 'id' | 'created' | 'lastUpdated'>) => {
+    setSaving(true);
+    try {
+      let success = false;
+
+      if (editingInterview) {
+        // Update existing interview
+        success = await updateInterview(editingInterview.id, interviewData);
+      } else {
+        // Create new interview
+        const result = await addInterview(interviewData);
+        success = result !== null;
+      }
+
+      if (success) {
+        setShowForm(false);
+        setEditingInterview(undefined);
+      } else {
+        alert('Failed to save interview. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingInterview(undefined);
   };
 
   return (
@@ -140,13 +192,38 @@ export const InterviewSystemWrapper = () => {
       {useEnhancedSystem ? (
         <>
           {/* Enhanced System */}
-          <EnhancedInterviewDashboard
-            interviews={enhancedInterviews}
-            onNewInterview={handleNewInterview}
-            onBatchSynthesis={handleBatchSynthesis}
-            onEditInterview={handleEditInterview}
-            onDeleteInterview={handleDeleteInterview}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading interviews...</p>
+              </div>
+            </div>
+          ) : showForm ? (
+            <div className={saving ? 'opacity-50 pointer-events-none' : ''}>
+              <EnhancedInterviewForm
+                interview={editingInterview}
+                onSave={handleSaveInterview}
+                onCancel={handleCancelForm}
+              />
+              {saving && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-20 z-50">
+                  <div className="bg-white rounded-lg p-6 shadow-xl">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-700 font-medium">Saving interview...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <EnhancedInterviewDashboard
+              interviews={enhancedInterviews}
+              onNewInterview={handleNewInterview}
+              onBatchSynthesis={handleBatchSynthesis}
+              onEditInterview={handleEditInterview}
+              onDeleteInterview={handleDeleteInterview}
+            />
+          )}
         </>
       ) : (
         <>

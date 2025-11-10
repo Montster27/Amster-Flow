@@ -3,7 +3,11 @@ import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewSystemWrapper } from './discovery/InterviewSystemWrapper';
 import { IterationDashboard } from './discovery/IterationDashboard';
 
-export const DiscoveryModule = () => {
+interface DiscoveryModuleProps {
+  projectId?: string;
+}
+
+export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
   const { currentView, setCurrentView } = useDiscovery();
 
   const tabs = [
@@ -48,7 +52,7 @@ export const DiscoveryModule = () => {
       {/* Content Area */}
       <div className="min-h-[600px]">
         {currentView === 'assumptions' && <AssumptionTable />}
-        {(currentView === 'planner' || currentView === 'log') && <InterviewSystemWrapper />}
+        {(currentView === 'planner' || currentView === 'log') && <InterviewSystemWrapper projectId={projectId} />}
         {currentView === 'dashboard' && <IterationDashboard />}
       </div>
     </div>
