@@ -40,7 +40,13 @@
       "Bash(while read file)",
       "Bash(do sed -i '' '/console\\.log/d' \"$file\" done)",
       "Bash(find:*)",
-      "mcp__zen__analyze"
+      "mcp__zen__analyze",
+      "Bash(~/.local/bin/supabase status:*)",
+      "Bash(~/.local/bin/supabase projects:*)",
+      "Bash(~/.local/bin/supabase db push:*)",
+      "Bash(~/.local/bin/supabase db execute:*)",
+      "Bash(~/.local/bin/supabase migration repair:*)",
+      "Bash(~/.local/bin/supabase db dump:*)"
     ],
     "deny": [],
     "ask": []
