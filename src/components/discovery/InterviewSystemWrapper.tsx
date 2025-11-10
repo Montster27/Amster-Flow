@@ -3,6 +3,7 @@ import { InterviewLog } from './InterviewLog';
 import { InterviewPlanner } from './InterviewPlanner';
 import { EnhancedInterviewDashboard } from './EnhancedInterviewDashboard';
 import { EnhancedInterviewForm } from './EnhancedInterviewForm';
+import { SynthesisMode } from './SynthesisMode';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { useEnhancedInterviews } from '../../hooks/useEnhancedInterviews';
 import { EnhancedInterview } from '../../types/discovery';
@@ -10,6 +11,8 @@ import { EnhancedInterview } from '../../types/discovery';
 interface InterviewSystemWrapperProps {
   projectId?: string;
 }
+
+type EnhancedView = 'dashboard' | 'form' | 'synthesis';
 
 export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProps) => {
   const {
@@ -26,8 +29,8 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
     return saved !== null ? JSON.parse(saved) : false; // Default to classic for now
   });
 
-  // Form state
-  const [showForm, setShowForm] = useState(false);
+  // View state for enhanced system
+  const [enhancedView, setEnhancedView] = useState<EnhancedView>('dashboard');
   const [editingInterview, setEditingInterview] = useState<EnhancedInterview | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
@@ -43,18 +46,18 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
   // Enhanced system handlers
   const handleNewInterview = () => {
     setEditingInterview(undefined);
-    setShowForm(true);
+    setEnhancedView('form');
   };
 
   const handleBatchSynthesis = () => {
-    alert('Batch synthesis coming soon! Full implementation available in the guide.');
+    setEnhancedView('synthesis');
   };
 
   const handleEditInterview = (id: string) => {
     const interview = enhancedInterviews.find(i => i.id === id);
     if (interview) {
       setEditingInterview(interview);
-      setShowForm(true);
+      setEnhancedView('form');
     }
   };
 
@@ -80,7 +83,7 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
       }
 
       if (success) {
-        setShowForm(false);
+        setEnhancedView('dashboard');
         setEditingInterview(undefined);
       } else {
         alert('Failed to save interview. Please try again.');
@@ -91,7 +94,7 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
   };
 
   const handleCancelForm = () => {
-    setShowForm(false);
+    setEnhancedView('dashboard');
     setEditingInterview(undefined);
   };
 
@@ -199,7 +202,7 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
                 <p className="text-gray-600">Loading interviews...</p>
               </div>
             </div>
-          ) : showForm ? (
+          ) : enhancedView === 'form' ? (
             <div className={saving ? 'opacity-50 pointer-events-none' : ''}>
               <EnhancedInterviewForm
                 interview={editingInterview}
@@ -214,6 +217,17 @@ export const InterviewSystemWrapper = ({ projectId }: InterviewSystemWrapperProp
                   </div>
                 </div>
               )}
+            </div>
+          ) : enhancedView === 'synthesis' ? (
+            <div>
+              {/* Back button */}
+              <button
+                onClick={() => setEnhancedView('dashboard')}
+                className="mb-4 px-4 py-2 text-gray-700 hover:text-gray-900 font-medium flex items-center gap-2"
+              >
+                ← Back to Interviews
+              </button>
+              <SynthesisMode projectId={projectId} />
             </div>
           ) : (
             <EnhancedInterviewDashboard
