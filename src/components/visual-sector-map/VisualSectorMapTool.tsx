@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { VisualSectorMapProvider } from '../../contexts/VisualSectorMapContext';
+import { useVisualSectorMapData } from '../../hooks/useVisualSectorMapData';
 import { ScopeDefinition } from './ScopeDefinition';
 import { ActorManagement } from './ActorManagement';
 import { ConnectionManagement } from './ConnectionManagement';
@@ -8,7 +10,10 @@ import { InsightsSummary } from './InsightsSummary';
 
 type Step = 'scope' | 'actors' | 'connections' | 'annotations' | 'insights';
 
-export const VisualSectorMapTool = () => {
+// Inner component that uses the persistence hook (must be inside provider)
+function VisualSectorMapContent() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { loading, error } = useVisualSectorMapData(projectId);
   const [currentStep, setCurrentStep] = useState<Step>('scope');
 
   const steps: { id: Step; label: string; number: number }[] = [
@@ -20,6 +25,31 @@ export const VisualSectorMapTool = () => {
   ];
 
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading sector map...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Sector Map</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -58,12 +88,12 @@ export const VisualSectorMapTool = () => {
   };
 
   return (
-    <VisualSectorMapProvider>
-      <div className="h-screen flex flex-col bg-gray-50">
-        {/* Progress Bar */}
-        <div className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between">
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Progress Bar */}
+      <div className="bg-white border-b border-gray-200 px-8 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center justify-between flex-1">
               {steps.map((step, index) => {
                 const isActive = step.id === currentStep;
                 const isCompleted = index < currentStepIndex;
@@ -114,12 +144,31 @@ export const VisualSectorMapTool = () => {
                 );
               })}
             </div>
+
+            {/* Next Button */}
+            {currentStepIndex < steps.length - 1 && (
+              <button
+                onClick={() => setCurrentStep(steps[currentStepIndex + 1].id)}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all text-sm whitespace-nowrap"
+              >
+                Next →
+              </button>
+            )}
           </div>
         </div>
-
-        {/* Step Content */}
-        <div className="flex-1 overflow-hidden">{renderStep()}</div>
       </div>
+
+      {/* Step Content */}
+      <div className="flex-1 overflow-hidden">{renderStep()}</div>
+    </div>
+  );
+}
+
+// Outer component that provides the context
+export const VisualSectorMapTool = () => {
+  return (
+    <VisualSectorMapProvider>
+      <VisualSectorMapContent />
     </VisualSectorMapProvider>
   );
 };
