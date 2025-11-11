@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS "public"."project_visual_sector_map" (
 ALTER TABLE "public"."project_visual_sector_map" ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies: Users can access visual sector maps for projects they have access to
+DROP POLICY IF EXISTS "Users can view visual sector maps for accessible projects" ON "public"."project_visual_sector_map";
 CREATE POLICY "Users can view visual sector maps for accessible projects"
     ON "public"."project_visual_sector_map"
     FOR SELECT
@@ -27,6 +28,7 @@ CREATE POLICY "Users can view visual sector maps for accessible projects"
         user_can_access_project(project_id)
     );
 
+DROP POLICY IF EXISTS "Users can insert visual sector maps for accessible projects" ON "public"."project_visual_sector_map";
 CREATE POLICY "Users can insert visual sector maps for accessible projects"
     ON "public"."project_visual_sector_map"
     FOR INSERT
@@ -34,6 +36,7 @@ CREATE POLICY "Users can insert visual sector maps for accessible projects"
         user_can_edit_project(project_id)
     );
 
+DROP POLICY IF EXISTS "Users can update visual sector maps for accessible projects" ON "public"."project_visual_sector_map";
 CREATE POLICY "Users can update visual sector maps for accessible projects"
     ON "public"."project_visual_sector_map"
     FOR UPDATE
@@ -44,6 +47,7 @@ CREATE POLICY "Users can update visual sector maps for accessible projects"
         user_can_edit_project(project_id)
     );
 
+DROP POLICY IF EXISTS "Users can delete visual sector maps for accessible projects" ON "public"."project_visual_sector_map";
 CREATE POLICY "Users can delete visual sector maps for accessible projects"
     ON "public"."project_visual_sector_map"
     FOR DELETE
@@ -52,6 +56,7 @@ CREATE POLICY "Users can delete visual sector maps for accessible projects"
     );
 
 -- Trigger to update updated_at timestamp
+DROP TRIGGER IF EXISTS update_project_visual_sector_map_updated_at ON "public"."project_visual_sector_map";
 CREATE TRIGGER update_project_visual_sector_map_updated_at
     BEFORE UPDATE ON "public"."project_visual_sector_map"
     FOR EACH ROW

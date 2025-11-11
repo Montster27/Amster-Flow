@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { GuideProvider } from './contexts/GuideContext'
 import { SectorMapProvider } from './contexts/SectorMapContext'
 import { DiscoveryProvider } from './contexts/DiscoveryContext'
+import { PivotProvider } from './contexts/PivotContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
@@ -22,7 +23,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <GuideProvider>
           <SectorMapProvider>
             <DiscoveryProvider>
-              <BrowserRouter>
+              <PivotProvider>
+                <BrowserRouter>
                 <Routes>
                   {/* Public route */}
                   <Route path="/login" element={<LoginPage />} />
@@ -78,6 +80,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </BrowserRouter>
+              </PivotProvider>
             </DiscoveryProvider>
           </SectorMapProvider>
         </GuideProvider>

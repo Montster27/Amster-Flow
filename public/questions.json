@@ -54,5 +54,10 @@
     "title": "Sector Map",
     "type": "sectorMap",
     "intro": "Map your competitive landscape and understand the ecosystem around your target market. Identify key players, their relationships, and decision-making dynamics."
+  },
+  "pivot": {
+    "title": "Pivot or Proceed",
+    "type": "pivot",
+    "intro": "Make evidence-based decisions about your venture's direction. Using research-backed frameworks, evaluate whether to proceed with incremental improvements, patch with structural changes, or pivot to a new strategy."
   }
 }

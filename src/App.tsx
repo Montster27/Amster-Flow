@@ -7,17 +7,19 @@ import { useGuide } from './contexts/GuideContext';
 import { useProjectData } from './hooks/useProjectData';
 import { useDiscoveryData } from './hooks/useDiscoveryData';
 import { useSectorMapData } from './hooks/useSectorMapData';
+import { usePivotData } from './hooks/usePivotData';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
 const VisualSectorMapTool = lazy(() => import('./components/visual-sector-map/VisualSectorMapTool').then(m => ({ default: m.VisualSectorMapTool })));
+const PivotModule = lazy(() => import('./components/pivot/PivotModule').then(m => ({ default: m.PivotModule })));
 
 export interface ModuleData {
   title: string;
   intro: string;
   questions?: string[];
   hints?: string[];
-  type?: 'standard' | 'discovery' | 'sectorMap';
+  type?: 'standard' | 'discovery' | 'sectorMap' | 'pivot';
 }
 
 export interface QuestionsData {
@@ -33,8 +35,8 @@ const validateQuestionsData = (data: any): data is QuestionsData => {
     if (typeof module.title !== 'string') return false;
     if (typeof module.intro !== 'string') return false;
 
-    // Discovery and Sector Map modules don't need questions/hints
-    if (module.type === 'discovery' || module.type === 'sectorMap') {
+    // Discovery, Sector Map, and Pivot modules don't need questions/hints
+    if (module.type === 'discovery' || module.type === 'sectorMap' || module.type === 'pivot') {
       return true;
     }
 
@@ -69,6 +71,7 @@ function App({ projectId }: AppProps = {}) {
   const { loading: loadingProjectData, error: projectDataError } = useProjectData(projectId);
   const { loading: loadingDiscoveryData, error: discoveryDataError } = useDiscoveryData(projectId);
   const { loading: loadingSectorMapData, error: sectorMapDataError } = useSectorMapData(projectId);
+  const { loading: loadingPivotData, error: pivotDataError } = usePivotData(projectId);
 
   // Load questions.json on mount
   useEffect(() => {
@@ -96,13 +99,13 @@ function App({ projectId }: AppProps = {}) {
     loadQuestions();
   }, []);
 
-  if (loadingError || projectDataError || discoveryDataError || sectorMapDataError) {
+  if (loadingError || projectDataError || discoveryDataError || sectorMapDataError || pivotDataError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error Loading Guide</h2>
-          <p className="text-gray-600 mb-4">{loadingError || projectDataError || discoveryDataError || sectorMapDataError}</p>
+          <p className="text-gray-600 mb-4">{loadingError || projectDataError || discoveryDataError || sectorMapDataError || pivotDataError}</p>
           <button
             onClick={() => {
               setLoadingError(null);
@@ -119,7 +122,7 @@ function App({ projectId }: AppProps = {}) {
     );
   }
 
-  if (!questionsData || loadingProjectData || loadingDiscoveryData || loadingSectorMapData) {
+  if (!questionsData || loadingProjectData || loadingDiscoveryData || loadingSectorMapData || loadingPivotData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -136,7 +139,8 @@ function App({ projectId }: AppProps = {}) {
   const currentModuleData = questionsData[currentModule];
   const isDiscoveryModule = currentModuleData?.type === 'discovery';
   const isSectorMapModule = currentModuleData?.type === 'sectorMap';
-  const isStandardModule = !isDiscoveryModule && !isSectorMapModule;
+  const isPivotModule = currentModuleData?.type === 'pivot';
+  const isStandardModule = !isDiscoveryModule && !isSectorMapModule && !isPivotModule;
 
   const handleModuleComplete = () => {
     // For standard modules (problem, customer segments, solution), show review page
@@ -206,6 +210,10 @@ function App({ projectId }: AppProps = {}) {
         ) : isSectorMapModule ? (
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
             <VisualSectorMapTool />
+          </Suspense>
+        ) : isPivotModule ? (
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
+            <PivotModule projectId={projectId!} onComplete={handleModuleComplete} />
           </Suspense>
         ) : (
           <QuestionPanel
