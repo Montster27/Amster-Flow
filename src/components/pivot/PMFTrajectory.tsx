@@ -398,7 +398,7 @@ export function PMFTrajectory({ onContinue, onBack }: PMFTrajectoryProps) {
         <div className="mt-4 pt-4 border-t border-gray-300">
           <p className="text-sm text-gray-700">
             <strong>Key insight:</strong> A 30% PMF score improving 5% per month will surpass a
-            45% PMF score declining 3% per month within 3-4 months. Trajectory > snapshot.
+            45% PMF score declining 3% per month within 3-4 months. Trajectory &gt; snapshot.
           </p>
         </div>
       </div>

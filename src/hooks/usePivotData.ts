@@ -57,49 +57,49 @@ export function usePivotData(projectId?: string) {
             id: data.id,
             projectId: data.project_id,
             mode: data.mode as 'easy' | 'detailed',
-            iterationId: data.iteration_id,
+            iterationId: data.iteration_id || undefined,
             decision: data.decision as 'proceed' | 'patch' | 'pivot' | null,
 
             // Cognitive debiasing
             preMortemInsights: data.pre_mortem_insights || [],
-            contradictoryEvidence: data.contradictory_evidence || [],
-            reframingResponses: data.reframing_responses || {
+            contradictoryEvidence: (data.contradictory_evidence as any) || [],
+            reframingResponses: (data.reframing_responses as any) || {
               inheritanceQuestion: '',
               contradictionQuestion: '',
               temporalQuestion: '',
             },
 
             // Quantitative metrics
-            productMarketFit: data.product_market_fit,
-            retentionMetrics: data.retention_metrics,
-            unitEconomics: data.unit_economics,
+            productMarketFit: (data.product_market_fit as any) || undefined,
+            retentionMetrics: (data.retention_metrics as any) || undefined,
+            unitEconomics: (data.unit_economics as any) || undefined,
 
             // Qualitative insights
-            jobsToBeDone: data.jobs_to_be_done,
-            painPoints: data.pain_points || [],
-            customerQuotes: data.customer_quotes || [],
+            jobsToBeDone: (data.jobs_to_be_done as any) || undefined,
+            painPoints: (data.pain_points as any) || [],
+            customerQuotes: (data.customer_quotes as any) || [],
 
             // Decision rationale
-            hypothesisTested: data.hypothesis_tested,
+            hypothesisTested: (data.hypothesis_tested as any) || undefined,
             decisionRationale: data.decision_rationale || '',
             nextActions: data.next_actions || [],
 
             // Confidence assessment
-            confidenceAssessment: data.confidence_assessment,
+            confidenceAssessment: (data.confidence_assessment as any) || undefined,
 
             // PIVOT readiness
-            pivotReadiness: data.pivot_readiness,
-            recommendedPivotType: data.recommended_pivot_type,
+            pivotReadiness: (data.pivot_readiness as any) || undefined,
+            recommendedPivotType: (data.recommended_pivot_type as any) || undefined,
 
             // Reflection
             lessonsLearned: data.lessons_learned || [],
-            biasesIdentified: data.biases_identified || [],
+            biasesIdentified: (data.biases_identified as any) || [],
             confidenceLevel: data.confidence_level || 50,
 
             // Meta-data
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            completedAt: data.completed_at,
+            createdAt: data.created_at || '',
+            updatedAt: data.updated_at || '',
+            completedAt: data.completed_at || undefined,
             timeSpentMinutes: data.time_spent_minutes || 0,
             externalAdvisorsConsulted: data.external_advisors_consulted || [],
           };
@@ -134,13 +134,13 @@ export function usePivotData(projectId?: string) {
           // Insert new decision into database
           const { data: insertedData, error: insertError } = await supabase
             .from('project_pivot_decisions')
-            .insert({
+            .insert([{
               project_id: projectId,
               mode: newDecision.mode,
               decision: newDecision.decision,
               pre_mortem_insights: newDecision.preMortemInsights,
-              contradictory_evidence: newDecision.contradictoryEvidence,
-              reframing_responses: newDecision.reframingResponses,
+              contradictory_evidence: newDecision.contradictoryEvidence as any,
+              reframing_responses: newDecision.reframingResponses as any,
               decision_rationale: newDecision.decisionRationale,
               next_actions: newDecision.nextActions,
               lessons_learned: newDecision.lessonsLearned,
@@ -148,7 +148,7 @@ export function usePivotData(projectId?: string) {
               confidence_level: newDecision.confidenceLevel,
               time_spent_minutes: newDecision.timeSpentMinutes,
               external_advisors_consulted: newDecision.externalAdvisorsConsulted,
-            })
+            }])
             .select()
             .single();
 
@@ -197,29 +197,29 @@ export function usePivotData(projectId?: string) {
 
             // Cognitive debiasing
             pre_mortem_insights: currentDecision.preMortemInsights,
-            contradictory_evidence: currentDecision.contradictoryEvidence,
-            reframing_responses: currentDecision.reframingResponses,
+            contradictory_evidence: currentDecision.contradictoryEvidence as any,
+            reframing_responses: currentDecision.reframingResponses as any,
 
             // Quantitative metrics
-            product_market_fit: currentDecision.productMarketFit,
-            retention_metrics: currentDecision.retentionMetrics,
-            unit_economics: currentDecision.unitEconomics,
+            product_market_fit: currentDecision.productMarketFit as any,
+            retention_metrics: currentDecision.retentionMetrics as any,
+            unit_economics: currentDecision.unitEconomics as any,
 
             // Qualitative insights
-            jobs_to_be_done: currentDecision.jobsToBeDone,
-            pain_points: currentDecision.painPoints,
-            customer_quotes: currentDecision.customerQuotes,
+            jobs_to_be_done: currentDecision.jobsToBeDone as any,
+            pain_points: currentDecision.painPoints as any,
+            customer_quotes: currentDecision.customerQuotes as any,
 
             // Decision rationale
-            hypothesis_tested: currentDecision.hypothesisTested,
+            hypothesis_tested: currentDecision.hypothesisTested as any,
             decision_rationale: currentDecision.decisionRationale,
             next_actions: currentDecision.nextActions,
 
             // Confidence assessment
-            confidence_assessment: currentDecision.confidenceAssessment,
+            confidence_assessment: currentDecision.confidenceAssessment as any,
 
             // PIVOT readiness
-            pivot_readiness: currentDecision.pivotReadiness,
+            pivot_readiness: currentDecision.pivotReadiness as any,
             recommended_pivot_type: currentDecision.recommendedPivotType,
 
             // Reflection

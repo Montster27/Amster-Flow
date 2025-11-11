@@ -34,6 +34,7 @@ export interface Interview {
   surprises?: string;
   nextAction?: string;
   followUpNeeded: boolean;
+  status?: 'draft' | 'completed'; // Interview status
 }
 
 export interface Iteration {

@@ -41,9 +41,7 @@ export function ProgressSummary({ onContinue, onBack }: ProgressSummaryProps) {
     pmfBenchmark: BENCHMARKS.PMF_PROCEED_THRESHOLD,
   };
 
-  const getStatusIcon = (value: number, threshold: number, higher
-
-IsBetter: boolean = true) => {
+  const getStatusIcon = (value: number, threshold: number, higherIsBetter: boolean = true) => {
     const meetsThreshold = higherIsBetter ? value >= threshold : value <= threshold;
     if (meetsThreshold) return '✅';
     if (higherIsBetter && value >= threshold * 0.7) return '🔶';
