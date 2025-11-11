@@ -46,23 +46,37 @@ export interface DecisionCriteria {
   };
 }
 
+// Evidence quality score breakdown
+export interface EvidenceQualityScore {
+  sourceCredibility: number; // 0-100
+  sampleSize: number; // 0-100
+  recency: number; // 0-100
+  directness: number; // 0-100
+  overall: number; // Average of above
+}
+
 // Evidence quality metadata
 export interface Evidence {
   id: string;
-  source: EvidenceSource;
+  source: EvidenceSource | string;
+  type?: string; // Type of evidence
   description: string;
-  sampleSize: number;
-  confidence: ConfidenceLevel;
-  recency: string; // ISO date
-  contradicts: boolean; // Flags disconfirming evidence
-  references: string[]; // Interview IDs or data sources
+  sampleSize?: number;
+  confidence?: ConfidenceLevel;
+  recency?: string; // ISO date
+  contradicts?: boolean; // Flags disconfirming evidence
+  references?: string[]; // Interview IDs or data sources
+  qualityScore?: EvidenceQualityScore;
 }
 
 // Product-Market Fit metrics
 export interface ProductMarketFit {
-  seanEllisScore: number; // Percentage (0-100)
-  sampleSize: number;
-  trend: PMFTrend;
+  seanEllisScore?: number; // Percentage (0-100)
+  pmfScore?: number; // Alias for seanEllisScore
+  sampleSize?: number;
+  surveyResponses?: number; // Number of survey responses
+  methodology?: string; // Survey methodology used
+  trend?: PMFTrend;
 }
 
 // Retention metrics
@@ -79,6 +93,8 @@ export interface UnitEconomics {
   cac: number; // Customer acquisition cost
   ratio: number; // LTV:CAC ratio
   paybackPeriod: number; // Months
+  monthlyBurn?: number; // Monthly cash burn
+  monthsRunway?: number; // Runway in months
 }
 
 // Pain point with severity
@@ -86,6 +102,7 @@ export interface PainPoint {
   id: string;
   description: string;
   severity: number; // 1-10
+  intensity?: number; // Alternative measure for severity
   frequency: string; // How often experienced
   quotes: string[]; // Supporting customer quotes
 }
@@ -97,6 +114,7 @@ export interface Quote {
   customerId: string;
   interviewId: string;
   context: string;
+  source?: string; // Source of the quote
 }
 
 // Jobs-to-be-Done framework
@@ -108,15 +126,18 @@ export interface JobsToBeDone {
 
 // Hypothesis tracking
 export interface Hypothesis {
-  id: string;
+  id?: string;
   statement: string;
-  testMethod: 'interview' | 'prototype' | 'landing-page' | 'concierge';
-  successCriteria: string;
-  failCriteria: string;
+  testMethod?: 'interview' | 'prototype' | 'landing-page' | 'concierge';
+  testConducted: string; // Description of test conducted
+  successCriteria?: string;
+  failCriteria?: string;
   result: HypothesisResult;
-  evidenceIds: string[];
-  lessonsLearned: string;
-  createdAt: string;
+  evidenceIds?: string[];
+  evidenceGathered: string; // Summary of evidence gathered
+  lessonsLearned?: string;
+  nextHypothesis?: string; // Next hypothesis to test
+  createdAt?: string;
   testedAt?: string;
 }
 
@@ -129,34 +150,22 @@ export interface ReframingResponses {
 
 // Confidence assessment for different areas
 export interface ConfidenceAssessment {
-  problemValidation: number; // 0-100
-  customerUnderstanding: number;
-  solutionEffectiveness: number;
-  businessViability: number;
+  marketConfidence: number; // 0-100
+  productConfidence: number;
+  teamConfidence: number;
+  resourceConfidence: number;
+  timingConfidence: number;
+  overallConfidence?: number;
 }
 
 // PIVOT readiness checklist
 export interface PIVOTReadiness {
-  proof: {
-    checked: boolean;
-    evidence: string;
-  };
-  insight: {
-    checked: boolean;
-    evidence: string;
-  };
-  viability: {
-    checked: boolean;
-    evidence: string;
-  };
-  organization: {
-    checked: boolean;
-    evidence: string;
-  };
-  timing: {
-    checked: boolean;
-    evidence: string;
-  };
+  proof: number; // Score 1-5
+  insight: number; // Score 1-5
+  viability: number; // Score 1-5
+  organization: number; // Score 1-5
+  timing: number; // Score 1-5
+  overallScore?: number; // Calculated average
 }
 
 // Main pivot decision data structure
@@ -240,9 +249,13 @@ export interface PMFTrajectory {
 export interface PivotTypeDetail {
   type: PivotType;
   label: string;
+  name: string; // Human-readable name
   description: string;
   examples: string[];
   whenToUse: string;
+  whatChanges?: string; // What changes with this pivot
+  whatStays?: string; // What remains the same
+  risks?: string[]; // Associated risks
 }
 
 // Constants for decision criteria
@@ -278,6 +291,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'zoom-in': {
     type: 'zoom-in',
     label: 'Zoom-in Pivot',
+    name: 'Zoom-in Pivot',
     description: 'One feature becomes the whole product',
     examples: ['Instagram (photo filters from Burbn)', 'YouTube (dating site video feature)'],
     whenToUse: 'When one feature has significantly higher engagement than others'
@@ -285,6 +299,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'zoom-out': {
     type: 'zoom-out',
     label: 'Zoom-out Pivot',
+    name: 'Zoom-out Pivot',
     description: 'Product becomes a single feature of a larger product',
     examples: ['Groupon (The Point activism platform)', 'Slack (gaming company internal tool)'],
     whenToUse: 'When the product is too narrow and needs broader value proposition'
@@ -292,6 +307,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'customer-segment': {
     type: 'customer-segment',
     label: 'Customer Segment Pivot',
+    name: 'Customer Segment Pivot',
     description: 'Same problem, different customer segment',
     examples: ['Dropbox (consumers to enterprise)', 'Slack (gaming to business)'],
     whenToUse: 'When a different segment shows much stronger product-market fit'
@@ -299,6 +315,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'customer-need': {
     type: 'customer-need',
     label: 'Customer Need Pivot',
+    name: 'Customer Need Pivot',
     description: 'Same customer, different problem',
     examples: ['Twitter (podcasting to microblogging)', 'Pinterest (shopping to inspiration)'],
     whenToUse: 'When you discover a more urgent problem for the same customer'
@@ -306,6 +323,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'platform': {
     type: 'platform',
     label: 'Platform Pivot',
+    name: 'Platform Pivot',
     description: 'Application to platform or vice versa',
     examples: ['Shopify (store to platform)', 'Flickr (gaming to photo sharing)'],
     whenToUse: 'When enabling others creates more value than doing it yourself'
@@ -313,6 +331,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'business-architecture': {
     type: 'business-architecture',
     label: 'Business Architecture Pivot',
+    name: 'Business Architecture Pivot',
     description: 'High margin/low volume ↔ Low margin/high volume',
     examples: ['Amazon (books to everything)', 'Netflix (DVD to streaming)'],
     whenToUse: 'When unit economics require different business model'
@@ -320,6 +339,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'value-capture': {
     type: 'value-capture',
     label: 'Value Capture Pivot',
+    name: 'Value Capture Pivot',
     description: 'Change in monetization model',
     examples: ['LinkedIn (subscriptions to freemium)', 'Evernote (paid to freemium)'],
     whenToUse: 'When current monetization doesn\'t match value delivered'
@@ -327,6 +347,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'engine-of-growth': {
     type: 'engine-of-growth',
     label: 'Engine of Growth Pivot',
+    name: 'Engine of Growth Pivot',
     description: 'Viral ↔ Sticky ↔ Paid growth strategy',
     examples: ['Facebook (viral growth)', 'Salesforce (paid growth)'],
     whenToUse: 'When current growth engine is not scalable'
@@ -334,6 +355,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'channel': {
     type: 'channel',
     label: 'Channel Pivot',
+    name: 'Channel Pivot',
     description: 'Change in distribution strategy',
     examples: ['Dell (retail to direct)', 'Dollar Shave Club (retail to DTC)'],
     whenToUse: 'When a different channel has better unit economics'
@@ -341,6 +363,7 @@ export const PIVOT_TYPES: Record<PivotType, PivotTypeDetail> = {
   'technology': {
     type: 'technology',
     label: 'Technology Pivot',
+    name: 'Technology Pivot',
     description: 'Same solution via different technology',
     examples: ['Netflix (DVD to streaming)', 'Apple (hardware to services)'],
     whenToUse: 'When new technology enables better solution delivery'

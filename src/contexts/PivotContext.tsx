@@ -24,9 +24,10 @@ interface PivotContextState {
   mode: 'easy' | 'detailed';
 
   // Current step in the flow
-  currentStep: 'pre-mortem' | 'progress' | 'reflection' | 'confidence' | 'decision' | 'evidence' | 'hypothesis' | 'complete';
+  currentStep: 'pre-mortem' | 'progress' | 'reflection' | 'confidence' | 'decision' | 'evidence' | 'hypothesis' | 'mixed-methods' | 'trajectory' | 'pivot-types' | 'complete';
 
   // Methods to update decision data (all auto-save to database)
+  setCurrentDecision: (decision: PivotDecision | null) => void;
   setMode: (mode: 'easy' | 'detailed') => void;
   setCurrentStep: (step: PivotContextState['currentStep']) => void;
 
@@ -86,6 +87,10 @@ interface PivotContextState {
 }
 
 const PivotContext = createContext<PivotContextState | undefined>(undefined);
+
+// Export context for external use (e.g., in hooks)
+export { PivotContext };
+export type { PivotContextState };
 
 export function PivotProvider({ children }: { children: ReactNode }) {
   const [currentDecision, setCurrentDecision] = useState<PivotDecision | null>(null);
@@ -273,6 +278,7 @@ export function PivotProvider({ children }: { children: ReactNode }) {
     currentDecision,
     mode,
     currentStep,
+    setCurrentDecision,
     setMode,
     setCurrentStep,
     updatePreMortemInsights,
