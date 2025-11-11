@@ -72,12 +72,31 @@ export const ActorManagement = ({ onContinue, onBack }: ActorManagementProps) =>
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <VisualCanvas selectedCategory={selectedCategory} />
+
+        {/* Floating Progress Indicator */}
+        <div className="absolute top-4 right-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 p-4 z-10">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-800 mb-1">{actors.length}</p>
+            <p className="text-xs text-gray-600 mb-2">actors added</p>
+            {!canContinue ? (
+              <div className="flex items-center gap-2 text-yellow-700 bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200">
+                <span className="text-lg">⚠️</span>
+                <p className="text-xs font-medium">Add {2 - actors.length} more to continue</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200 animate-pulse">
+                <span className="text-lg">✓</span>
+                <p className="text-xs font-medium">Ready to continue!</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Footer with navigation */}
-      <div className="bg-white border-t border-gray-200 px-8 py-4">
+      <div className="bg-white border-t-2 border-gray-300 px-8 py-5 shadow-lg">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
@@ -87,20 +106,22 @@ export const ActorManagement = ({ onContinue, onBack }: ActorManagementProps) =>
           </button>
 
           <div className="flex items-center gap-4">
-            <p className="text-sm text-gray-600">
-              {actors.length} actor{actors.length !== 1 ? 's' : ''} added
-              {!canContinue && ' (add at least 2 to continue)'}
-            </p>
             <button
               onClick={onContinue}
               disabled={!canContinue}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              className={`px-8 py-4 rounded-lg font-bold text-lg transition-all ${
                 canContinue
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl animate-pulse'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {canContinue ? 'Continue to Connections →' : 'Add more actors to continue'}
+              {canContinue ? (
+                <span className="flex items-center gap-2">
+                  Continue to Connections <span className="text-2xl">→</span>
+                </span>
+              ) : (
+                'Add at least 2 actors to continue'
+              )}
             </button>
           </div>
         </div>

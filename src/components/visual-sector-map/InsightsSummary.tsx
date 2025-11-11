@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
 import {
   LayerType,
@@ -21,8 +20,6 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
     toggleLayer,
     exportData,
   } = useVisualSectorMap();
-
-  const [showMentorComments, setShowMentorComments] = useState(false);
 
   const layers: LayerType[] = ['value', 'information', 'regulation'];
 
@@ -198,46 +195,36 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
             )}
           </div>
 
-          {/* Mentor Comments Toggle */}
+          {/* Export Options */}
           <div>
-            <button
-              onClick={() => setShowMentorComments(!showMentorComments)}
-              className="w-full px-4 py-3 rounded-lg font-medium text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
-            >
-              {showMentorComments ? '👁️ Hide' : '💬'} Mentor Comments
-            </button>
-
-            {showMentorComments && (
-              <div className="mt-3 p-4 bg-indigo-50 border-l-4 border-indigo-400 rounded">
-                <p className="text-xs text-indigo-900 font-medium mb-2">Mentor Feedback:</p>
-                <p className="text-xs text-indigo-800 leading-relaxed">
-                  Great progress! Your map shows {actors.length} key actors and{' '}
-                  {connections.length} relationships. Consider exploring:
-                  <br />
-                  <br />
-                  • Which actors have the most influence on your target customer?
-                  <br />
-                  • What blockers prevent value from flowing smoothly?
-                  <br />
-                  • Where are the biggest opportunities for innovation?
-                  <br />
-                  <br />
-                  Next: Validate your {needsInterview.length > 0 ? needsInterview.length : 0}{' '}
-                  hypotheses through customer interviews.
-                </p>
-              </div>
-            )}
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Export Options:</h3>
+            <div className="space-y-2">
+              <button
+                onClick={handleExportJSON}
+                className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg"
+              >
+                📄 Export as JSON
+              </button>
+              <button
+                className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-300 rounded-lg text-sm font-medium cursor-not-allowed text-gray-500"
+                disabled
+                title="Coming soon"
+              >
+                🖼️ Export as Image (Soon)
+              </button>
+              <button
+                className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-300 rounded-lg text-sm font-medium cursor-not-allowed text-gray-500"
+                disabled
+                title="Coming soon"
+              >
+                📑 Export as PDF (Soon)
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 space-y-3">
-          <button
-            onClick={handleExportJSON}
-            className="w-full px-4 py-3 rounded-lg font-semibold bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all"
-          >
-            📥 Export as JSON
-          </button>
+        <div className="px-6 py-4 border-t border-gray-200">
           <button
             onClick={onBack}
             className="w-full px-4 py-2 rounded-lg font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
@@ -248,39 +235,12 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
       </div>
 
       {/* Right Panel - Visual Canvas */}
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden">
         <VisualCanvas
           selectedCategory="customer"
           showConnections={true}
           readOnly={true}
         />
-
-        {/* Floating Export Button */}
-        <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg border-2 border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-700 mb-2">Export Options:</p>
-          <div className="space-y-2">
-            <button
-              onClick={handleExportJSON}
-              className="w-full px-3 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 transition-all"
-            >
-              📄 Export JSON
-            </button>
-            <button
-              className="w-full px-3 py-2 bg-gray-200 border-2 border-gray-300 rounded-lg text-xs font-medium cursor-not-allowed"
-              disabled
-              title="Coming soon"
-            >
-              🖼️ Export Image (Soon)
-            </button>
-            <button
-              className="w-full px-3 py-2 bg-gray-200 border-2 border-gray-300 rounded-lg text-xs font-medium cursor-not-allowed"
-              disabled
-              title="Coming soon"
-            >
-              📑 Export PDF (Soon)
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
