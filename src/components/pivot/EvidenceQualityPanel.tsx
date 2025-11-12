@@ -80,11 +80,11 @@ export function EvidenceQualityPanel({ onContinue, onBack }: EvidenceQualityPane
     setEditingId(ev.id);
     setDescription(ev.description);
     setSource(ev.source);
-    setSourceCredibility(ev.qualityScore.sourceCredibility);
-    setSampleSize(ev.qualityScore.sampleSize);
-    setRecency(ev.qualityScore.recency);
-    setDirectness(ev.qualityScore.directness);
-    setContradicts(ev.contradicts);
+    setSourceCredibility(ev.qualityScore?.sourceCredibility ?? 3);
+    setSampleSize(ev.qualityScore?.sampleSize ?? 3);
+    setRecency(ev.qualityScore?.recency ?? 3);
+    setDirectness(ev.qualityScore?.directness ?? 3);
+    setContradicts(ev.contradicts ?? true);
     setShowAddForm(true);
   };
 
@@ -225,27 +225,27 @@ export function EvidenceQualityPanel({ onContinue, onBack }: EvidenceQualityPane
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-sm font-medium text-gray-700">
-                        {ev.qualityScore.sourceCredibility}/5
+                        {ev.qualityScore?.sourceCredibility ?? 0}/5
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-sm font-medium text-gray-700">
-                        {ev.qualityScore.sampleSize}/5
+                        {ev.qualityScore?.sampleSize ?? 0}/5
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-sm font-medium text-gray-700">
-                        {ev.qualityScore.recency}/5
+                        {ev.qualityScore?.recency ?? 0}/5
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-sm font-medium text-gray-700">
-                        {ev.qualityScore.directness}/5
+                        {ev.qualityScore?.directness ?? 0}/5
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${getScoreColor(ev.qualityScore.overall)}`}>
-                        {ev.qualityScore.overall}%
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${getScoreColor(ev.qualityScore?.overall ?? 0)}`}>
+                        {ev.qualityScore?.overall ?? 0}%
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
