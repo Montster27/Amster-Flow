@@ -56,7 +56,7 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
   useEffect(() => {
     if (currentDecision?.productMarketFit) {
       setPmfScore(currentDecision.productMarketFit.pmfScore);
-      setSurveyResponses(currentDecision.productMarketFit.surveyResponses);
+      setSurveyResponses(currentDecision.productMarketFit.surveyResponses ?? 0);
     }
     if (currentDecision?.retentionMetrics) {
       setDay1Retention(currentDecision.retentionMetrics.day1);
@@ -70,9 +70,9 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
       setMonthsRunway(currentDecision.unitEconomics.monthsRunway);
     }
     if (currentDecision?.jobsToBeDone) {
-      setPrimaryJob(currentDecision.jobsToBeDone.functionalJob);
-      setEmotionalJob(currentDecision.jobsToBeDone.emotionalJob || '');
-      setSocialJob(currentDecision.jobsToBeDone.socialJob || '');
+      setPrimaryJob(currentDecision.jobsToBeDone.functional?.[0] ?? '');
+      setEmotionalJob(currentDecision.jobsToBeDone.emotional?.[0] ?? '');
+      setSocialJob(currentDecision.jobsToBeDone.social?.[0] ?? '');
     }
   }, [currentDecision]);
 
@@ -88,19 +88,21 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
 
     if (day1Retention !== undefined || day7Retention !== undefined || day30Retention !== undefined) {
       const retention: RetentionMetrics = {
-        day1: day1Retention,
-        day7: day7Retention,
-        day30: day30Retention,
+        day1: day1Retention ?? 0,
+        day7: day7Retention ?? 0,
+        day30: day30Retention ?? 0,
+        isFlattening: false,
       };
       updateRetentionMetrics(retention);
     }
 
     if (ltv !== undefined || cac !== undefined || monthlyBurn !== undefined || monthsRunway !== undefined) {
-      const ltvCacRatio = ltv && cac ? ltv / cac : undefined;
+      const ltvCacRatio = ltv && cac ? ltv / cac : 0;
       const economics: UnitEconomics = {
-        ltv,
-        cac,
-        ltvCacRatio,
+        ltv: ltv ?? 0,
+        cac: cac ?? 0,
+        ratio: ltvCacRatio,
+        paybackPeriod: 0,
         monthlyBurn,
         monthsRunway,
       };
@@ -111,9 +113,9 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
   const handleSaveQualitative = () => {
     if (primaryJob) {
       const jobs: JobsToBeDone = {
-        functionalJob: primaryJob,
-        emotionalJob: emotionalJob || undefined,
-        socialJob: socialJob || undefined,
+        functional: [primaryJob],
+        emotional: emotionalJob ? [emotionalJob] : [],
+        social: socialJob ? [socialJob] : [],
       };
       updateJobsToBeDone(jobs);
     }
@@ -126,7 +128,8 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
       id: Date.now().toString(),
       description: newPainPoint,
       frequency: 'high',
-      intensity: 'high',
+      severity: 8,
+      quotes: [],
     };
     addPainPoint(painPoint);
     setNewPainPoint('');
@@ -138,8 +141,10 @@ export function MixedMethodsPanel({ onContinue, onBack }: MixedMethodsPanelProps
     const quote: Quote = {
       id: Date.now().toString(),
       text: newQuote,
+      customerId: '',
+      interviewId: '',
+      context: '',
       source: quoteSource,
-      sentiment: 'negative',
     };
     addCustomerQuote(quote);
     setNewQuote('');

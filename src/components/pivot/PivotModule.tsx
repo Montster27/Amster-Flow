@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { usePivot } from '../../contexts/PivotContext';
 import { usePivotData } from '../../hooks/usePivotData';
 import { PreMortemExercise } from './PreMortemExercise';
