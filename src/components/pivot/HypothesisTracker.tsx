@@ -28,7 +28,7 @@ export function HypothesisTracker({ onContinue, onBack }: HypothesisTrackerProps
   const [hypothesis, setHypothesis] = useState('');
   const [testConducted, setTestConducted] = useState('');
   const [evidenceGathered, setEvidenceGathered] = useState('');
-  const [conclusion, setConclusion] = useState<'validated' | 'invalidated' | 'inconclusive'>('inconclusive');
+  const [conclusion, setConclusion] = useState<'validated' | 'invalidated' | 'inconclusive' | 'pending'>('inconclusive');
   const [nextHypothesis, setNextHypothesis] = useState('');
 
   // Load existing hypothesis if available
@@ -55,12 +55,6 @@ export function HypothesisTracker({ onContinue, onBack }: HypothesisTrackerProps
   };
 
   const canContinue = hypothesis.trim() && testConducted.trim() && evidenceGathered.trim();
-
-  const getConclusionColor = (c: string) => {
-    if (c === 'validated') return 'bg-green-50 border-green-500 text-green-800';
-    if (c === 'invalidated') return 'bg-red-50 border-red-500 text-red-800';
-    return 'bg-yellow-50 border-yellow-500 text-yellow-800';
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-8">

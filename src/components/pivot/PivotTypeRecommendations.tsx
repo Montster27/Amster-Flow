@@ -153,10 +153,10 @@ export function PivotTypeRecommendations({ onContinue, onBack }: PivotTypeRecomm
 
                 <div className="bg-gray-50 rounded-lg p-3 mb-3">
                   <p className="text-xs font-semibold text-gray-700 mb-1">
-                    Famous Example:
+                    Famous Examples:
                   </p>
                   <p className="text-xs text-gray-600">
-                    {info.example}
+                    {info.examples.join(', ')}
                   </p>
                 </div>
 
