@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
+import { captureException } from '../lib/sentry';
 
 type Project = Database['public']['Tables']['projects']['Row'];
 type Organization = Database['public']['Tables']['organizations']['Row'];
@@ -50,7 +51,9 @@ export function DashboardPage() {
 
           // Ignore conflict errors (profile already exists)
           if (insertError && insertError.code !== '23505') {
-            console.error('Error creating profile:', insertError);
+            captureException(new Error('Error creating profile'), {
+              extra: { insertError, userId: user.id, context: 'DashboardPage profile creation' },
+            });
           }
         }
 
@@ -65,7 +68,9 @@ export function DashboardPage() {
         // CRITICAL: Only create org if query succeeded AND returned empty
         // Don't create if there was an error (prevents duplicate creation)
         if (memberError) {
-          console.error('Error loading memberships:', memberError);
+          captureException(new Error('Error loading memberships'), {
+            extra: { memberError, userId: user.id, context: 'DashboardPage memberships load' },
+          });
           throw new Error('Failed to load your organizations. Please refresh the page.');
         }
 
@@ -81,7 +86,9 @@ export function DashboardPage() {
 
 
           if (orgsError) {
-            console.error('Error loading organizations:', orgsError);
+            captureException(new Error('Error loading organizations'), {
+              extra: { orgsError, userId: user.id, orgIds, context: 'DashboardPage organizations load' },
+            });
             throw new Error('Failed to load your organizations. Please refresh the page.');
           }
 
@@ -109,7 +116,9 @@ export function DashboardPage() {
 
             if (addMemberError && addMemberError.code !== '23505') {
               // Ignore duplicate key errors
-              console.error('Error adding user to existing org:', addMemberError);
+              captureException(new Error('Error adding user to existing org'), {
+                extra: { addMemberError, userId: user.id, orgId: existingOrg.id, context: 'DashboardPage add member' },
+              });
             }
 
             allOrgs = [existingOrg];
@@ -125,7 +134,9 @@ export function DashboardPage() {
               .single();
 
             if (orgError) {
-              console.error('Error creating organization:', orgError);
+              captureException(new Error('Error creating organization'), {
+                extra: { orgError, userId: user.id, context: 'DashboardPage org creation (first)' },
+              });
               throw new Error('Failed to create your organization. Please try again.');
             }
 
@@ -139,7 +150,9 @@ export function DashboardPage() {
               });
 
             if (newMemberError) {
-              console.error('Error adding organization member:', newMemberError);
+              captureException(new Error('Error adding organization member'), {
+                extra: { newMemberError, userId: user.id, orgId: newOrg.id, context: 'DashboardPage add member (first)' },
+              });
               throw new Error('Failed to set up your organization. Please try again.');
             }
 
@@ -187,7 +200,9 @@ export function DashboardPage() {
               .single();
 
             if (orgError) {
-              console.error('Error creating organization:', orgError);
+              captureException(new Error('Error creating organization'), {
+                extra: { orgError, userId: user.id, context: 'DashboardPage org creation (editable)' },
+              });
               throw new Error('Failed to create your organization. Please try again.');
             }
 
@@ -201,7 +216,9 @@ export function DashboardPage() {
               });
 
             if (newMemberError) {
-              console.error('Error adding organization member:', newMemberError);
+              captureException(new Error('Error adding organization member'), {
+                extra: { newMemberError, userId: user.id, orgId: newOrg.id, context: 'DashboardPage add member (editable)' },
+              });
               throw new Error('Failed to set up your organization. Please try again.');
             }
 
@@ -225,14 +242,19 @@ export function DashboardPage() {
             .order('created_at', { ascending: false });
 
           if (projectsError) {
-            console.error('Error loading projects:', projectsError);
+            captureException(new Error('Error loading projects'), {
+              extra: { projectsError, userId: user.id, orgId: selectedOrg.id, context: 'DashboardPage projects load' },
+            });
             throw new Error('Failed to load projects. Please refresh the page.');
           }
 
           setProjects(projectsData || []);
         }
       } catch (err) {
-        console.error('Error initializing user:', err);
+        const error = err instanceof Error ? err : new Error('Error initializing user');
+        captureException(error, {
+          extra: { userId: user.id, context: 'DashboardPage initialization' },
+        });
         setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
       } finally {
         setLoading(false);
@@ -286,7 +308,9 @@ export function DashboardPage() {
         .single();
 
       if (error) {
-        console.error('Error creating project:', error);
+        captureException(new Error('Error creating project'), {
+          extra: { error, userId: user.id, orgId: organization.id, projectName: newProjectName, context: 'DashboardPage project creation' },
+        });
         throw new Error('Failed to create project. Please try again.');
       }
 
@@ -299,7 +323,10 @@ export function DashboardPage() {
       // Navigate to the project
       navigate(`/project/${newProject.id}`);
     } catch (err) {
-      console.error('Error creating project:', err);
+      const error = err instanceof Error ? err : new Error('Error creating project');
+      captureException(error, {
+        extra: { userId: user.id, orgId: organization?.id, projectName: newProjectName, context: 'DashboardPage project creation (catch)' },
+      });
       setCreateProjectError(err instanceof Error ? err.message : 'Failed to create project. Please try again.');
     }
   };
