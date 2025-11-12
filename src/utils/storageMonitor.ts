@@ -1,4 +1,5 @@
 // localStorage Monitoring Utility
+import { captureException } from '../lib/sentry';
 
 export interface StorageInfo {
   used: number; // bytes
@@ -28,8 +29,11 @@ export const getStorageInfo = (): StorageInfo => {
       percentage,
       isNearLimit: percentage > 80,
     };
-  } catch (error) {
-    console.error('Failed to calculate storage info:', error);
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error('Failed to calculate storage info');
+    captureException(error, {
+      extra: { context: 'storageMonitor getStorageInfo' },
+    });
     return {
       used: 0,
       available: 0,

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import type { EnhancedInterview, IntervieweeTypeEnhanced, AssumptionTag, ConfidenceLevel, InterviewStatus } from '../types/discovery';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to manage enhanced interviews with Supabase
@@ -83,7 +84,10 @@ export function useEnhancedInterviews(projectId: string | undefined) {
       setInterviews(interviews);
       initialLoadRef.current = true;
     } catch (err) {
-      console.error('Error loading enhanced interviews:', err);
+      const error = err instanceof Error ? err : new Error('Error loading enhanced interviews');
+      captureException(error, {
+        extra: { projectId, context: 'useEnhancedInterviews load' },
+      });
       setError('Failed to load enhanced interviews');
     } finally {
       setLoading(false);
@@ -159,7 +163,10 @@ export function useEnhancedInterviews(projectId: string | undefined) {
         lastUpdated: newInterview.updated_at || now,
       };
     } catch (err) {
-      console.error('Error adding interview:', err);
+      const error = err instanceof Error ? err : new Error('Error adding interview');
+      captureException(error, {
+        extra: { projectId, context: 'useEnhancedInterviews add' },
+      });
       setError('Failed to add interview');
       return null;
     }
@@ -226,7 +233,10 @@ export function useEnhancedInterviews(projectId: string | undefined) {
 
       return true;
     } catch (err) {
-      console.error('Error updating interview:', err);
+      const error = err instanceof Error ? err : new Error('Error updating interview');
+      captureException(error, {
+        extra: { projectId, interviewId: id, context: 'useEnhancedInterviews update' },
+      });
       setError('Failed to update interview');
       return false;
     }
@@ -256,7 +266,10 @@ export function useEnhancedInterviews(projectId: string | undefined) {
 
       return true;
     } catch (err) {
-      console.error('Error deleting interview:', err);
+      const error = err instanceof Error ? err : new Error('Error deleting interview');
+      captureException(error, {
+        extra: { projectId, interviewId: id, context: 'useEnhancedInterviews delete' },
+      });
       setError('Failed to delete interview');
       return false;
     }

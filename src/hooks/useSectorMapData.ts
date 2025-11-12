@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useSectorMap } from '../contexts/SectorMapContext';
 import type { Competitor, DecisionMaker, FirstTarget, CustomerType } from '../types/sectorMap';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to sync sector map data with Supabase
@@ -99,7 +100,10 @@ export function useSectorMapData(projectId: string | undefined) {
 
         initialLoadRef.current = true;
       } catch (err) {
-        console.error('Error loading sector map data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading sector map data');
+        captureException(error, {
+          extra: { projectId, context: 'useSectorMapData load' },
+        });
         setError('Failed to load sector map data');
       } finally {
         setLoading(false);

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useVisualSectorMap } from '../contexts/VisualSectorMapContext';
 import type { VisualSectorMapData } from '../types/visualSectorMap';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to sync visual sector map data with Supabase
@@ -58,7 +59,10 @@ export function useVisualSectorMapData(projectId: string | undefined) {
 
         initialLoadRef.current = true;
       } catch (err) {
-        console.error('Error loading visual sector map data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading visual sector map data');
+        captureException(error, {
+          extra: { projectId, context: 'useVisualSectorMapData load' },
+        });
         setError('Failed to load visual sector map data');
       } finally {
         setLoading(false);
@@ -92,7 +96,10 @@ export function useVisualSectorMapData(projectId: string | undefined) {
             onConflict: 'project_id',
           });
       } catch (err) {
-        console.error('Error saving visual sector map data:', err);
+        const error = err instanceof Error ? err : new Error('Error saving visual sector map data');
+        captureException(error, {
+          extra: { projectId, context: 'useVisualSectorMapData save' },
+        });
       } finally {
         isSavingRef.current = false;
       }
