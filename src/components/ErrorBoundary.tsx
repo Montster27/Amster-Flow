@@ -1,4 +1,5 @@
 import React, { Component, ReactNode } from 'react';
+import { captureException } from '../lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -21,7 +22,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error Boundary caught an error:', error, errorInfo);
+    // Send error to Sentry with React error info
+    captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+        errorBoundary: true,
+      },
+    });
   }
 
   render() {
@@ -55,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   Try Again
                 </button>
               </div>
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {import.meta.env.DEV && this.state.error && (
                 <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-left">
                   <p className="text-sm font-mono text-red-800 break-all">
                     {this.state.error.toString()}

@@ -14,7 +14,11 @@ import { ProjectPage } from './pages/ProjectPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminUserDetail } from './pages/AdminUserDetail'
 import { AdminProjectDetail } from './pages/AdminProjectDetail'
+import { initSentry } from './lib/sentry'
 import './index.css'
+
+// Initialize Sentry error tracking
+initSentry();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

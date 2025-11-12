@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { setUser as setSentryUser, captureException } from '../lib/sentry';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +36,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Set user in Sentry for error tracking context
+      setSentryUser(
+        session?.user ? { id: session.user.id, email: session.user.email } : null
+      );
       setLoading(false);
     });
 
@@ -44,6 +49,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Update Sentry user context on auth state changes
+      setSentryUser(
+        session?.user ? { id: session.user.id, email: session.user.email } : null
+      );
       setLoading(false);
     });
 
@@ -72,7 +81,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Log profile creation errors but don't fail signup
       // (profile may already exist from previous signup attempt or trigger)
       if (profileError && profileError.code !== '23505') {
-        console.error('Error creating profile:', profileError);
+        captureException(new Error('Error creating profile'), {
+          extra: { profileError, userId: data.user.id, email: data.user.email },
+        });
       }
     }
 
