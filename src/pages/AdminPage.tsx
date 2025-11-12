@@ -54,26 +54,26 @@ export function AdminPage() {
         setLoading(true);
         setError(null);
 
-        // Get all profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
-          .order('created_at', { ascending: false });
+        // Fetch all data in parallel for better performance
+        const [
+          { data: profiles, error: profilesError },
+          { data: memberships, error: membershipsError },
+          { data: projectCounts, error: projectsError }
+        ] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('organization_members')
+            .select('user_id'),
+          supabase
+            .from('projects')
+            .select('created_by')
+        ]);
 
         if (profilesError) throw profilesError;
-
-        // Get organization membership counts
-        const { data: memberships, error: membershipsError } = await supabase
-          .from('organization_members')
-          .select('user_id');
-
         if (membershipsError) throw membershipsError;
-
-        // Get project creation counts
-        const { data: projectCounts, error: projectsError } = await supabase
-          .from('projects')
-          .select('created_by');
-
         if (projectsError) throw projectsError;
 
         // Combine data
@@ -109,40 +109,36 @@ export function AdminPage() {
         setLoading(true);
         setError(null);
 
-        // Get all projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // Fetch all data in parallel for better performance
+        const [
+          { data: projectsData, error: projectsError },
+          { data: orgsData, error: orgsError },
+          { data: creatorsData, error: creatorsError },
+          { data: membersData, error: membersError },
+          { data: completionData, error: completionError }
+        ] = await Promise.all([
+          supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('organizations')
+            .select('*'),
+          supabase
+            .from('profiles')
+            .select('id, email, full_name'),
+          supabase
+            .from('organization_members')
+            .select('organization_id'),
+          supabase
+            .from('project_module_completion')
+            .select('project_id, completed')
+        ]);
 
         if (projectsError) throw projectsError;
-
-        // Get all organizations
-        const { data: orgsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('*');
-
         if (orgsError) throw orgsError;
-
-        // Get all creators
-        const { data: creatorsData, error: creatorsError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name');
-
         if (creatorsError) throw creatorsError;
-
-        // Get member counts
-        const { data: membersData, error: membersError } = await supabase
-          .from('organization_members')
-          .select('organization_id');
-
         if (membersError) throw membersError;
-
-        // Get module completion data
-        const { data: completionData, error: completionError } = await supabase
-          .from('project_module_completion')
-          .select('project_id, completed');
-
         if (completionError) throw completionError;
 
         // Combine data
