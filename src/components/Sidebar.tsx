@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGuide } from '../contexts/GuideContext';
+import { useDiscovery } from '../contexts/DiscoveryContext';
 import { getModuleName } from '../utils/helpers';
 
 interface SidebarProps {
@@ -10,7 +11,11 @@ interface SidebarProps {
 
 export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps) => {
   const { currentModule, progress } = useGuide();
+  const { interviews } = useDiscovery();
   const [showAbout, setShowAbout] = useState(false);
+
+  // Check if pivot module should be enabled (requires 5+ interviews)
+  const hasMinimumInterviews = interviews.length >= 5;
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
@@ -69,11 +74,19 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
       {/* Pivot or Proceed Button */}
       <div className="pt-4 border-t border-gray-200 mt-4">
         <button
-          disabled
-          className="w-full px-4 py-3 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-          aria-label="Pivot or Proceed (Coming Soon)"
+          disabled={!hasMinimumInterviews}
+          onClick={() => hasMinimumInterviews && onModuleClick('pivot')}
+          className={`w-full px-4 py-3 rounded-lg flex flex-col items-center gap-1 font-medium transition-all ${
+            hasMinimumInterviews
+              ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+          aria-label={hasMinimumInterviews ? 'Pivot or Proceed - Ready' : `Pivot or Proceed - ${interviews.length}/5 interviews required`}
         >
-          Pivot or Proceed?
+          <span>Pivot or Proceed?</span>
+          {!hasMinimumInterviews && (
+            <span className="text-xs">({interviews.length}/5 interviews)</span>
+          )}
         </button>
       </div>
 
