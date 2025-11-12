@@ -106,61 +106,9 @@ export function usePivotData(projectId?: string) {
 
           setCurrentDecision(pivotDecision);
         } else {
-          // No existing decision, create a new one
-          const newDecision: Partial<PivotDecision> = {
-            projectId: projectId,
-            mode: 'easy',
-            decision: null,
-            preMortemInsights: [],
-            contradictoryEvidence: [],
-            reframingResponses: {
-              inheritanceQuestion: '',
-              contradictionQuestion: '',
-              temporalQuestion: '',
-            },
-            decisionRationale: '',
-            nextActions: [],
-            lessonsLearned: [],
-            biasesIdentified: [],
-            confidenceLevel: 50,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            timeSpentMinutes: 0,
-            externalAdvisorsConsulted: [],
-            painPoints: [],
-            customerQuotes: [],
-          };
-
-          // Insert new decision into database
-          const { data: insertedData, error: insertError } = await supabase
-            .from('project_pivot_decisions')
-            .insert({
-              project_id: projectId,
-              mode: newDecision.mode!,
-              decision: newDecision.decision,
-              pre_mortem_insights: newDecision.preMortemInsights!,
-              contradictory_evidence: newDecision.contradictoryEvidence as any,
-              reframing_responses: newDecision.reframingResponses as any,
-              decision_rationale: newDecision.decisionRationale!,
-              next_actions: newDecision.nextActions!,
-              lessons_learned: newDecision.lessonsLearned!,
-              biases_identified: newDecision.biasesIdentified!,
-              confidence_level: newDecision.confidenceLevel!,
-              time_spent_minutes: newDecision.timeSpentMinutes!,
-              external_advisors_consulted: newDecision.externalAdvisorsConsulted!,
-            } as any)
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
-
-          if (insertedData) {
-            const pivotDecision: PivotDecision = {
-              ...newDecision as PivotDecision,
-              id: insertedData.id,
-            };
-            setCurrentDecision(pivotDecision);
-          }
+          // No existing decision - set to null so user can choose mode
+          // Don't create database record yet - wait for mode selection
+          setCurrentDecision(null);
         }
 
         initialLoadRef.current = true;
