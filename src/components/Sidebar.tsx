@@ -1,21 +1,26 @@
 import { useState } from 'react';
 import { useGuide } from '../contexts/GuideContext';
 import { useDiscovery } from '../contexts/DiscoveryContext';
+import { useEnhancedInterviews } from '../hooks/useEnhancedInterviews';
 import { getModuleName } from '../utils/helpers';
 
 interface SidebarProps {
   modules: string[];
   onModuleClick: (module: string) => void;
   onViewSummary?: () => void;
+  projectId?: string;
 }
 
-export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps) => {
+export const Sidebar = ({ modules, onModuleClick, onViewSummary, projectId }: SidebarProps) => {
   const { currentModule, progress } = useGuide();
   const { interviews } = useDiscovery();
+  const { interviews: enhancedInterviews } = useEnhancedInterviews(projectId);
   const [showAbout, setShowAbout] = useState(false);
 
   // Check if pivot module should be enabled (requires 3+ interviews)
-  const hasMinimumInterviews = interviews.length >= 3;
+  // Count BOTH old basic interviews AND new enhanced interviews
+  const totalInterviews = interviews.length + enhancedInterviews.length;
+  const hasMinimumInterviews = totalInterviews >= 3;
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
@@ -81,11 +86,11 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
               ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
-          aria-label={hasMinimumInterviews ? 'Pivot or Proceed - Ready' : `Pivot or Proceed - ${interviews.length}/3 interviews required`}
+          aria-label={hasMinimumInterviews ? 'Pivot or Proceed - Ready' : `Pivot or Proceed - ${totalInterviews}/3 interviews required`}
         >
           <span>Pivot or Proceed?</span>
           {!hasMinimumInterviews && (
-            <span className="text-xs">({interviews.length}/3 interviews)</span>
+            <span className="text-xs">({totalInterviews}/3 interviews)</span>
           )}
         </button>
       </div>

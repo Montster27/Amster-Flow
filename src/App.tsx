@@ -187,7 +187,7 @@ function App({ projectId }: AppProps = {}) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} />
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} projectId={projectId} />
 
       <main className="flex-1 overflow-y-auto">
         {showSummary ? (
