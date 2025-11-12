@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
+import { captureException } from '../lib/sentry';
+
 import { useParams, useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
+
 import { supabase } from '../lib/supabase';
+
 import App from '../App';
+
 import type { Database } from '../types/database';
+
 
 type Project = Database['public']['Tables']['projects']['Row'];
 
@@ -31,7 +38,7 @@ export function ProjectPage() {
 
         setProject(data);
       } catch (err) {
-        console.error('Error loading project:', err);
+        const error = err instanceof Error ? err : new Error('Error loading project'); captureException(error, { extra: { projectId, context: 'ProjectPage load' } });
         setError('Project not found or you don\'t have access');
       } finally {
         setLoading(false);
