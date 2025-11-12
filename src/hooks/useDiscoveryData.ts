@@ -135,13 +135,7 @@ export function useDiscoveryData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
 
-        // Delete all existing assumptions for this project
-        await supabase
-          .from('project_assumptions')
-          .delete()
-          .eq('project_id', projectId);
-
-        // Insert all current assumptions
+        // Upsert all current assumptions (more efficient than delete-and-insert)
         if (assumptions.length > 0) {
           const rows = assumptions.map(assumption => ({
             id: assumption.id,
@@ -158,7 +152,7 @@ export function useDiscoveryData(projectId: string | undefined) {
 
           await supabase
             .from('project_assumptions')
-            .insert(rows);
+            .upsert(rows, { onConflict: 'id' });
         }
       } finally {
         isSavingRef.current = false;
@@ -185,13 +179,7 @@ export function useDiscoveryData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
 
-        // Delete all existing iterations for this project
-        await supabase
-          .from('project_iterations')
-          .delete()
-          .eq('project_id', projectId);
-
-        // Insert all current iterations
+        // Upsert all current iterations (more efficient than delete-and-insert)
         if (iterations.length > 0) {
           const rows = iterations.map(iteration => ({
             id: iteration.id,
@@ -209,7 +197,7 @@ export function useDiscoveryData(projectId: string | undefined) {
 
           await supabase
             .from('project_iterations')
-            .insert(rows);
+            .upsert(rows, { onConflict: 'id' });
         }
       } finally {
         isSavingRef.current = false;
