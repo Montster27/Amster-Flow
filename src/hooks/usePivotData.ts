@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import type { PivotDecision } from '../types/pivot';
 import { PivotContext } from '../contexts/PivotContext';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to sync Pivot decision data with Supabase database
@@ -113,7 +114,10 @@ export function usePivotData(projectId?: string) {
 
         initialLoadRef.current = true;
       } catch (err) {
-        console.error('Error loading pivot data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading pivot data');
+        captureException(error, {
+          extra: { projectId, context: 'usePivotData load' },
+        });
         setError('Failed to load pivot decision data');
       } finally {
         setLoading(false);
@@ -184,11 +188,25 @@ export function usePivotData(projectId?: string) {
           .eq('id', currentDecision.id);
 
         if (updateError) {
-          console.error('Error auto-saving pivot data:', updateError);
+          captureException(new Error('Error auto-saving pivot data'), {
+            extra: {
+              updateError,
+              pivotDecisionId: currentDecision.id,
+              projectId,
+              context: 'usePivotData auto-save',
+            },
+          });
           setError('Failed to save pivot decision data');
         }
       } catch (err) {
-        console.error('Error auto-saving pivot data:', err);
+        const error = err instanceof Error ? err : new Error('Error auto-saving pivot data');
+        captureException(error, {
+          extra: {
+            pivotDecisionId: currentDecision.id,
+            projectId,
+            context: 'usePivotData auto-save',
+          },
+        });
         setError('Failed to save pivot decision data');
       }
     }, 1000); // 1-second debounce

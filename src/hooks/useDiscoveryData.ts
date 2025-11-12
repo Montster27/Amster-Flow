@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useDiscovery } from '../contexts/DiscoveryContext';
 import type { Assumption, Interview, Iteration, AssumptionType, AssumptionStatus, IntervieweeType, InterviewFormat } from '../types/discovery';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to sync discovery data (assumptions, interviews, iterations) with Supabase
@@ -111,7 +112,10 @@ export function useDiscoveryData(projectId: string | undefined) {
         importData({ assumptions, interviews, iterations });
         initialLoadRef.current = true;
       } catch (err) {
-        console.error('Error loading discovery data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading discovery data');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscoveryData load' },
+        });
         setError('Failed to load discovery data');
       } finally {
         setLoading(false);
