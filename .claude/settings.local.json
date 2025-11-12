@@ -49,7 +49,8 @@
       "Bash(~/.local/bin/supabase db dump:*)",
       "Bash(git fetch:*)",
       "Bash(git cherry-pick:*)",
-      "Bash(~/.local/bin/supabase migration:*)"
+      "Bash(~/.local/bin/supabase migration:*)",
+      "Bash(npm run test:run:*)"
     ],
     "deny": [],
     "ask": []
