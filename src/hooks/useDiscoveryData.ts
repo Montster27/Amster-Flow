@@ -40,9 +40,9 @@ export function useDiscoveryData(projectId: string | undefined) {
 
         if (assumptionsError) throw assumptionsError;
 
-        // Load interviews
+        // Load interviews from enhanced table
         const { data: interviewsData, error: interviewsError } = await supabase
-          .from('project_interviews')
+          .from('project_interviews_enhanced')
           .select('*')
           .eq('project_id', projectId);
 
@@ -68,21 +68,32 @@ export function useDiscoveryData(projectId: string | undefined) {
           evidence: row.evidence || [],
         }));
 
-        const interviews: Interview[] = (interviewsData || []).map(row => ({
-          id: row.id,
-          date: row.date,
-          customerSegment: row.customer_segment,
-          interviewee: row.interviewee || undefined,
-          intervieweeType: row.interviewee_type ? row.interviewee_type as IntervieweeType : undefined,
-          format: (row.format || 'in-person') as InterviewFormat,
-          duration: row.duration || undefined,
-          notes: row.notes || '',
-          assumptionsAddressed: row.assumptions_addressed || [],
-          keyInsights: row.key_insights || [],
-          surprises: row.surprises || undefined,
-          nextAction: row.next_action || undefined,
-          followUpNeeded: row.follow_up_needed || false,
-        }));
+        const interviews: Interview[] = (interviewsData || []).map(row => {
+          // Map enhanced interview fields to basic Interview type
+          const noteParts = [
+            row.context || '',
+            row.main_pain_points ? `Main Pain Points: ${row.main_pain_points}` : '',
+            row.current_alternatives ? `Current Alternatives: ${row.current_alternatives}` : '',
+            row.student_reflection || '',
+          ].filter(Boolean);
+
+          return {
+            id: row.id,
+            date: row.interview_date || new Date().toISOString(),
+            customerSegment: row.segment_name || 'Unknown',
+            interviewee: undefined, // Enhanced table uses interviewee_type instead
+            intervieweeType: row.interviewee_type ? row.interviewee_type as IntervieweeType : undefined,
+            format: 'in-person' as InterviewFormat, // Enhanced table doesn't have format field
+            duration: undefined, // Enhanced table doesn't have duration field
+            notes: noteParts.join('\n\n'),
+            assumptionsAddressed: [], // Assumption tags are in separate table
+            keyInsights: row.memorable_quotes || [],
+            surprises: row.surprising_feedback || undefined,
+            nextAction: undefined, // Enhanced table doesn't have next_action field
+            followUpNeeded: false, // Enhanced table doesn't have follow_up_needed field
+            status: row.status as 'draft' | 'completed' | undefined,
+          };
+        });
 
         const iterations: Iteration[] = (iterationsData || []).map(row => ({
           id: row.id,
