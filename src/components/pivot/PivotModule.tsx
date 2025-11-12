@@ -442,16 +442,10 @@ export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
       {currentStep !== 'complete' && (
         <div className="bg-white border-b border-gray-200 py-4 px-8 sticky top-0 z-10 shadow-sm">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <h2 className="text-sm font-semibold text-gray-700">
                 {mode === 'easy' ? '⚡ Easy Mode' : '🔬 Detailed Mode'}
               </h2>
-              <button
-                onClick={() => setMode(mode === 'easy' ? 'detailed' : 'easy')}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Switch to {mode === 'easy' ? 'Detailed' : 'Easy'} Mode
-              </button>
             </div>
             <div className="flex items-center gap-2">
               {['pre-mortem', 'progress', mode === 'easy' ? 'reflection' : 'evidence',
