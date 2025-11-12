@@ -40,3 +40,8 @@ next-env.d.ts
 # SSL certificates (mkcert)
 *.pem
 *.key
+
+# Backup files and directories
+*_backup/
+*.zip
+node_modules*/
