@@ -22,7 +22,7 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
       <div className="flex-1">
         <h2 className="text-xl font-bold text-gray-800 mb-6">Initial Idea Eval</h2>
         <nav className="space-y-2" aria-label="Module navigation">
-          {modules.map((module) => {
+          {modules.filter(module => module !== 'pivot').map((module) => {
             const isActive = currentModule === module;
             const isCompleted = progress[module]?.completed || false;
 
