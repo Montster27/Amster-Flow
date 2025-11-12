@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
+import { captureException } from '../lib/sentry';
+
 import { useNavigate, useParams } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
+
 import { useAdmin } from '../hooks/useAdmin';
+
 import { supabase } from '../lib/supabase';
+
 import type { Database } from '../types/database';
+
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -97,7 +104,7 @@ export function AdminUserDetail() {
           setProjects(projectsWithOrg);
         }
       } catch (err) {
-        console.error('Error loading user data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading user data'); captureException(error, { extra: { userId, context: 'AdminUserDetail load' } });
         setError('Failed to load user data');
       } finally {
         setLoading(false);

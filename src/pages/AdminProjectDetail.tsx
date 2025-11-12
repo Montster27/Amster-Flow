@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
+import { captureException } from '../lib/sentry';
+
 import { useNavigate, useParams } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
+
 import { useAdmin } from '../hooks/useAdmin';
+
 import { supabase } from '../lib/supabase';
+
 import type { Database } from '../types/database';
+
 import type { QuestionsData } from '../App';
+
 
 type Project = Database['public']['Tables']['projects']['Row'];
 type Organization = Database['public']['Tables']['organizations']['Row'];
@@ -58,7 +66,7 @@ export function AdminProjectDetail() {
         const data = await res.json();
         setQuestionsData(data);
       } catch (err) {
-        console.error('Error loading questions:', err);
+        const error = err instanceof Error ? err : new Error('Error loading questions'); captureException(error, { extra: { context: 'AdminProjectDetail questions load' } });
       }
     };
     loadQuestions();
@@ -187,7 +195,7 @@ export function AdminProjectDetail() {
         setFirstTarget(firstTargetData);
 
       } catch (err) {
-        console.error('Error loading project data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading project data'); captureException(error, { extra: { projectId, context: 'AdminProjectDetail load' } });
         setError('Failed to load project data');
       } finally {
         setLoading(false);

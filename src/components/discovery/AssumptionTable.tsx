@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
+import { captureException } from '../../lib/sentry';
+
 import { useDiscovery } from '../../contexts/DiscoveryContext';
+
 import { AssumptionType, ConfidenceLevel, AssumptionStatus } from '../../types/discovery';
+
 
 interface AssumptionForm {
   type: AssumptionType;
@@ -30,7 +34,7 @@ export const AssumptionTable = () => {
     fetch('/assumptions.json')
       .then((res) => res.json())
       .then((data) => setTemplates(data.assumptionTemplates))
-      .catch((err) => console.error('Failed to load templates:', err));
+      .catch((err) => { const error = err instanceof Error ? err : new Error('Failed to load templates'); captureException(error, { extra: { context: 'AssumptionTable load' } }); });
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

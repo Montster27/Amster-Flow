@@ -1,17 +1,32 @@
 import { usePivot } from '../../contexts/PivotContext';
+import { captureException } from '../../lib/sentry';
+
 import { usePivotData } from '../../hooks/usePivotData';
+
 import type { PivotDecision } from '../../types/pivot';
+
 import { PreMortemExercise } from './PreMortemExercise';
+
 import { ProgressSummary } from './ProgressSummary';
+
 import { ReflectionPrompts } from './ReflectionPrompts';
+
 import { ConfidenceAssessment } from './ConfidenceAssessment';
+
 import { DecisionSelection } from './DecisionSelection';
+
 import { EvidenceQualityPanel } from './EvidenceQualityPanel';
+
 import { MixedMethodsPanel } from './MixedMethodsPanel';
+
 import { HypothesisTracker } from './HypothesisTracker';
+
 import { PMFTrajectory } from './PMFTrajectory';
+
 import { PivotTypeRecommendations } from './PivotTypeRecommendations';
+
 import { DetailedDecisionSelection } from './DetailedDecisionSelection';
+
 
 interface PivotModuleProps {
   projectId: string;
@@ -100,7 +115,7 @@ export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
       .single();
 
     if (insertError) {
-      console.error('Error creating decision:', insertError);
+      captureException(new Error('Error creating decision'), { extra: { insertError, projectId, mode, context: 'PivotModule create decision' } });
       return;
     }
 

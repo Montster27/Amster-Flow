@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
+
 import { useAdmin } from '../hooks/useAdmin';
+
 import { supabase } from '../lib/supabase';
+import { captureException } from '../lib/sentry';
 import type { Database } from '../types/database';
+
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type Project = Database['public']['Tables']['projects']['Row'];
@@ -84,7 +90,7 @@ export function AdminPage() {
 
         setUsers(usersWithStats);
       } catch (err) {
-        console.error('Error loading users:', err);
+        const error = err instanceof Error ? err : new Error('Error loading users'); captureException(error, { extra: { context: 'AdminPage users load' } });
         setError('Failed to load users');
       } finally {
         setLoading(false);
@@ -163,7 +169,7 @@ export function AdminPage() {
 
         setProjects(projectsWithDetails);
       } catch (err) {
-        console.error('Error loading projects:', err);
+        const error = err instanceof Error ? err : new Error('Error loading projects'); captureException(error, { extra: { context: 'AdminPage projects load' } });
         setError('Failed to load projects');
       } finally {
         setLoading(false);
@@ -222,7 +228,7 @@ export function AdminPage() {
       setUsers(users.filter(u => u.id !== deleteConfirm.userId));
       setDeleteConfirm(null);
     } catch (err) {
-      console.error('Error deleting user:', err);
+      const error = err instanceof Error ? err : new Error('Error deleting user'); captureException(error, { extra: { userId: deleteConfirm?.userId, context: 'AdminPage delete user' } });
       setError(err instanceof Error ? err.message : 'Failed to delete user');
     } finally {
       setDeleting(false);

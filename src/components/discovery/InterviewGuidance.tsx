@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { captureException } from '../../lib/sentry';
+
 
 interface GuidanceData {
   dos: string[];
@@ -32,7 +34,7 @@ export const InterviewGuidance = () => {
         setGuidance(data.ycGuidance);
         setQuestions(data.interviewQuestions);
       })
-      .catch((err) => console.error('Failed to load guidance:', err));
+      .catch((err) => { const error = err instanceof Error ? err : new Error('Failed to load guidance'); captureException(error, { extra: { context: 'InterviewGuidance load' } }); });
   }, []);
 
   if (!guidance || !questions) {
