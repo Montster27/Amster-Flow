@@ -134,21 +134,21 @@ export function usePivotData(projectId?: string) {
           // Insert new decision into database
           const { data: insertedData, error: insertError } = await supabase
             .from('project_pivot_decisions')
-            .insert([{
+            .insert({
               project_id: projectId,
-              mode: newDecision.mode,
+              mode: newDecision.mode!,
               decision: newDecision.decision,
-              pre_mortem_insights: newDecision.preMortemInsights,
+              pre_mortem_insights: newDecision.preMortemInsights!,
               contradictory_evidence: newDecision.contradictoryEvidence as any,
               reframing_responses: newDecision.reframingResponses as any,
-              decision_rationale: newDecision.decisionRationale,
-              next_actions: newDecision.nextActions,
-              lessons_learned: newDecision.lessonsLearned,
-              biases_identified: newDecision.biasesIdentified,
-              confidence_level: newDecision.confidenceLevel,
-              time_spent_minutes: newDecision.timeSpentMinutes,
-              external_advisors_consulted: newDecision.externalAdvisorsConsulted,
-            }])
+              decision_rationale: newDecision.decisionRationale!,
+              next_actions: newDecision.nextActions!,
+              lessons_learned: newDecision.lessonsLearned!,
+              biases_identified: newDecision.biasesIdentified!,
+              confidence_level: newDecision.confidenceLevel!,
+              time_spent_minutes: newDecision.timeSpentMinutes!,
+              external_advisors_consulted: newDecision.externalAdvisorsConsulted!,
+            } as any)
             .select()
             .single();
 
