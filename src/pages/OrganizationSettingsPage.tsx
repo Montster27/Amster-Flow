@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
+import { captureException } from '../lib/sentry';
 
 type Organization = Database['public']['Tables']['organizations']['Row'];
 type OrganizationMember = Database['public']['Tables']['organization_members']['Row'];
@@ -70,7 +71,7 @@ export function OrganizationSettingsPage() {
 
 
         if (memberError) {
-          console.error('Failed to load members:', memberError);
+          captureException(new Error('Failed to load members'), { extra: { memberError, orgId: org.id, context: 'OrganizationSettingsPage members load' } });
           throw memberError;
         }
 
@@ -88,7 +89,7 @@ export function OrganizationSettingsPage() {
 
 
         if (profileError) {
-          console.error('Failed to load profiles:', profileError);
+          captureException(new Error('Failed to load profiles'), { extra: { profileError, orgId: org.id, userIds, context: 'OrganizationSettingsPage profiles load' } });
         }
 
         // Combine members with profiles
@@ -99,7 +100,7 @@ export function OrganizationSettingsPage() {
 
         setMembers(membersWithProfiles as MemberWithProfile[]);
       } catch (err) {
-        console.error('Error loading organization:', err);
+        const error = err instanceof Error ? err : new Error('Error loading organization'); captureException(error, { extra: { userId: user.id, context: 'OrganizationSettingsPage load' } });
         setError(err instanceof Error ? err.message : 'Failed to load organization settings. Please try again.');
       } finally {
         setLoading(false);
@@ -125,7 +126,7 @@ export function OrganizationSettingsPage() {
       });
 
       if (inviteError) {
-        console.error('RPC error:', inviteError);
+        captureException(new Error('RPC error inviting member'), { extra: { inviteError, orgId: organization.id, email: inviteEmail, role: inviteRole, context: 'OrganizationSettingsPage invite' } });
         throw new Error('Failed to invite member. Please try again.');
       }
 
@@ -144,7 +145,7 @@ export function OrganizationSettingsPage() {
         .order('joined_at', { ascending: true });
 
       if (membersError) {
-        console.error('Error reloading members:', membersError);
+        captureException(new Error('Error reloading members'), { extra: { membersError, orgId: organization.id, context: 'OrganizationSettingsPage reload members' } });
         throw new Error('Member invited but failed to reload member list. Please refresh the page.');
       }
 
@@ -157,7 +158,7 @@ export function OrganizationSettingsPage() {
           .in('id', userIds);
 
         if (profilesError) {
-          console.error('Error loading profiles:', profilesError);
+          captureException(new Error('Error loading profiles'), { extra: { profilesError, orgId: organization.id, context: 'OrganizationSettingsPage reload profiles' } });
         }
 
         // Combine members with profiles
@@ -180,7 +181,7 @@ export function OrganizationSettingsPage() {
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      console.error('Error inviting member:', err);
+      const error = err instanceof Error ? err : new Error('Error inviting member'); captureException(error, { extra: { orgId: organization?.id, email: inviteEmail, context: 'OrganizationSettingsPage invite (catch)' } });
       setInviteError(err instanceof Error ? err.message : 'Failed to invite member. Please try again.');
     }
   };
@@ -197,7 +198,7 @@ export function OrganizationSettingsPage() {
         .eq('id', memberId);
 
       if (error) {
-        console.error('Error changing role:', error);
+        captureException(new Error('Error changing role'), { extra: { error, orgId: organization?.id, memberId, newRole, context: 'OrganizationSettingsPage change role' } });
         throw new Error('Failed to change role. Please try again.');
       }
 
@@ -209,7 +210,7 @@ export function OrganizationSettingsPage() {
       setSuccessMessage('Member role updated successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      console.error('Error changing role:', err);
+      const error = err instanceof Error ? err : new Error('Error changing role'); captureException(error, { extra: { orgId: organization?.id, memberId, newRole, context: 'OrganizationSettingsPage change role (catch)' } });
       setError(err instanceof Error ? err.message : 'Failed to change role. Please try again.');
       setTimeout(() => setError(null), 5000);
     }
@@ -231,7 +232,7 @@ export function OrganizationSettingsPage() {
         .eq('id', memberId);
 
       if (error) {
-        console.error('Error removing member:', error);
+        captureException(new Error('Error removing member'), { extra: { error, orgId: organization?.id, memberId, context: 'OrganizationSettingsPage remove member' } });
         throw new Error('Failed to remove member. Please try again.');
       }
 
@@ -239,7 +240,7 @@ export function OrganizationSettingsPage() {
       setSuccessMessage(`Successfully removed ${memberEmail} from your organization.`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      console.error('Error removing member:', err);
+      const error = err instanceof Error ? err : new Error('Error removing member'); captureException(error, { extra: { orgId: organization?.id, memberId, context: 'OrganizationSettingsPage remove member (catch)' } });
       setError(err instanceof Error ? err.message : 'Failed to remove member. Please try again.');
       setTimeout(() => setError(null), 5000);
     }
