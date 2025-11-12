@@ -48,7 +48,7 @@ export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
   const { loading, error } = usePivotData(projectId);
 
   // If no mode selected yet, show mode selection
-  const showModeSelection = !currentDecision?.mode || mode === 'easy';
+  const showModeSelection = !currentDecision?.mode;
 
   const handleModeSelect = (selectedMode: 'easy' | 'detailed') => {
     setMode(selectedMode);
