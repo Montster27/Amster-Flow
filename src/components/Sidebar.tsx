@@ -14,8 +14,8 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
   const { interviews } = useDiscovery();
   const [showAbout, setShowAbout] = useState(false);
 
-  // Check if pivot module should be enabled (requires 5+ interviews)
-  const hasMinimumInterviews = interviews.length >= 5;
+  // Check if pivot module should be enabled (requires 3+ interviews)
+  const hasMinimumInterviews = interviews.length >= 3;
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
@@ -81,11 +81,11 @@ export const Sidebar = ({ modules, onModuleClick, onViewSummary }: SidebarProps)
               ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
-          aria-label={hasMinimumInterviews ? 'Pivot or Proceed - Ready' : `Pivot or Proceed - ${interviews.length}/5 interviews required`}
+          aria-label={hasMinimumInterviews ? 'Pivot or Proceed - Ready' : `Pivot or Proceed - ${interviews.length}/3 interviews required`}
         >
           <span>Pivot or Proceed?</span>
           {!hasMinimumInterviews && (
-            <span className="text-xs">({interviews.length}/5 interviews)</span>
+            <span className="text-xs">({interviews.length}/3 interviews)</span>
           )}
         </button>
       </div>
