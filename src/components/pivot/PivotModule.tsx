@@ -1,5 +1,6 @@
 import { usePivot } from '../../contexts/PivotContext';
 import { usePivotData } from '../../hooks/usePivotData';
+import type { PivotDecision } from '../../types/pivot';
 import { PreMortemExercise } from './PreMortemExercise';
 import { ProgressSummary } from './ProgressSummary';
 import { ReflectionPrompts } from './ReflectionPrompts';
@@ -44,13 +45,73 @@ interface PivotModuleProps {
  * All data auto-saves to Supabase via usePivotData hook
  */
 export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
-  const { currentStep, setCurrentStep, mode, setMode, currentDecision, completeDecision } = usePivot();
+  const { currentStep, setCurrentStep, mode, setMode, currentDecision, setCurrentDecision, completeDecision } = usePivot();
   const { loading, error } = usePivotData(projectId);
 
   // If no mode selected yet, show mode selection
   const showModeSelection = !currentDecision?.mode;
 
-  const handleModeSelect = (selectedMode: 'easy' | 'detailed') => {
+  const handleModeSelect = async (selectedMode: 'easy' | 'detailed') => {
+    // Create initial decision record in database with selected mode
+    const newDecision: Partial<PivotDecision> = {
+      projectId: projectId,
+      mode: selectedMode,
+      decision: null,
+      preMortemInsights: [],
+      contradictoryEvidence: [],
+      reframingResponses: {
+        inheritanceQuestion: '',
+        contradictionQuestion: '',
+        temporalQuestion: '',
+      },
+      decisionRationale: '',
+      nextActions: [],
+      lessonsLearned: [],
+      biasesIdentified: [],
+      confidenceLevel: 50,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      timeSpentMinutes: 0,
+      externalAdvisorsConsulted: [],
+      painPoints: [],
+      customerQuotes: [],
+    };
+
+    // Insert into database
+    const { supabase } = await import('../../lib/supabase');
+    const { data: insertedData, error: insertError } = await supabase
+      .from('project_pivot_decisions')
+      .insert({
+        project_id: projectId,
+        mode: newDecision.mode!,
+        decision: newDecision.decision,
+        pre_mortem_insights: newDecision.preMortemInsights!,
+        contradictory_evidence: newDecision.contradictoryEvidence as any,
+        reframing_responses: newDecision.reframingResponses as any,
+        decision_rationale: newDecision.decisionRationale!,
+        next_actions: newDecision.nextActions!,
+        lessons_learned: newDecision.lessonsLearned!,
+        biases_identified: newDecision.biasesIdentified!,
+        confidence_level: newDecision.confidenceLevel!,
+        time_spent_minutes: newDecision.timeSpentMinutes!,
+        external_advisors_consulted: newDecision.externalAdvisorsConsulted!,
+      } as any)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating decision:', insertError);
+      return;
+    }
+
+    if (insertedData) {
+      const pivotDecision: PivotDecision = {
+        ...newDecision as PivotDecision,
+        id: insertedData.id,
+      };
+      setCurrentDecision(pivotDecision);
+    }
+
     setMode(selectedMode);
     setCurrentStep('pre-mortem');
   };
