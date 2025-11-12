@@ -28,7 +28,6 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
   const [assumptionTags, setAssumptionTags] = useState<AssumptionTag[]>(interview?.assumptionTags || []);
 
   const [studentReflection, setStudentReflection] = useState(interview?.studentReflection || '');
-  const [mentorFeedback, setMentorFeedback] = useState(interview?.mentorFeedback || '');
 
   const steps = [
     { number: 1, title: 'Metadata', icon: '📋' },
@@ -120,7 +119,6 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
       surprisingFeedback,
       assumptionTags,
       studentReflection,
-      mentorFeedback,
     };
     onSave(interviewData);
   };
@@ -145,7 +143,6 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
       surprisingFeedback,
       assumptionTags,
       studentReflection,
-      mentorFeedback,
     };
     onSave(interviewData);
   };
@@ -533,20 +530,6 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
               <p className="text-xs text-gray-500 mt-1">
                 Reflect on what you learned and how it impacts your understanding
               </p>
-            </div>
-
-            {/* Mentor Feedback */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mentor Feedback (Optional)
-              </label>
-              <textarea
-                value={mentorFeedback}
-                onChange={(e) => setMentorFeedback(e.target.value)}
-                placeholder="Space for mentor to provide feedback on this interview and your reflection"
-                rows={4}
-                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              />
             </div>
 
             {/* Summary */}
