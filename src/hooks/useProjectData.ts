@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useGuide } from '../contexts/GuideContext';
 import type { ModuleProgress } from '../contexts/GuideContext';
+import { captureException } from '../lib/sentry';
 
 /**
  * Hook to sync project data with Supabase
@@ -90,7 +91,10 @@ export function useProjectData(projectId: string | undefined) {
         importProgress(progressData);
         initialLoadRef.current = true;
       } catch (err) {
-        console.error('Error loading project data:', err);
+        const error = err instanceof Error ? err : new Error('Error loading project data');
+        captureException(error, {
+          extra: { projectId, context: 'useProjectData load' },
+        });
         setError('Failed to load project data');
       } finally {
         setLoading(false);

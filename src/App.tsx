@@ -8,6 +8,7 @@ import { useProjectData } from './hooks/useProjectData';
 import { useDiscoveryData } from './hooks/useDiscoveryData';
 import { useSectorMapData } from './hooks/useSectorMapData';
 import { usePivotData } from './hooks/usePivotData';
+import { captureException } from './lib/sentry';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
@@ -90,7 +91,10 @@ function App({ projectId }: AppProps = {}) {
 
         setQuestionsData(data);
       } catch (err) {
-        console.error('Failed to load questions:', err);
+        const error = err instanceof Error ? err : new Error('Failed to load questions');
+        captureException(error, {
+          extra: { context: 'App initialization' },
+        });
         setLoadingError(
           err instanceof Error ? err.message : 'Failed to load guide. Please try again later.'
         );
