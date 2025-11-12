@@ -154,13 +154,7 @@ export function useSectorMapData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
 
-        // Delete all existing competitors for this project
-        await supabase
-          .from('project_competitors')
-          .delete()
-          .eq('project_id', projectId);
-
-        // Insert all current competitors
+        // Upsert all current competitors (more efficient than delete-and-insert)
         if (competitors.length > 0) {
           const rows = competitors.map(competitor => ({
             id: competitor.id,
@@ -175,7 +169,7 @@ export function useSectorMapData(projectId: string | undefined) {
 
           await supabase
             .from('project_competitors')
-            .insert(rows);
+            .upsert(rows, { onConflict: 'id' });
         }
       } finally {
         isSavingRef.current = false;
@@ -196,13 +190,7 @@ export function useSectorMapData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
 
-        // Delete all existing decision makers for this project
-        await supabase
-          .from('project_decision_makers')
-          .delete()
-          .eq('project_id', projectId);
-
-        // Insert all current decision makers
+        // Upsert all current decision makers (more efficient than delete-and-insert)
         if (decisionMakers.length > 0) {
           const rows = decisionMakers.map(dm => ({
             id: dm.id,
@@ -216,7 +204,7 @@ export function useSectorMapData(projectId: string | undefined) {
 
           await supabase
             .from('project_decision_makers')
-            .insert(rows);
+            .upsert(rows, { onConflict: 'id' });
         }
       } finally {
         isSavingRef.current = false;
