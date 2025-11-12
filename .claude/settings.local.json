@@ -48,7 +48,8 @@
       "Bash(~/.local/bin/supabase migration repair:*)",
       "Bash(~/.local/bin/supabase db dump:*)",
       "Bash(git fetch:*)",
-      "Bash(git cherry-pick:*)"
+      "Bash(git cherry-pick:*)",
+      "Bash(~/.local/bin/supabase migration:*)"
     ],
     "deny": [],
     "ask": []

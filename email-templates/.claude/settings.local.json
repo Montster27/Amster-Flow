@@ -20,7 +20,11 @@
       "Bash(git rm:*)",
       "Bash(supabase gen types:*)",
       "Bash(src/types/database.ts)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(supabase migration:*)",
+      "Bash(supabase db query --sql \"SELECT id, name, organization_id FROM projects WHERE name ILIKE ''%pet%'' ORDER BY created_at DESC LIMIT 5;\")"
     ],
     "deny": [],
     "ask": []

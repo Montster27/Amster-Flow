@@ -120,142 +120,266 @@ BEGIN
 
   RAISE NOTICE '✅ Created Problem, Customer Segments, and Solution content';
 
+  -- Create assumptions
+  RAISE NOTICE '📝 Creating 9 assumptions...';
+
+  INSERT INTO project_assumptions (
+    project_id, type, description, status, confidence, evidence, created_by
+  ) VALUES
+    (project_uuid, 'problem',
+     'Pet owners panic within 3.7 seconds of realizing their pet is missing and will immediately check their phone',
+     'testing', 4,
+     ARRAY['Observed neighbor running down street in pajamas yelling "Mr. Whiskers!" while frantically refreshing Facebook'],
+     user_uuid),
+
+    (project_uuid, 'customer',
+     'People trust their neighbors more than professional pet recovery services, except for Craig who never returns borrowed tools',
+     'validated', 5,
+     ARRAY['Neighborhood watch meeting devolved into 45-minute discussion about Craig', 'Craig was not invited'],
+     user_uuid),
+
+    (project_uuid, 'problem',
+     'Pet owners will describe their pets with the accuracy of an eyewitness who saw Bigfoot for 0.3 seconds',
+     'validated', 5,
+     ARRAY['"She''s a medium-sized... or maybe large... brownish... possibly black... dog? Could be a cat."'],
+     user_uuid),
+
+    (project_uuid, 'problem',
+     'Cats are not actually lost, they are just ignoring their owners on purpose',
+     'invalidated', 2,
+     ARRAY['Survey of 50 "lost" cats found 47 were within 20 feet of home, judging their owners silently'],
+     user_uuid),
+
+    (project_uuid, 'solution',
+     'A mobile app with push notifications will be more effective than the current system of stapling blurry photocopies to telephone poles',
+     'validated', 5,
+     ARRAY['Telephone pole union has filed complaint', 'Local staple shortage resolved'],
+     user_uuid),
+
+    (project_uuid, 'solution',
+     'Real-time pet sighting map will not devolve into people reporting every squirrel as a "small furry creature"',
+     'invalidated', 1,
+     ARRAY['Beta test had 847 squirrel reports in first hour', 'One user reported their own reflection'],
+     user_uuid),
+
+    (project_uuid, 'solution',
+     'Users will pay $2.99/month for premium features like "Pet Psychic Connection" and "Quantum Pet Locator"',
+     'testing', 3,
+     ARRAY['3 users upgraded for the psychic feature unironically', '127 users think it actually works'],
+     user_uuid),
+
+    (project_uuid, 'customer',
+     'Dog owners form 73% of the market because cat owners have accepted their fate',
+     'validated', 4,
+     ARRAY['Cat owners survey: "My cat will come back when they feel like it, probably"'],
+     user_uuid),
+
+    (project_uuid, 'customer',
+     'Retirees are the most active users because they have binoculars, time, and a deep need to know neighborhood gossip',
+     'validated', 5,
+     ARRAY['Barbara (72) has reported 15 pet sightings this week', 'None were the actual lost pets', 'All reports included detailed backstory of homeowners'],
+     user_uuid);
+
+  RAISE NOTICE '✅ Created 9 assumptions';
+
+  -- Create enhanced interviews
+  RAISE NOTICE '💬 Creating 4 enhanced interviews...';
+
+  INSERT INTO project_interviews_enhanced (
+    project_id, interviewee_type, segment_name, interview_date, context, status,
+    main_pain_points, problem_importance, problem_importance_quote, current_alternatives,
+    memorable_quotes, surprising_feedback, student_reflection, created_by
+  ) VALUES
+    -- Interview 1: Jennifer - The Panicked Dog Owner
+    (project_uuid, 'customer', 'Panicked Pet Parents', NOW() - INTERVAL '2 days',
+     'Met Jennifer at dog park while her golden retriever was literally right behind her',
+     'completed',
+     'Can''t post on enough Facebook groups fast enough. Tried 47 groups. Kicked out of 12 for spam. One admin thought she was a bot. Currently banned from "Suburban Moms Who Wine."',
+     5,
+     '"I WOULD PAY ONE MILLION DOLLARS RIGHT NOW IF SOMEONE COULD FIND BAILEY! Wait, there he is. Never mind. BUT I WOULD HAVE PAID IT!"',
+     'Posting on Facebook, Instagram, NextDoor, Twitter, carrier pigeon network. Considered hiring skywriter. Actually did hire skywriter (it just said "DOG"). Called local TV station 3 times. They blocked her number.',
+     ARRAY[
+       'My other dog seemed relieved Bailey was gone. Is that... is that normal?',
+       'I described Bailey as golden but looking at photos now, he might be beige? Cream? Is there a difference?',
+       'The most helpful response was from a guy who said "dogs usually come back" which really put things in perspective'
+     ],
+     'When asked if she would use an app, she said yes WHILE ALREADY DOWNLOADING IT before I finished explaining what it does. Then tried to pay me personally to find Bailey (who was, again, right there).',
+     'The level of panic is real and immediate. Users in this state will click anything, download anything, pay anything. This is either our biggest opportunity or biggest ethical concern. Jennifer has now signed up for 3 different pet-finding services including one that''s definitely a scam. Market insight: panic = poor decision making = high conversion rate?',
+     user_uuid),
+
+    -- Interview 2: Robert - The Retired Neighborhood Watch Captain
+    (project_uuid, 'customer', 'The Observant Retirees', NOW() - INTERVAL '5 days',
+     'Interview with Robert (68) who called me over because I "looked suspicious walking down the street with a clipboard." I was literally conducting interviews.',
+     'completed',
+     'Cannot effectively communicate the 47 different pets he''s observed this week to the 23 different owners who don''t know their pets are "missing." Has detailed spreadsheet. Color-coded. Cross-referenced with weather patterns. May have too much time.',
+     5,
+     '"I saw a tabby cat, approximately 12 pounds, heading north-northwest at 14:37 hours. Appeared to be pursuing a bird. Owner didn''t even know cat was gone. People these days have no SITUATIONAL AWARENESS."',
+     'Personal patrol 3x daily with binoculars, phone tree of other retirees, detailed log book, neighborhood WhatsApp group (that he moderates with an iron fist), walking stick "for pointing at suspicious pets."',
+     ARRAY[
+       'I''ve been doing this for free. Are you telling me I could have been PAID?',
+       'My wife says I need a hobby. I told her this IS my hobby. She meant a "normal" hobby.',
+       'Last week I reunited 4 pets with owners who didn''t know they were lost. They seemed... annoyed? Young people.',
+       'I have 847 photos of neighborhood pets on my phone. My grandchildren''s photos? Maybe 12.'
+     ],
+     'When showed the app concept, asked if he could be designated "Official Neighborhood Scout" with a badge. Then asked if badge could be physical. When told no, asked if his verification status could at least say "Supreme Commander of Pet Surveillance." Compromise: we''ll give him "Top Contributor" status. He accepted but seemed disappointed.',
+     'We accidentally created a power user segment we didn''t expect. Retirees have: time, dedication, territorial instinct, and smartphones with excellent cameras. Robert has a BETTER phone than me specifically for "pet documentation." He upgraded for the camera. This is a weird but valuable user segment. Question: How do we gamify this without encouraging stalking?',
+     user_uuid),
+
+    -- Interview 3: Marcus - The Defeated Cat Owner
+    (project_uuid, 'customer', 'Cat Owners (Defeated)', NOW() - INTERVAL '1 day',
+     'Interviewed Marcus while his cat, Lord Fluffington, sat on the fence behind him, making direct eye contact with me the entire time. The cat KNEW.',
+     'completed',
+     'Cat has been "missing" for 3 days. Cat is currently visible from Marcus''s kitchen window. Marcus is aware. Cat is aware that Marcus is aware. This is apparently normal. The problem is not finding the cat. The problem is accepting that the cat simply does not care.',
+     2,
+     '"Look, I know WHERE Lord Fluffington is. He''s right there, judging me. But he won''t COME HOME. That''s the problem. Can your app... make cats less terrible? No? Then I don''t need it."',
+     'Leaving food outside, shaking treat bag, making pathetic "pspsps" sounds, crying softly, acceptance, denial, more acceptance. Sometimes just staring out window hoping for eye contact (which cat provides but as a power move).',
+     ARRAY[
+       'Cats are not lost. They''re just... elsewhere. On purpose.',
+       'My neighbor found my cat and returned him three times. Each time, Lord Fluffington looked personally offended.',
+       'I spent $80 on a GPS collar. He removed it in 4 minutes. The collar is lost now. Maybe I need to find THAT.',
+       'The vet told me "indoor cats live longer." Lord Fluffington disagrees with this assessment.'
+     ],
+     'Showed him the app. He laughed. Then asked if there''s a feature to report "my cat is being a jerk, location: that tree, probably judging you too." When I said no, he suggested we pivot the entire business model. His exact words: "You''re solving the wrong problem. The problem isn''t lost cats. It''s cats."',
+     'Hypothesis invalidated: Cat owners are not our primary market. They''ve achieved enlightenment through suffering. They don''t want to find their cat - they want their cat to WANT to be found. This is a spiritual journey, not a technical problem. Possible pivot: Pet therapy app? "Acceptance as a Service"? Maybe we just focus on dogs. Dogs actually like their owners.',
+     user_uuid),
+
+    -- Interview 4: Sarah - The Overly Enthusiastic Helper
+    (project_uuid, 'customer', 'The Helpers', NOW() - INTERVAL '3 days',
+     'Interview with Sarah who has helped find 8 pets this month, none of which were actually lost. One was a lawn ornament. She remains enthusiastic.',
+     'completed',
+     'Wants to help find lost pets but can''t tell the difference between lost pets and pets that are just... existing. Also can''t tell difference between real pets and remarkably realistic lawn decorations (one incident). Enthusiasm level: concerning.',
+     4,
+     '"Every pet I see COULD be lost! Better safe than sorry! That statue? COULD be a very still dog! That''s just how committed I am!"',
+     'Stops every pet owner on street, maintains spreadsheet of "suspicious pet activity," created neighborhood Facebook group called "IS THIS YOUR PET?" (all caps required), printed 500 flyers saying "DID YOU LOSE A PET? ANY PET? I CAN HELP!"',
+     ARRAY[
+       'I once spent 2 hours trying to catch a "lost" rabbit. It was wild. Like, actual wildlife. That lives here.',
+       'People seem less grateful than expected when I knock on their door at 6 AM to report their dog is in their yard.',
+       'My therapist says I need "boundaries." I told her lost pets don''t respect boundaries so why should I?',
+       'I''ve been blocked by 3 neighbors on NextDoor for "excessive pet vigilance." That''s not even a real rule!'
+     ],
+     'When shown the app, immediately asked if there''s a leaderboard. When told not yet, suggested rewards system: Bronze Helper (5 pets), Silver Savior (10 pets), Gold Guardian (25 pets), Platinum... she had a whole hierarchy planned. Also asked if she could report pets BEFORE they''re lost, "as a preventative measure." Had to explain that''s called stalking.',
+     'Discovered a user type we didn''t anticipate: The Overly Helpful. They mean well but might actually make things worse. Sarah has caused 3 neighborhood feuds by "reuniting" pets with wrong owners. On the plus side, she''ll definitely use the app. On the minus side, she''ll use it TOO much. Need to consider: rate limiting? Cooldown period between reports? "Chill out" notification?',
+     user_uuid);
+
+  RAISE NOTICE '✅ Created 4 enhanced interviews';
+
   -- ============================================================================
-  -- PART 2: SECTOR MAP DATA
+  -- PART 3: SECTOR MAP DATA
   -- ============================================================================
 
   RAISE NOTICE '🗺️  Creating Sector Map data...';
 
   -- First Target / Customer Type
-  INSERT INTO project_first_target (project_id, customer_type, description, company_size, location, updated_by)
+  INSERT INTO project_first_target (project_id, customer_type, description, company_size, location)
   VALUES (
     project_uuid,
     'consumer',
     'Jennifer, 42, suburban dog owner with emotional attachment issues. Works from home, makes organic dog treats, refers to herself as "dog mom." Has 12,000 Instagram followers at @BaileysAdventures. Will download app while panicking. Apple Pay ready. Target income: $75k+. Must live in neighborhood with other anxious pet owners and at least one Robert (retiree with binoculars).',
     'N/A - Consumer Product',
-    'Suburban neighborhoods with HOAs, specifically areas where people know neighbors by dog names ("Oh, that''s Cooper''s mom!"). Initial launch: affluent suburbs of major metro areas where people have disposable income and ring doorbells with cameras.',
-    user_uuid
+    'Suburban neighborhoods with HOAs, specifically areas where people know neighbors by dog names ("Oh, that''s Cooper''s mom!"). Initial launch: affluent suburbs of major metro areas where people have disposable income and ring doorbells with cameras.'
   )
   ON CONFLICT (project_id)
   DO UPDATE SET
     customer_type = EXCLUDED.customer_type,
     description = EXCLUDED.description,
     company_size = EXCLUDED.company_size,
-    location = EXCLUDED.location,
-    updated_by = EXCLUDED.updated_by;
+    location = EXCLUDED.location;
 
   -- Competitors
-  INSERT INTO project_competitors (project_id, name, description, suppliers, customers, created_by)
+  INSERT INTO project_competitors (project_id, name, description, suppliers, customers)
   VALUES
     -- Direct Competitors
     (project_uuid,
      'NextDoor App',
      'Hyperlocal social network where people argue about whether Ring camera footage shows "suspicious activity" or just "existing while different." Pet owners post lost pet alerts but they get buried under garage sale announcements and people complaining about fireworks. FREE but full of arguments.',
      ARRAY['Local moderators (unpaid)', 'Community managers', 'People with too much time'],
-     ARRAY['Everyone in your neighborhood', 'People who love drama', 'HOA presidents'],
-     user_uuid),
+     ARRAY['Everyone in your neighborhood', 'People who love drama', 'HOA presidents']),
 
     (project_uuid,
      'Facebook Groups ("Lost Pets of [City]")',
      'The current "solution." Requires joining 47 different groups. Posts get buried in 3 minutes. Every group has different rules. One admin is definitely on a power trip. Features include: blurry photos, people who comment "praying!" without helping, and someone who always suggests the pet was "probably stolen."',
      ARRAY['Overly zealous group admins', 'People who share every post', 'The one person who runs 12 groups'],
-     ARRAY['Panicked pet owners', 'People who love sharing', 'Drama enthusiasts'],
-     user_uuid),
+     ARRAY['Panicked pet owners', 'People who love sharing', 'Drama enthusiasts']),
 
     (project_uuid,
      'Traditional Flyers on Telephone Poles',
      'The OG solution. Requires: printer, staple gun, waterproof lamination (optional but recommended), telephone poles (abundant), ability to look desperate in public. Success rate: unclear. Definitely keeps telephone pole unions employed though.',
      ARRAY['FedEx/Kinkos ($47 for 100 color copies)', 'Staple manufacturers', 'Telephone pole union'],
-     ARRAY['People without smartphones?', 'Old school pet owners', 'The desperate'],
-     user_uuid),
+     ARRAY['People without smartphones?', 'Old school pet owners', 'The desperate']),
 
     (project_uuid,
      'Local Animal Shelters',
      'Not really competitors - more like reluctant partners. They''re overwhelmed, understaffed, and have 847 photos of random pets people "found" (stole from yards). They try their best but they''re basically playing memory match with hundreds of pets.',
      ARRAY['Volunteers', 'Donations', 'The government (barely)', 'That one wealthy lady who loves animals'],
-     ARRAY['People who lost pets', 'People who found pets', 'People adopting pets', 'Robert (visits daily)'],
-     user_uuid),
+     ARRAY['People who lost pets', 'People who found pets', 'People adopting pets', 'Robert (visits daily)']),
 
     -- Indirect Competitors / Substitutes
     (project_uuid,
      'Pet Psychics',
      'YES, THIS IS REAL. People pay $50-200 for someone to "communicate telepathically" with their lost pet. Success rate: 0% but customer satisfaction: surprisingly high? They tell you what you want to hear: "Your pet is safe and thinking of you." Competitor or potential premium feature? TBD.',
      ARRAY['The universe', 'Gullible pet owners', 'Etsy'],
-     ARRAY['Desperate people', 'Crystal collectors', 'People who also believe in horoscopes'],
-     user_uuid),
+     ARRAY['Desperate people', 'Crystal collectors', 'People who also believe in horoscopes']),
 
     (project_uuid,
      'Ring/Nest Camera Neighborhood Networks',
      'People check camera footage for pet sightings. Effective but requires: owning Ring camera, neighbors with Ring cameras, pet actually walking past cameras, ability to identify small furry blob in night vision footage. Spoiler: every raccoon looks like a lost dog at 2 AM.',
      ARRAY['Amazon', 'Google', 'Paranoid neighbors'],
-     ARRAY['Security-conscious homeowners', 'People who watch their neighbors', 'The surveillance state'],
-     user_uuid),
+     ARRAY['Security-conscious homeowners', 'People who watch their neighbors', 'The surveillance state']),
 
     (project_uuid,
      'Professional Pet Trackers',
      'Actual businesses that will search for your pet. Cost: $500-2000. Success rate: good! Problem: expensive and not available everywhere. They''re like bounty hunters but for pets. Cool but intimidating. "We have a 95% success rate and tactical gear."',
      ARRAY['Ex-military tracking dogs', 'GPS equipment', 'Determination'],
-     ARRAY['Wealthy pet owners', 'People with expensive pets', 'Celebrities'],
-     user_uuid),
+     ARRAY['Wealthy pet owners', 'People with expensive pets', 'Celebrities']),
 
     (project_uuid,
      'Just Waiting and Hoping',
      'The most common "strategy." Free! Zero effort! Success rate depends on whether your pet actually wants to come home. Works great for dogs (they get hungry). Terrible for cats (they''re at a neighbor''s house being fed salmon).',
      ARRAY['Hope', 'Prayer', 'Denial', 'Cat food left outside'],
-     ARRAY['Cat owners mostly', 'Optimists', 'People who can''t afford anything else'],
-     user_uuid)
-  ON CONFLICT (id) DO NOTHING;
+     ARRAY['Cat owners mostly', 'Optimists', 'People who can''t afford anything else']);
 
   -- Decision Makers (for Consumer product, these are influences on purchase decision)
-  INSERT INTO project_decision_makers (project_id, role, influence, description, created_by)
+  INSERT INTO project_decision_makers (project_id, role, influence, description)
   VALUES
     (project_uuid,
      'Pet Owner (Primary User)',
      'decision-maker',
-     'Jennifer: Makes download decision in 3.7 seconds of panic. Will pay for ANYTHING if it might help find Bailey. Has Apple Pay ready before we finish explaining features. Downloads app, subscribes to premium, leaves 5-star review, tells all 47 Facebook groups about us.',
-     user_uuid),
+     'Jennifer: Makes download decision in 3.7 seconds of panic. Will pay for ANYTHING if it might help find Bailey. Has Apple Pay ready before we finish explaining features. Downloads app, subscribes to premium, leaves 5-star review, tells all 47 Facebook groups about us.'),
 
     (project_uuid,
      'Spouse/Partner',
      'payer',
-     'The person who sees the $2.99/month charge on credit card statement. Usually says "What''s this Pet Psychic Connection charge?" Gets explained the situation. Agrees because they also love Bailey. Sometimes THEY lost the pet (forgot to close gate) so they can''t really object.',
-     user_uuid),
+     'The person who sees the $2.99/month charge on credit card statement. Usually says "What''s this Pet Psychic Connection charge?" Gets explained the situation. Agrees because they also love Bailey. Sometimes THEY lost the pet (forgot to close gate) so they can''t really object.'),
 
     (project_uuid,
      'Kids in Household',
      'influencer',
-     'Crying children asking "Where''s Mr. Whiskers?" are the ultimate conversion tool. No parent can resist a sobbing child. Kids don''t influence the purchase directly but their emotional devastation creates urgency. Also they''re surprisingly good at spotting pets in neighborhoods.',
-     user_uuid),
+     'Crying children asking "Where''s Mr. Whiskers?" are the ultimate conversion tool. No parent can resist a sobbing child. Kids don''t influence the purchase directly but their emotional devastation creates urgency. Also they''re surprisingly good at spotting pets in neighborhoods.'),
 
     (project_uuid,
      'Robert (Age 68, Neighborhood Watch)',
      'influencer',
-     'Doesn''t make purchase decisions but influences EVERYONE. Has binoculars, detailed spreadsheets, and opinions. If Robert says "You should use that new app," people listen. He''s basically a grassroots marketing channel. Wants to be Supreme Commander of Pet Surveillance.',
-     user_uuid),
+     'Doesn''t make purchase decisions but influences EVERYONE. Has binoculars, detailed spreadsheets, and opinions. If Robert says "You should use that new app," people listen. He''s basically a grassroots marketing channel. Wants to be Supreme Commander of Pet Surveillance.'),
 
     (project_uuid,
      'Veterinarian',
      'influencer',
-     'Trusted authority figure. If vet clinic has our poster/flyer, instant credibility. Vets see desperate pet owners daily and can recommend our app. Dr. Peterson is skeptical but admitted "it''s not the WORST idea I''ve heard today." High praise from Dr. Peterson.',
-     user_uuid),
+     'Trusted authority figure. If vet clinic has our poster/flyer, instant credibility. Vets see desperate pet owners daily and can recommend our app. Dr. Peterson is skeptical but admitted "it''s not the WORST idea I''ve heard today." High praise from Dr. Peterson.'),
 
     (project_uuid,
      'Local Pet Store Owner',
      'influencer',
-     'Community hub for pet owners. If they recommend us, people trust it. Also these stores have bulletin boards covered in lost pet flyers. They KNOW the pain. Potential partner: "Found your pet using PetFinder? Get 10% off at Barky''s Pet Supply!"',
-     user_uuid),
+     'Community hub for pet owners. If they recommend us, people trust it. Also these stores have bulletin boards covered in lost pet flyers. They KNOW the pain. Potential partner: "Found your pet using PetFinder? Get 10% off at Barky''s Pet Supply!"'),
 
     (project_uuid,
      'That One Friend Who''s "Good With Apps"',
      'influencer',
-     'Every friend group has the "tech person." When Jennifer frantically asks "What should I do?" this person says "There''s probably an app for that." If THEY can''t find a good pet-finding app, they''ll remember us when they finally do search. Word of mouth gold.',
-     user_uuid)
-  ON CONFLICT (id) DO NOTHING;
+     'Every friend group has the "tech person." When Jennifer frantically asks "What should I do?" this person says "There''s probably an app for that." If THEY can''t find a good pet-finding app, they''ll remember us when they finally do search. Word of mouth gold.');
 
   RAISE NOTICE '✅ Created Sector Map with First Target, 8 Competitors, and 7 Decision Makers';
 
   -- ============================================================================
-  -- PART 3: VISUAL SECTOR MAP DATA
+  -- PART 4: VISUAL SECTOR MAP DATA
   -- ============================================================================
 
   RAISE NOTICE '🎨 Creating Visual Sector Map data...';
@@ -335,10 +459,21 @@ BEGIN
   RAISE NOTICE '   ✅ Problem module: 4 questions answered';
   RAISE NOTICE '   ✅ Customer Segments module: 6 questions answered';
   RAISE NOTICE '   ✅ Solution module: 3 questions answered';
+  RAISE NOTICE '   ✅ Assumptions: 9 created (customer, problem, solution)';
+  RAISE NOTICE '   ✅ Enhanced Interviews: 4 completed';
   RAISE NOTICE '   ✅ Old Sector Map: First Target + 8 Competitors + 7 Decision Makers';
   RAISE NOTICE '   ✅ VISUAL Sector Map: 10 actors + 9 connections + 8 annotations';
   RAISE NOTICE '';
+  RAISE NOTICE '🔗 The Pivot or Proceed button is now enabled! (4 interviews >= 3 threshold)';
+  RAISE NOTICE '🐕 Pet Finder is FULLY populated with hilarious mock data!';
   RAISE NOTICE '🗺️  Visual Sector Map shows: Jennifer, Robert, Pet Psychics, NextDoor, and connection flows';
   RAISE NOTICE '💡 The visual map includes pain points, opportunities, and hypotheses as annotations!';
+  RAISE NOTICE '';
+  RAISE NOTICE '💡 Key characters:';
+  RAISE NOTICE '   - Jennifer & Bailey (the dog who was right there)';
+  RAISE NOTICE '   - Robert, age 68 (Supreme Commander of Pet Surveillance)';
+  RAISE NOTICE '   - Marcus & Lord Fluffington (the judgmental cat)';
+  RAISE NOTICE '   - Sarah (tried to rescue a lawn ornament)';
+  RAISE NOTICE '   - Craig (never returns borrowed tools)';
 
 END $$;
