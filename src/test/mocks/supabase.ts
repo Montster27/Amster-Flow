@@ -49,7 +49,6 @@ const createMockQueryBuilder = (mockData: any = []) => ({
   filter: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
-  range: vi.fn().mockReturnThis(),
   single: vi.fn().mockResolvedValue({ data: mockData[0] || null, error: null }),
   maybeSingle: vi.fn().mockResolvedValue({ data: mockData[0] || null, error: null }),
   then: vi.fn((resolve) => resolve({ data: mockData, error: null })),

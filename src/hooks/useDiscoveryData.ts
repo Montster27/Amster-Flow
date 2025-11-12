@@ -12,7 +12,7 @@ export function useDiscoveryData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { assumptions, interviews, iterations, importData, reset } = useDiscovery();
+  const { assumptions, iterations, importData, reset } = useDiscovery();
   const initialLoadRef = useRef(false);
   const isSavingRef = useRef(false);
 
@@ -165,54 +165,11 @@ export function useDiscoveryData(projectId: string | undefined) {
     return () => clearTimeout(timeoutId);
   }, [projectId, user, assumptions, loading]);
 
-  // Save interviews to Supabase whenever they change
-  useEffect(() => {
-    if (!projectId || !user || loading || !initialLoadRef.current) return;
-
-    const saveInterviews = async () => {
-      if (isSavingRef.current) return;
-
-      try {
-        isSavingRef.current = true;
-
-        // Delete all existing interviews for this project
-        await supabase
-          .from('project_interviews')
-          .delete()
-          .eq('project_id', projectId);
-
-        // Insert all current interviews
-        if (interviews.length > 0) {
-          const rows = interviews.map(interview => ({
-            id: interview.id,
-            project_id: projectId,
-            date: interview.date,
-            customer_segment: interview.customerSegment,
-            interviewee: interview.interviewee || null,
-            interviewee_type: interview.intervieweeType || null,
-            format: interview.format,
-            duration: interview.duration || null,
-            notes: interview.notes,
-            assumptions_addressed: interview.assumptionsAddressed,
-            key_insights: interview.keyInsights,
-            surprises: interview.surprises || null,
-            next_action: interview.nextAction || null,
-            follow_up_needed: interview.followUpNeeded,
-            created_by: user.id,
-          }));
-
-          await supabase
-            .from('project_interviews')
-            .insert(rows);
-        }
-      } finally {
-        isSavingRef.current = false;
-      }
-    };
-
-    const timeoutId = setTimeout(saveInterviews, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [projectId, user, interviews, loading]);
+  // NOTE: Interview saving removed - interviews are now managed exclusively through
+  // useEnhancedInterviews hook and project_interviews_enhanced table.
+  // This prevents duplicate interview systems and data fragmentation.
+  // The DiscoveryContext still holds interview state for display purposes,
+  // but persistence is handled by the Enhanced Interview System.
 
   // Save iterations to Supabase whenever they change
   useEffect(() => {
