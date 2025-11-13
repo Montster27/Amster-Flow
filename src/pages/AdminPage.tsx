@@ -8,6 +8,7 @@ import { useAdmin } from '../hooks/useAdmin';
 
 import { supabase } from '../lib/supabase';
 import { captureException } from '../lib/sentry';
+import * as Sentry from '@sentry/react';
 import type { Database } from '../types/database';
 
 
@@ -24,6 +25,20 @@ interface ProjectWithDetails extends Project {
   creator_name: string | null;
   member_count: number;
   completion_percentage: number;
+}
+
+// Sentry test button component - only visible to specific admin
+function ErrorButton() {
+  return (
+    <button
+      onClick={() => {
+        throw new Error('Sentry test error - Admin button clicked! 🔥');
+      }}
+      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-medium"
+    >
+      🔥 Test Sentry Error Tracking
+    </button>
+  );
 }
 
 export function AdminPage() {
@@ -272,6 +287,19 @@ export function AdminPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Sentry Test Button - Only visible to monty.sharma@gmail.com */}
+        {user?.email === 'monty.sharma@gmail.com' && (
+          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+            <p className="text-sm font-medium text-yellow-800 mb-2">
+              🧪 Sentry Integration Test (Only visible to you):
+            </p>
+            <p className="text-xs text-yellow-700 mb-3">
+              Click the button below to trigger a test error and verify Sentry is capturing errors correctly.
+            </p>
+            <ErrorButton />
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
