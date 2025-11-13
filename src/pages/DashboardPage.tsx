@@ -239,7 +239,6 @@ export function DashboardPage() {
             .from('projects')
             .select('*')
             .eq('organization_id', selectedOrg.id)
-            .filter('deleted_at', 'is', null)
             .order('created_at', { ascending: false });
 
           if (projectsError) {
@@ -277,7 +276,6 @@ export function DashboardPage() {
         .from('projects')
         .select('*')
         .eq('organization_id', currentOrgId)
-        .filter('deleted_at', 'is', null)
         .order('created_at', { ascending: false });
 
       setProjects(projectsData || []);
