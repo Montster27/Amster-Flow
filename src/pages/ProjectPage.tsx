@@ -27,11 +27,12 @@ export function ProjectPage() {
 
     const loadProject = async () => {
       try {
-        // Load project and verify access
+        // Load project and verify access (exclude soft-deleted)
         const { data, error: projectError } = await supabase
           .from('projects')
           .select('*')
           .eq('id', projectId)
+          .is('deleted_at', null)
           .single();
 
         if (projectError) throw projectError;

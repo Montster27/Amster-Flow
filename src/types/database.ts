@@ -918,8 +918,10 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           id: string
+          is_template: boolean
           name: string
           organization_id: string
           updated_at: string | null
@@ -927,8 +929,10 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           id?: string
+          is_template?: boolean
           name: string
           organization_id: string
           updated_at?: string | null
@@ -936,8 +940,10 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           id?: string
+          is_template?: boolean
           name?: string
           organization_id?: string
           updated_at?: string | null
@@ -955,6 +961,42 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dismissed_templates: {
+        Row: {
+          dismissed_at: string
+          id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          id?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dismissed_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_dismissed_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
