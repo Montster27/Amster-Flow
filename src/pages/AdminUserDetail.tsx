@@ -80,11 +80,12 @@ export function AdminUserDetail() {
           if (orgsError) throw orgsError;
           setOrganizations(orgsData || []);
 
-          // Get all projects from these organizations
+          // Get all projects from these organizations (exclude soft-deleted)
           const { data: projectsData, error: projectsError } = await supabase
             .from('projects')
             .select('*')
             .in('organization_id', orgIds)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
           if (projectsError) throw projectsError;

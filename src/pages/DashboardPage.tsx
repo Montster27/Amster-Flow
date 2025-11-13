@@ -233,12 +233,13 @@ export function DashboardPage() {
         setCurrentOrgId(selectedOrg.id);
         localStorage.setItem('currentOrgId', selectedOrg.id);
 
-        // 5. Load projects for selected organization
+        // 5. Load projects for selected organization (exclude soft-deleted)
         if (selectedOrg) {
           const { data: projectsData, error: projectsError } = await supabase
             .from('projects')
             .select('*')
             .eq('organization_id', selectedOrg.id)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
           if (projectsError) {
@@ -276,6 +277,7 @@ export function DashboardPage() {
         .from('projects')
         .select('*')
         .eq('organization_id', currentOrgId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       setProjects(projectsData || []);
@@ -328,6 +330,35 @@ export function DashboardPage() {
         extra: { userId: user.id, orgId: organization?.id, projectName: newProjectName, context: 'DashboardPage project creation (catch)' },
       });
       setCreateProjectError(err instanceof Error ? err.message : 'Failed to create project. Please try again.');
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (!confirm(`Are you sure you want to delete "${projectName}"?\n\nThis will remove the project from your dashboard, but the data will be retained in the database.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', projectId);
+
+      if (error) {
+        captureException(new Error('Error deleting project'), {
+          extra: { error, userId: user?.id, projectId, projectName, context: 'DashboardPage project deletion' },
+        });
+        throw new Error('Failed to delete project. Please try again.');
+      }
+
+      // Remove from local state
+      setProjects(projects.filter(p => p.id !== projectId));
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Error deleting project');
+      captureException(error, {
+        extra: { userId: user?.id, projectId, projectName, context: 'DashboardPage project deletion (catch)' },
+      });
+      alert(err instanceof Error ? err.message : 'Failed to delete project. Please try again.');
     }
   };
 
@@ -440,9 +471,32 @@ export function DashboardPage() {
               <div
                 key={project.id}
                 onClick={() => navigate(`/project/${project.id}`)}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer"
+                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer relative group"
               >
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{project.name}</h3>
+                {/* Delete button - appears on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteProject(project.id, project.name);
+                  }}
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg"
+                  title="Delete project"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 pr-8">{project.name}</h3>
                 {project.description && (
                   <p className="text-gray-600 text-sm mb-4">{project.description}</p>
                 )}
