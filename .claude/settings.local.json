@@ -51,7 +51,18 @@
       "Bash(git cherry-pick:*)",
       "Bash(~/.local/bin/supabase migration:*)",
       "Bash(npm run test:run:*)",
-      "Bash(git merge:*)"
+      "Bash(chmod:*)",
+      "Bash(./scripts/verify-deployment-ready.sh:*)",
+      "Bash(/Users/montysharma/Documents/ArmsterFlow/scripts/verify-deployment-ready.sh:*)",
+      "Bash(mv:*)",
+      "Bash(echo:*)",
+      "Bash(test:*)",
+      "Bash(supabase status:*)",
+      "Bash(git merge:*)",
+      "Bash(if [ -f .vercel/project.json ])",
+      "Bash(then cat .vercel/project.json)",
+      "Bash(else echo \"No .vercel/project.json found\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []
