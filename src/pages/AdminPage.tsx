@@ -8,7 +8,6 @@ import { useAdmin } from '../hooks/useAdmin';
 
 import { supabase } from '../lib/supabase';
 import { captureException } from '../lib/sentry';
-import * as Sentry from '@sentry/react';
 import type { Database } from '../types/database';
 
 
