@@ -50,7 +50,8 @@
       "Bash(git fetch:*)",
       "Bash(git cherry-pick:*)",
       "Bash(~/.local/bin/supabase migration:*)",
-      "Bash(npm run test:run:*)"
+      "Bash(npm run test:run:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
