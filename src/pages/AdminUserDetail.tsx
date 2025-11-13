@@ -85,6 +85,7 @@ export function AdminUserDetail() {
             .from('projects')
             .select('*')
             .in('organization_id', orgIds)
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
           if (projectsError) throw projectsError;

@@ -32,6 +32,7 @@ export function ProjectPage() {
           .from('projects')
           .select('*')
           .eq('id', projectId)
+          .is('deleted_at', null)
           .single();
 
         if (projectError) throw projectError;
