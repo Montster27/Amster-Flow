@@ -84,7 +84,7 @@ export function AdminPage() {
           supabase
             .from('projects')
             .select('created_by')
-            .is('deleted_at', null)
+            .filter('deleted_at', 'is', null)
         ]);
 
         if (profilesError) throw profilesError;
@@ -135,7 +135,7 @@ export function AdminPage() {
           supabase
             .from('projects')
             .select('*')
-            .is('deleted_at', null)
+            .filter('deleted_at', 'is', null)
             .order('created_at', { ascending: false }),
           supabase
             .from('organizations')
