@@ -18,6 +18,7 @@ export function DashboardPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [templateProjects, setTemplateProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
@@ -286,6 +287,40 @@ export function DashboardPage() {
     loadProjects();
   }, [currentOrgId]);
 
+  // Load template projects (Pet Finder, etc.) - not dismissed by user
+  useEffect(() => {
+    if (!user) return;
+
+    const loadTemplateProjects = async () => {
+      // Get template projects that user hasn't dismissed
+      const { data: templateData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('is_template', true)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (!templateData) {
+        setTemplateProjects([]);
+        return;
+      }
+
+      // Get projects user has dismissed
+      const { data: dismissed } = await supabase
+        .from('user_dismissed_templates')
+        .select('project_id')
+        .eq('user_id', user.id);
+
+      const dismissedIds = new Set(dismissed?.map(d => d.project_id) || []);
+
+      // Filter out dismissed templates
+      const visibleTemplates = templateData.filter(p => !dismissedIds.has(p.id));
+      setTemplateProjects(visibleTemplates);
+    };
+
+    loadTemplateProjects();
+  }, [user]);
+
   // const handleSwitchOrganization = (orgId: string) => {
   //   setCurrentOrgId(orgId);
   //   localStorage.setItem('currentOrgId', orgId);
@@ -359,6 +394,35 @@ export function DashboardPage() {
         extra: { userId: user?.id, projectId, projectName, context: 'DashboardPage project deletion (catch)' },
       });
       alert(err instanceof Error ? err.message : 'Failed to delete project. Please try again.');
+    }
+  };
+
+  const handleDismissTemplate = async (projectId: string, projectName: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_dismissed_templates')
+        .insert({
+          user_id: user.id,
+          project_id: projectId
+        });
+
+      if (error) {
+        captureException(new Error('Error dismissing template'), {
+          extra: { error, userId: user.id, projectId, projectName, context: 'DashboardPage template dismissal' },
+        });
+        throw new Error('Failed to dismiss template. Please try again.');
+      }
+
+      // Remove from local state
+      setTemplateProjects(templateProjects.filter(p => p.id !== projectId));
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Error dismissing template');
+      captureException(error, {
+        extra: { userId: user.id, projectId, projectName, context: 'DashboardPage template dismissal (catch)' },
+      });
+      alert(err instanceof Error ? err.message : 'Failed to dismiss template. Please try again.');
     }
   };
 
@@ -452,8 +516,60 @@ export function DashboardPage() {
           </button>
         </div>
 
-        {/* Projects Grid */}
-        {projects.length === 0 ? (
+        {/* Template Projects Section */}
+        {templateProjects.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">📚 Example Projects (Read-Only)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {templateProjects.map((project) => (
+                <div
+                  key={project.id}
+                  onClick={() => navigate(`/project/${project.id}`)}
+                  className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 p-6 hover:shadow-lg transition-all cursor-pointer relative group"
+                >
+                  {/* Template Badge */}
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
+                    TEMPLATE
+                  </div>
+
+                  {/* Dismiss button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismissTemplate(project.id, project.name);
+                    }}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg"
+                    title="Hide this template"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 pr-8 mt-6">{project.name}</h3>
+                  {project.description && (
+                    <p className="text-gray-600 text-sm mb-4">{project.description}</p>
+                  )}
+                  <div className="text-xs text-blue-700 font-medium">
+                    Click to view example →
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* User Projects Section */}
+        {projects.length === 0 && templateProjects.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
             <div className="text-6xl mb-4">📋</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No projects yet</h3>
@@ -465,9 +581,11 @@ export function DashboardPage() {
               Create First Project
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+        ) : projects.length > 0 ? (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Your Projects</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
               <div
                 key={project.id}
                 onClick={() => navigate(`/project/${project.id}`)}
@@ -505,8 +623,9 @@ export function DashboardPage() {
                 </div>
               </div>
             ))}
+            </div>
           </div>
-        )}
+        ) : null}
       </main>
 
       {/* Create Project Modal */}
