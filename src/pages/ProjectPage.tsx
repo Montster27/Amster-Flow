@@ -32,7 +32,7 @@ export function ProjectPage() {
           .from('projects')
           .select('*')
           .eq('id', projectId)
-          .is('deleted_at', null)
+          .filter('deleted_at', 'is', null)
           .single();
 
         if (projectError) throw projectError;
