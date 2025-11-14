@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../lib/supabase';
@@ -8,6 +8,8 @@ import { useAuth } from '../hooks/useAuth';
 export function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = (location.state as any)?.message;
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -27,6 +29,12 @@ export function LoginPage() {
 
         {/* Auth Card */}
         <div className="bg-white rounded-lg shadow-xl p-8">
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border-2 border-green-400 rounded-lg">
+              <p className="text-sm text-green-900">{successMessage}</p>
+            </div>
+          )}
+
           <Auth
             supabaseClient={supabase}
             appearance={{
@@ -52,8 +60,18 @@ export function LoginPage() {
             redirectTo={`${window.location.origin}/dashboard`}
           />
 
+          {/* Forgot Password Link */}
+          <div className="mt-4 text-center">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+
           {/* Sign Up Link */}
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-bold">
