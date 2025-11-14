@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { SignUpPage } from './pages/SignUpPage'
+import { TermsOfServicePage } from './pages/TermsOfServicePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
 import { AdminPage } from './pages/AdminPage'
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   {/* Public routes */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/terms" element={<TermsOfServicePage />} />
 
                   {/* Protected routes */}
                   <Route
