@@ -14,49 +14,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_deleted_count INTEGER := 0;
-  v_project_ids UUID[];
 BEGIN
-  -- Find projects deleted more than 90 days ago
-  SELECT ARRAY_AGG(id) INTO v_project_ids
-  FROM projects
-  WHERE is_deleted = TRUE
-  AND deleted_at < NOW() - INTERVAL '90 days';
-
-  IF v_project_ids IS NULL OR array_length(v_project_ids, 1) IS NULL THEN
-    RETURN 0;
-  END IF;
-
-  -- Delete related data first (cascade)
-  DELETE FROM interview_assumption_tags
-  WHERE interview_id IN (
-    SELECT id FROM project_interviews_enhanced
-    WHERE project_id = ANY(v_project_ids)
-  );
-
-  DELETE FROM interview_synthesis
-  WHERE interview_id IN (
-    SELECT id FROM project_interviews_enhanced
-    WHERE project_id = ANY(v_project_ids)
-  );
-
-  DELETE FROM project_interviews_enhanced WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_assumptions WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_iterations WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_competitors WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_decision_makers WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_first_target WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_module_completion WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_modules WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_pivot_decisions WHERE project_id = ANY(v_project_ids);
-  DELETE FROM project_visual_sector_map WHERE project_id = ANY(v_project_ids);
-
-  -- Finally delete the projects
-  DELETE FROM projects WHERE id = ANY(v_project_ids);
-  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
-
-  RETURN v_deleted_count;
+  -- Note: Projects table does not support soft-delete (no is_deleted column)
+  -- Projects are permanently deleted immediately via CASCADE
+  -- This function is a placeholder for future soft-delete implementation
+  RETURN 0;
 END;
 $$;
 
