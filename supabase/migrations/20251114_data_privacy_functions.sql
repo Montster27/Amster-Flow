@@ -49,7 +49,7 @@ BEGIN
     'organization_id', om.organization_id,
     'organization_name', o.name,
     'role', om.role,
-    'joined_at', om.created_at
+    'joined_at', om.joined_at
   )), '[]'::jsonb) INTO v_organizations
   FROM organization_members om
   JOIN organizations o ON o.id = om.organization_id
