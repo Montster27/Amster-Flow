@@ -99,9 +99,9 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
   );
 
   const groupedAssumptions = {
-    customer: filteredAssumptions.filter(a => a.cluster === 'customer'),
-    problem: filteredAssumptions.filter(a => a.cluster === 'problem'),
-    solution: filteredAssumptions.filter(a => a.cluster === 'solution'),
+    customer: filteredAssumptions.filter(a => a.type === 'customer'),
+    problem: filteredAssumptions.filter(a => a.type === 'problem'),
+    solution: filteredAssumptions.filter(a => a.type === 'solution'),
   };
 
   const clusterInfo = {
