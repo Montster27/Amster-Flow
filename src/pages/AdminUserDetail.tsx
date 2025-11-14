@@ -53,7 +53,7 @@ export function AdminUserDetail() {
         // Get user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
+          .select('id, email, full_name, avatar_url, affiliation, is_admin, created_at, updated_at')
           .eq('id', userId)
           .single();
 
@@ -187,6 +187,10 @@ export function AdminUserDetail() {
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Full Name</label>
                   <p className="text-lg text-gray-900">{profile.full_name || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Affiliation</label>
+                  <p className="text-lg text-gray-900">{profile.affiliation || '-'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">User ID</label>

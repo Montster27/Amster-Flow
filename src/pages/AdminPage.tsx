@@ -76,7 +76,7 @@ export function AdminPage() {
         ] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, email, full_name, avatar_url, is_admin, created_at, updated_at')
+            .select('id, email, full_name, avatar_url, affiliation, is_admin, created_at, updated_at')
             .order('created_at', { ascending: false }),
           supabase
             .from('organization_members')
@@ -353,6 +353,9 @@ export function AdminPage() {
                         Full Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Affiliation
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Admin
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -377,6 +380,9 @@ export function AdminPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.full_name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.affiliation || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.is_admin ? (
