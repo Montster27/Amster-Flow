@@ -29,6 +29,10 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
 
   const [studentReflection, setStudentReflection] = useState(interview?.studentReflection || '');
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set(['customer', 'problem', 'solution']));
+
   const steps = [
     { number: 1, title: 'Metadata', icon: '📋' },
     { number: 2, title: 'Key Findings', icon: '💡' },
@@ -77,6 +81,33 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
     setAssumptionTags(assumptionTags.map(tag =>
       tag.assumptionId === assumptionId ? { ...tag, ...updates } : tag
     ));
+  };
+
+  const toggleCluster = (cluster: string) => {
+    const newExpanded = new Set(expandedClusters);
+    if (newExpanded.has(cluster)) {
+      newExpanded.delete(cluster);
+    } else {
+      newExpanded.add(cluster);
+    }
+    setExpandedClusters(newExpanded);
+  };
+
+  // Filter and group assumptions
+  const filteredAssumptions = assumptions.filter(assumption =>
+    assumption.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const groupedAssumptions = {
+    customer: filteredAssumptions.filter(a => a.cluster === 'customer'),
+    problem: filteredAssumptions.filter(a => a.cluster === 'problem'),
+    solution: filteredAssumptions.filter(a => a.cluster === 'solution'),
+  };
+
+  const clusterInfo = {
+    customer: { title: 'Customer', icon: '👥', color: 'blue' },
+    problem: { title: 'Problem', icon: '🎯', color: 'orange' },
+    solution: { title: 'Solution', icon: '💡', color: 'green' },
   };
 
   const canProceedFromStep = (step: number): boolean => {
@@ -410,8 +441,76 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
                 <p className="text-gray-500">No assumptions yet. Add assumptions in the Assumptions tab first.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {assumptions.map(assumption => {
+              <>
+                {/* Search Bar */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search assumptions..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                    />
+                    <svg
+                      className="absolute left-3 top-3 h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  {searchQuery && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Found {filteredAssumptions.length} assumption{filteredAssumptions.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+
+                {/* Clustered Assumptions */}
+                <div className="space-y-3">
+                  {(['customer', 'problem', 'solution'] as const).map(cluster => {
+                    const clusterAssumptions = groupedAssumptions[cluster];
+                    const info = clusterInfo[cluster];
+                    const isExpanded = expandedClusters.has(cluster);
+
+                    if (clusterAssumptions.length === 0) return null;
+
+                    return (
+                      <div key={cluster} className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                        {/* Cluster Header */}
+                        <button
+                          type="button"
+                          onClick={() => toggleCluster(cluster)}
+                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors bg-${info.color}-50`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{info.icon}</span>
+                            <span className="font-semibold text-gray-800">{info.title}</span>
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full bg-${info.color}-100 text-${info.color}-700`}>
+                              {clusterAssumptions.length}
+                            </span>
+                          </div>
+                          <svg
+                            className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Cluster Content */}
+                        {isExpanded && (
+                          <div className="p-3 space-y-3 bg-white">
+                            {clusterAssumptions.map(assumption => {
                   const tag = assumptionTags.find(t => t.assumptionId === assumption.id);
                   const isSelected = !!tag;
 
@@ -505,7 +604,13 @@ export const EnhancedInterviewForm = ({ interview, onSave, onCancel }: EnhancedI
                     </div>
                   );
                 })}
-              </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}

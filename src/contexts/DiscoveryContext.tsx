@@ -70,11 +70,12 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
     setCurrentViewState(view);
   }, []);
 
-  const addAssumption = useCallback((type: AssumptionType, description: string) => {
+  const addAssumption = useCallback((type: AssumptionType, description: string, cluster: 'customer' | 'problem' | 'solution' = 'problem') => {
     const newAssumption: Assumption = {
       id: generateId(),
       type,
       description,
+      cluster,
       created: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
       status: 'untested',

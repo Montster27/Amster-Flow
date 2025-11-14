@@ -62,6 +62,7 @@ export function useDiscoveryData(projectId: string | undefined) {
           id: row.id,
           type: row.type as AssumptionType,
           description: row.description,
+          cluster: (row.cluster || 'problem') as 'customer' | 'problem' | 'solution',
           created: row.created_at || new Date().toISOString(),
           lastUpdated: row.updated_at || new Date().toISOString(),
           status: row.status as AssumptionStatus,
