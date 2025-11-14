@@ -94,18 +94,11 @@ export function SignUpPage() {
             context: 'SignUpPage profile update'
           },
         });
-        // Don't throw - user is created, just log the error
-        console.warn('Profile update failed:', profileError);
+        // Don't throw - user is created, error logged to Sentry
       }
 
-      // Check if email confirmation is required
-      if (authData.session) {
-        // User is logged in immediately, redirect to dashboard
-        navigate('/dashboard');
-      } else {
-        // Email confirmation required
-        setSuccess(`Account created! We've sent a confirmation email to ${email}. Please check your inbox and click the link to activate your account.`);
-      }
+      // Email confirmation is always required for security
+      setSuccess(`Account created successfully! Please check your email (${email}) and click the confirmation link to activate your account. Check your spam folder if you don't see it within a few minutes.`);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Error signing up');
       captureException(error, {
@@ -174,11 +167,11 @@ export function SignUpPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••••"
               />
-              <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
+              <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
             </div>
 
             {/* Affiliation */}
