@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { captureException } from '../lib/sentry';
+import { logAuthEvent } from '../lib/auditLog';
 
 const AFFILIATION_OPTIONS = [
   'Auxilium',
@@ -96,6 +97,12 @@ export function SignUpPage() {
         });
         // Don't throw - user is created, error logged to Sentry
       }
+
+      // Log successful signup to audit trail
+      await logAuthEvent('auth.signup', authData.user.id, email, {
+        success: true,
+        metadata: { affiliation: finalAffiliation },
+      });
 
       // Email confirmation is always required for security
       setSuccess(`Account created successfully! Please check your email (${email}) and click the confirmation link to activate your account. Check your spam folder if you don't see it within a few minutes.`);

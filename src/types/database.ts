@@ -1046,6 +1046,54 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          id: string
+          created_at: string
+          event_type: string
+          user_id: string | null
+          user_email: string | null
+          target_user_id: string | null
+          target_organization_id: string | null
+          target_project_id: string | null
+          metadata: Json
+          ip_address: string | null
+          user_agent: string | null
+          success: boolean
+          error_message: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          event_type: string
+          user_id?: string | null
+          user_email?: string | null
+          target_user_id?: string | null
+          target_organization_id?: string | null
+          target_project_id?: string | null
+          metadata?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          success?: boolean
+          error_message?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          event_type?: string
+          user_id?: string | null
+          user_email?: string | null
+          target_user_id?: string | null
+          target_organization_id?: string | null
+          target_project_id?: string | null
+          metadata?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+          success?: boolean
+          error_message?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1081,6 +1129,31 @@ export type Database = {
       user_can_edit_project_check: {
         Args: { project_uuid: string }
         Returns: boolean
+      }
+      log_auth_event: {
+        Args: {
+          p_event_type: string
+          p_user_id: string
+          p_user_email: string
+          p_success?: boolean
+          p_error_message?: string | null
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      log_member_event: {
+        Args: {
+          p_event_type: string
+          p_user_id: string
+          p_target_user_id: string
+          p_organization_id: string
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      cleanup_old_audit_logs: {
+        Args: never
+        Returns: number
       }
     }
     Enums: {

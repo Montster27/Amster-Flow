@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { setUser as setSentryUser, captureException } from '../lib/sentry';
+import { logAuthEvent } from '../lib/auditLog';
 
 interface AuthContextType {
   user: User | null;
@@ -46,7 +47,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Listen for changes on auth state (sign in, sign out, etc.)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       // Update Sentry user context on auth state changes
@@ -54,6 +55,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         session?.user ? { id: session.user.id, email: session.user.email } : null
       );
       setLoading(false);
+
+      // Log auth events to audit trail
+      if (event === 'SIGNED_IN' && session?.user) {
+        logAuthEvent('auth.login', session.user.id, session.user.email || 'unknown');
+      } else if (event === 'SIGNED_OUT') {
+        // For sign out, we don't have user info anymore, but we can log it
+        // The audit log allows null user_id for signout events
+        if (user) {
+          logAuthEvent('auth.logout', user.id, user.email || 'unknown');
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
