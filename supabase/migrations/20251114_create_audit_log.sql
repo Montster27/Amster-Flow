@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     'auth.logout',
     'auth.password_reset',
     'auth.email_change',
+    'auth.data_export',
+    'auth.account_deletion',
     'member.added',
     'member.removed',
     'member.role_changed',
