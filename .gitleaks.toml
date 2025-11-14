@@ -1,0 +1,40 @@
+# Gitleaks configuration for AmsterFlow
+# https://github.com/gitleaks/gitleaks
+
+title = "AmsterFlow Gitleaks Configuration"
+
+[extend]
+# Use default gitleaks rules
+useDefault = true
+
+[allowlist]
+description = "Allowlist for false positives and test data"
+
+# Allowed paths - these files are scanned but with less sensitivity
+paths = [
+  '''\.env\.example$''',
+  '''README\.md$''',
+  '''docs/.*\.md$''',
+]
+
+# Allowed regular expressions
+regexes = [
+  # Placeholder/example keys in documentation
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIg''',
+  '''placeholder\.supabase\.co''',
+  '''your-project\.supabase\.co''',
+  '''xxx@xxx\.ingest\.sentry\.io''',
+  # Common false positives
+  '''test-secret''',
+  '''example-key''',
+  '''dummy-token''',
+]
+
+# Stop words - don't alert on these
+stopwords = [
+  "placeholder",
+  "example",
+  "dummy",
+  "test",
+  "sample",
+]
