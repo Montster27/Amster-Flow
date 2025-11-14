@@ -126,15 +126,18 @@ BEGIN
 
   -- Get audit logs (user's own activities)
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'event_type', event_type,
-    'created_at', created_at,
-    'success', success,
-    'metadata', metadata
+    'event_type', al.event_type,
+    'created_at', al.created_at,
+    'success', al.success,
+    'metadata', al.metadata
   )), '[]'::jsonb) INTO v_audit_logs
-  FROM audit_log
-  WHERE user_id = v_user_id
-  ORDER BY created_at DESC
-  LIMIT 100; -- Limit to most recent 100 events
+  FROM (
+    SELECT event_type, created_at, success, metadata
+    FROM audit_log
+    WHERE user_id = v_user_id
+    ORDER BY created_at DESC
+    LIMIT 100
+  ) al;
 
   -- Build final result
   v_result := jsonb_build_object(
