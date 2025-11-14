@@ -22,6 +22,7 @@ export function SignUpPage() {
   const [customAffiliation, setCustomAffiliation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -34,6 +35,7 @@ export function SignUpPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       // Determine final affiliation value
@@ -53,6 +55,7 @@ export function SignUpPage() {
           data: {
             affiliation: finalAffiliation,
           },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
@@ -87,7 +90,7 @@ export function SignUpPage() {
         navigate('/dashboard');
       } else {
         // Email confirmation required
-        setError('Please check your email to confirm your account before signing in.');
+        setSuccess(`Account created! We've sent a confirmation email to ${email}. Please check your inbox and click the link to activate your account.`);
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Error signing up');
@@ -186,6 +189,13 @@ export function SignUpPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter your affiliation"
                 />
+              </div>
+            )}
+
+            {/* Success Message */}
+            {success && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">{success}</p>
               </div>
             )}
 
