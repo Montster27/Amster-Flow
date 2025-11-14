@@ -1155,6 +1155,35 @@ export type Database = {
         Args: never
         Returns: number
       }
+      export_user_data: {
+        Args: {
+          p_user_id?: string | null
+        }
+        Returns: Json
+      }
+      delete_user_account: {
+        Args: {
+          p_user_id?: string | null
+          p_confirmation_email?: string | null
+        }
+        Returns: Json
+      }
+      cleanup_deleted_projects: {
+        Args: never
+        Returns: number
+      }
+      cleanup_old_anonymous_logs: {
+        Args: never
+        Returns: number
+      }
+      cleanup_inactive_user_data: {
+        Args: never
+        Returns: number
+      }
+      run_data_retention_cleanup: {
+        Args: never
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
