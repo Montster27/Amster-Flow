@@ -254,7 +254,6 @@ export type Database = {
       }
       project_assumptions: {
         Row: {
-          cluster: string
           confidence: number | null
           created_at: string | null
           created_by: string | null
@@ -267,7 +266,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cluster?: string
           confidence?: number | null
           created_at?: string | null
           created_by?: string | null
@@ -280,7 +278,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cluster?: string
           confidence?: number | null
           created_at?: string | null
           created_by?: string | null

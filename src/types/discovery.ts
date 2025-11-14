@@ -10,7 +10,6 @@ export interface Assumption {
   id: string;
   type: AssumptionType;
   description: string;
-  cluster: 'customer' | 'problem' | 'solution'; // Organizes assumptions into clusters
   created: string; // ISO date string
   lastUpdated: string; // ISO date string
   status: AssumptionStatus;
