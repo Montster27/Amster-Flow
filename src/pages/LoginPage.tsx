@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../lib/supabase';
@@ -48,8 +48,19 @@ export function LoginPage() {
             }}
             providers={[]}
             onlyThirdPartyProviders={false}
+            view="sign_in"
             redirectTo={`${window.location.origin}/dashboard`}
           />
+
+          {/* Sign Up Link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-bold">
+                Sign Up
+              </Link>
+            </p>
+          </div>
         </div>
 
         {/* Footer */}
