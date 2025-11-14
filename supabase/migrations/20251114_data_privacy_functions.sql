@@ -62,9 +62,7 @@ BEGIN
     'description', p.description,
     'organization_id', p.organization_id,
     'created_at', p.created_at,
-    'updated_at', p.updated_at,
-    'is_deleted', p.is_deleted,
-    'deleted_at', p.deleted_at
+    'updated_at', p.updated_at
   )), '[]'::jsonb) INTO v_projects
   FROM projects p
   WHERE p.created_by = v_user_id
