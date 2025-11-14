@@ -27,7 +27,17 @@ export async function exportUserData(): Promise<{
     const { data, error } = await supabase.rpc('export_user_data');
 
     if (error) {
-      throw error;
+      console.error('Export user data error:', error);
+      captureException(new Error(`Export failed: ${error.message}`), {
+        extra: {
+          context: 'exportUserData',
+          errorCode: error.code,
+          errorDetails: error.details,
+          errorHint: error.hint,
+          fullError: error,
+        },
+      });
+      throw new Error(`Failed to export data: ${error.message}${error.hint ? ` (Hint: ${error.hint})` : ''}`);
     }
 
     return {
