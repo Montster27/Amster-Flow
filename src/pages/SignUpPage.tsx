@@ -20,6 +20,7 @@ export function SignUpPage() {
   const [password, setPassword] = useState('');
   const [affiliation, setAffiliation] = useState('');
   const [customAffiliation, setCustomAffiliation] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -44,6 +45,13 @@ export function SignUpPage() {
     setSuccess(null);
 
     try {
+      // Check terms acceptance
+      if (!acceptedTerms) {
+        setError('You must accept the Terms of Service and Privacy Policy to continue');
+        setLoading(false);
+        return;
+      }
+
       // Determine final affiliation value
       const finalAffiliation = affiliation === 'Other' ? customAffiliation : affiliation;
 
@@ -211,6 +219,29 @@ export function SignUpPage() {
                 />
               </div>
             )}
+
+            {/* Terms of Service Acceptance */}
+            <div className="flex items-start">
+              <input
+                id="acceptTerms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-700">
+                I accept the{' '}
+                <Link
+                  to="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-700 font-medium underline"
+                >
+                  Terms of Service and Privacy Policy
+                </Link>
+                {' '}<span className="text-red-500">*</span>
+              </label>
+            </div>
 
             {/* Success Message */}
             {success && (
