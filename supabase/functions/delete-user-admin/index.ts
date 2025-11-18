@@ -41,11 +41,15 @@ serve(async (req) => {
       );
     }
 
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
     const supabase = createClient(SUPABASE_URL, anonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Pass token directly to getUser for reliable authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError) {
       console.error('Auth error:', authError.message, authError);
