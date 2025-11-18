@@ -32,13 +32,31 @@ serve(async (req) => {
     }
 
     // Create client to verify the user making the request
-    const supabase = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!anonKey) {
+      console.error('SUPABASE_ANON_KEY not available');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, anonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError) {
+      console.error('Auth error:', authError.message, authError);
+      return new Response(
+        JSON.stringify({ success: false, error: `Authentication failed: ${authError.message}` }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!user) {
+      console.error('No user returned from getUser');
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid or expired token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
