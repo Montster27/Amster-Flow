@@ -91,9 +91,9 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'ArmsterFlow <onboarding@resend.dev>', // Change to your verified domain
+        from: 'PivotKit <noreply@pivotkit.biz>',
         to: [invitedEmail],
-        subject: `You've been invited to join ${organizationName} on ArmsterFlow`,
+        subject: `You've been invited to join ${organizationName} on PivotKit`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -119,7 +119,7 @@ serve(async (req) => {
 
     <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin: 25px 0;">
       <p style="margin: 0; color: #666; font-size: 14px;">
-        <strong>What is ArmsterFlow?</strong><br>
+        <strong>What is PivotKit?</strong><br>
         A collaborative Lean Canvas tool for teams to build and iterate on startup ideas together.
       </p>
     </div>
@@ -139,13 +139,13 @@ serve(async (req) => {
                 font-weight: 600;
                 font-size: 16px;
                 box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
-        Go to ArmsterFlow →
+        Go to PivotKit →
       </a>
     </div>
 
     <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 8px; margin-top: 25px;">
       <p style="margin: 0; color: #92400e; font-size: 14px;">
-        <strong>⚠️ Important:</strong> If you don't have an ArmsterFlow account yet, you'll need to sign up using this email address (<strong>${escapeHtml(invitedEmail)}</strong>) first.
+        <strong>⚠️ Important:</strong> If you don't have a PivotKit account yet, you'll need to sign up using this email address (<strong>${escapeHtml(invitedEmail)}</strong>) first.
       </p>
     </div>
 
