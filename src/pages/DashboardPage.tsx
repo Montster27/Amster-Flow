@@ -519,7 +519,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
+                <h1 className="text-2xl font-bold text-gray-900">PivotKit</h1>
               </div>
               {/* Organization Switcher */}
               {organizations.length > 1 && (
