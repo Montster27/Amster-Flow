@@ -19,6 +19,7 @@ import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminUserDetail } from './pages/AdminUserDetail'
 import { AdminProjectDetail } from './pages/AdminProjectDetail'
+import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
@@ -64,6 +65,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <UserSettingsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/team"
+                    element={
+                      <ProtectedRoute>
+                        <OrganizationSettingsPage />
                       </ProtectedRoute>
                     }
                   />

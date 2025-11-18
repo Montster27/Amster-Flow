@@ -539,6 +539,12 @@ export function DashboardPage() {
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{user?.email}</span>
               <button
+                onClick={() => navigate('/team')}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:underline"
+              >
+                Team
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:underline"
               >
