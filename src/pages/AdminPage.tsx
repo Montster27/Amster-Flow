@@ -207,11 +207,18 @@ export function AdminPage() {
     setError(null);
 
     try {
-      // Get the current session for authorization
+      // First validate/refresh the token by calling getUser
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get the refreshed session for authorization
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error('Session not available');
       }
 
       // Call the Edge Function to delete user
