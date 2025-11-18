@@ -175,21 +175,34 @@ export function DashboardPage() {
         // 4. Set current organization - prioritize orgs where user can edit
         const savedOrgId = localStorage.getItem('currentOrgId');
 
+        // Get list of orgs where user can edit (owner or editor)
+        const editableOrgIds = memberships
+          ?.filter(m => m.role === 'owner' || m.role === 'editor')
+          .map(m => m.organization_id) || [];
+
         let selectedOrg: Organization;
 
-        if (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) {
-          // Use saved org if it still exists
+        // Check if saved org is one where user can edit
+        const savedOrgIsEditable = savedOrgId && editableOrgIds.includes(savedOrgId);
+
+        if (savedOrgIsEditable && allOrgs.find(org => org.id === savedOrgId)) {
+          // Use saved org if it's editable
           selectedOrg = allOrgs.find(org => org.id === savedOrgId)!;
+        } else if (savedOrgId && allOrgs.find(org => org.id === savedOrgId)) {
+          // Saved org exists but user is viewer - prefer an editable org if available
+          const editableOrg = allOrgs.find(org => editableOrgIds.includes(org.id));
+          if (editableOrg) {
+            selectedOrg = editableOrg;
+            localStorage.setItem('currentOrgId', editableOrg.id);
+          } else {
+            // No editable org, use saved org (viewer)
+            selectedOrg = allOrgs.find(org => org.id === savedOrgId)!;
+          }
         } else {
           // Clear invalid localStorage value
           if (savedOrgId) {
             localStorage.removeItem('currentOrgId');
           }
-
-          // Prioritize organizations where user has owner or editor role
-          const editableOrgIds = memberships
-            ?.filter(m => m.role === 'owner' || m.role === 'editor')
-            .map(m => m.organization_id) || [];
 
           const editableOrg = allOrgs.find(org => editableOrgIds.includes(org.id));
 
