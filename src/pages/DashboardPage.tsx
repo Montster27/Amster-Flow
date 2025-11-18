@@ -342,10 +342,32 @@ export function DashboardPage() {
     loadTemplateProjects();
   }, [user]);
 
-  // const handleSwitchOrganization = (orgId: string) => {
-  //   setCurrentOrgId(orgId);
-  //   localStorage.setItem('currentOrgId', orgId);
-  // };
+  const handleSwitchOrganization = async (orgId: string) => {
+    if (!user) return;
+
+    setCurrentOrgId(orgId);
+    localStorage.setItem('currentOrgId', orgId);
+
+    // Update user's role for the new organization
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('organization_id', orgId)
+      .eq('user_id', user.id)
+      .single();
+
+    setUserRole(membership?.role || null);
+
+    // Load projects for the new organization
+    const { data: projectsData } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('organization_id', orgId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    setProjects(projectsData || []);
+  };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,6 +521,20 @@ export function DashboardPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
               </div>
+              {/* Organization Switcher */}
+              {organizations.length > 1 && (
+                <select
+                  value={currentOrgId || ''}
+                  onChange={(e) => handleSwitchOrganization(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {organizations.map(org => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{user?.email}</span>
