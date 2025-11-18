@@ -23,9 +23,13 @@ export function DashboardPage() {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [createProjectError, setCreateProjectError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Get current organization from list
   const organization = organizations.find(org => org.id === currentOrgId) || null;
+
+  // Check if user can create projects (must be owner or editor)
+  const canCreateProjects = userRole === 'owner' || userRole === 'editor' || isAdmin;
 
   // Initialize: Ensure user has an organization
   useEffect(() => {
@@ -233,6 +237,10 @@ export function DashboardPage() {
 
         setCurrentOrgId(selectedOrg.id);
         localStorage.setItem('currentOrgId', selectedOrg.id);
+
+        // Set user's role in the selected organization
+        const userMembership = memberships?.find(m => m.organization_id === selectedOrg.id);
+        setUserRole(userMembership?.role || 'owner'); // Default to owner for newly created orgs
 
         // 5. Load projects for selected organization (exclude soft-deleted)
         if (selectedOrg) {
@@ -514,12 +522,18 @@ export function DashboardPage() {
             <h2 className="text-3xl font-bold text-gray-900">Your Projects</h2>
             <p className="text-gray-600 mt-1">Manage your Lean Canvas projects</p>
           </div>
-          <button
-            onClick={() => setShowCreateProject(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
-          >
-            + New Project
-          </button>
+          {canCreateProjects ? (
+            <button
+              onClick={() => setShowCreateProject(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+            >
+              + New Project
+            </button>
+          ) : (
+            <span className="px-4 py-2 text-sm text-gray-500 bg-gray-100 rounded-lg">
+              Viewer access (cannot create projects)
+            </span>
+          )}
         </div>
 
         {/* Template Projects Section */}
@@ -579,13 +593,21 @@ export function DashboardPage() {
           <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
             <div className="text-6xl mb-4">📋</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No projects yet</h3>
-            <p className="text-gray-600 mb-6">Create your first Lean Canvas project to get started</p>
-            <button
-              onClick={() => setShowCreateProject(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
-            >
-              Create First Project
-            </button>
+            {canCreateProjects ? (
+              <>
+                <p className="text-gray-600 mb-6">Create your first Lean Canvas project to get started</p>
+                <button
+                  onClick={() => setShowCreateProject(true)}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                >
+                  Create First Project
+                </button>
+              </>
+            ) : (
+              <p className="text-gray-600 mb-6">
+                You have viewer access to this organization. Switch to an organization where you're an owner or editor to create projects.
+              </p>
+            )}
           </div>
         ) : projects.length > 0 ? (
           <div>
