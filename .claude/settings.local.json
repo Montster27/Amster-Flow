@@ -62,7 +62,9 @@
       "Bash(if [ -f .vercel/project.json ])",
       "Bash(then cat .vercel/project.json)",
       "Bash(else echo \"No .vercel/project.json found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(~/.local/bin/supabase functions:*)",
+      "Bash(~/.local/bin/supabase secrets:*)"
     ],
     "deny": [],
     "ask": []

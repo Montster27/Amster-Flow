@@ -140,7 +140,7 @@ export function SignUpPage() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">ArmsterFlow</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">PivotKit</h1>
           <p className="text-gray-600">Create your account to get started</p>
         </div>
 

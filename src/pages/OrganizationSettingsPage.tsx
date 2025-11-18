@@ -117,11 +117,13 @@ export function OrganizationSettingsPage() {
     setInviteError(null);
     setSuccessMessage(null);
 
+    const trimmedEmail = inviteEmail.toLowerCase().trim();
+
     try {
       // Use the invite_user_to_organization function to handle everything
       const { data: result, error: inviteError } = await supabase.rpc('invite_user_to_organization', {
         p_organization_id: organization.id,
-        p_user_email: inviteEmail.toLowerCase().trim(),
+        p_user_email: trimmedEmail,
         p_role: inviteRole,
       });
 
@@ -135,6 +137,41 @@ export function OrganizationSettingsPage() {
       if (resultObj && !resultObj.success) {
         setInviteError(resultObj.error || 'Failed to invite member');
         return;
+      }
+
+      // Send invitation email via Edge Function
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invite-email`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                invitedEmail: trimmedEmail,
+                organizationName: organization.name,
+                inviterEmail: user.email,
+                role: inviteRole,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Failed to send invite email:', errorData);
+            // Don't fail the whole invite if email fails - user is already added
+          }
+        }
+      } catch (emailError) {
+        // Log but don't fail - the member was already added successfully
+        console.error('Error sending invite email:', emailError);
+        captureException(emailError instanceof Error ? emailError : new Error('Email send error'), {
+          extra: { orgId: organization.id, email: trimmedEmail, context: 'OrganizationSettingsPage email send' }
+        });
       }
 
       // Reload members (split query to avoid RLS join blocking)
@@ -173,7 +210,7 @@ export function OrganizationSettingsPage() {
       }
 
       // Show success message
-      setSuccessMessage(`Successfully invited ${inviteEmail} to your organization!`);
+      setSuccessMessage(`Successfully invited ${trimmedEmail} to your organization! An email notification has been sent.`);
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('editor');
@@ -297,7 +334,7 @@ export function OrganizationSettingsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">ArmsterFlow</h1>
+              <h1 className="text-2xl font-bold text-gray-900">PivotKit</h1>
               {organization && (
                 <p className="text-sm text-gray-600">{organization.name}</p>
               )}
