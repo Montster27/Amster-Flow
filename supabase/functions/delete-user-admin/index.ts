@@ -5,7 +5,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +19,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check if service role key is configured
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server configuration error: Service role key not set' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create admin client with service role
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -68,13 +77,23 @@ serve(async (req) => {
     }
 
     // Check if requesting user is admin
+    console.log('Checking admin status for user:', user.id);
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile?.is_admin) {
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      return new Response(
+        JSON.stringify({ success: false, error: `Profile lookup failed: ${profileError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!profile?.is_admin) {
+      console.log('User is not admin:', profile);
       return new Response(
         JSON.stringify({ success: false, error: 'Only admins can delete users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -82,7 +101,17 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { userId } = await req.json();
+    let userId: string;
+    try {
+      const body = await req.json();
+      userId = body.userId;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!userId) {
       return new Response(
@@ -99,16 +128,55 @@ serve(async (req) => {
       );
     }
 
-    // Delete user from auth.users using admin client
+    // Step 1: Delete organization memberships first to avoid trigger issues
+    console.log('Deleting organization memberships for user:', userId);
+    const { error: memberError } = await supabaseAdmin
+      .from('organization_members')
+      .delete()
+      .eq('user_id', userId);
+
+    if (memberError) {
+      console.error('Error deleting organization memberships:', memberError);
+      // Continue anyway - the user might not have any memberships
+    }
+
+    // Step 2: Delete notifications for the user
+    console.log('Deleting notifications for user:', userId);
+    const { error: notifError } = await supabaseAdmin
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId);
+
+    if (notifError) {
+      console.error('Error deleting notifications:', notifError);
+      // Continue anyway - the user might not have notifications
+    }
+
+    // Step 3: Clear audit log references (set to NULL)
+    console.log('Clearing audit log references for user:', userId);
+    await supabaseAdmin
+      .from('audit_log')
+      .update({ user_id: null })
+      .eq('user_id', userId);
+
+    await supabaseAdmin
+      .from('audit_log')
+      .update({ target_user_id: null })
+      .eq('target_user_id', userId);
+
+    // Step 4: Delete user from auth.users using admin client
+    // This will cascade delete the profile
+    console.log('Attempting to delete user from auth:', userId);
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      console.error('Error deleting user:', deleteError);
+      console.error('Error deleting user:', deleteError.message, deleteError);
       return new Response(
-        JSON.stringify({ success: false, error: deleteError.message }),
+        JSON.stringify({ success: false, error: `Delete failed: ${deleteError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('User deleted successfully:', userId);
 
     // User deletion from auth.users will cascade to profiles via database triggers
     return new Response(

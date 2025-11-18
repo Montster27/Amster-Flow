@@ -237,10 +237,15 @@ export function AdminPage() {
         }
       );
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        throw new Error(`Server error (${response.status}): Unable to parse response`);
+      }
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to delete user');
+        throw new Error(data.error || `Failed to delete user (${response.status})`);
       }
 
       // Remove user from local state
