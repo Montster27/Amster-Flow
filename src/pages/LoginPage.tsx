@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
@@ -10,6 +10,10 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const successMessage = (location.state as any)?.message;
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendMessage, setResendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -17,6 +21,41 @@ export function LoginPage() {
       navigate('/dashboard');
     }
   }, [user, navigate]);
+
+  const handleResendConfirmation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResending(true);
+    setResendMessage(null);
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: resendEmail.toLowerCase().trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) throw error;
+
+      setResendMessage({
+        type: 'success',
+        text: `Confirmation email sent to ${resendEmail}. Please check your inbox and spam folder.`,
+      });
+      setResendEmail('');
+      setTimeout(() => {
+        setShowResendForm(false);
+        setResendMessage(null);
+      }, 5000);
+    } catch (error) {
+      setResendMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to resend confirmation email. Please try again.',
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -68,6 +107,61 @@ export function LoginPage() {
             >
               Forgot your password?
             </Link>
+          </div>
+
+          {/* Resend Confirmation Email */}
+          <div className="mt-4 text-center">
+            {!showResendForm ? (
+              <button
+                onClick={() => setShowResendForm(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Email not confirmed? Resend confirmation
+              </button>
+            ) : (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Resend Confirmation Email</h3>
+                <form onSubmit={handleResendConfirmation}>
+                  <input
+                    type="email"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {resendMessage && (
+                    <div className={`mb-3 p-2 rounded text-sm ${
+                      resendMessage.type === 'success'
+                        ? 'bg-green-50 text-green-800 border border-green-200'
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      {resendMessage.text}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={isResending || !resendEmail.trim()}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isResending ? 'Sending...' : 'Send Confirmation'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResendForm(false);
+                        setResendMessage(null);
+                        setResendEmail('');
+                      }}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
 
           {/* Sign Up Link */}
