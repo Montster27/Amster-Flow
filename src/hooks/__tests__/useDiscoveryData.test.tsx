@@ -175,10 +175,32 @@ describe('useDiscoveryData', () => {
     it('should handle assumptions load error', async () => {
       const mockError = new Error('Database error');
 
-      vi.mocked(supabase.from('project_assumptions').select).mockResolvedValueOnce({
-        data: null,
-        error: mockError,
-      } as any);
+      let callCount = 0;
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        callCount++;
+
+        if (callCount === 1) {
+          // First call: project_assumptions - error
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: null,
+                error: mockError,
+              }),
+            }),
+          } as any;
+        } else {
+          // Subsequent calls shouldn't happen, but return success just in case
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          } as any;
+        }
+      });
 
       const { result } = renderHook(() => useDiscoveryData('test-project-id'), { wrapper });
 
@@ -192,15 +214,41 @@ describe('useDiscoveryData', () => {
     it('should handle interviews load error', async () => {
       const mockError = new Error('Interviews fetch failed');
 
-      vi.mocked(supabase.from('project_assumptions').select).mockResolvedValueOnce({
-        data: [],
-        error: null,
-      } as any);
+      let callCount = 0;
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        callCount++;
 
-      vi.mocked(supabase.from('project_interviews_enhanced').select).mockResolvedValueOnce({
-        data: null,
-        error: mockError,
-      } as any);
+        if (callCount === 1) {
+          // First call: project_assumptions - success
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          } as any;
+        } else if (callCount === 2) {
+          // Second call: project_interviews_enhanced - error
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: null,
+                error: mockError,
+              }),
+            }),
+          } as any;
+        } else {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          } as any;
+        }
+      });
 
       const { result } = renderHook(() => useDiscoveryData('test-project-id'), { wrapper });
 
@@ -214,20 +262,32 @@ describe('useDiscoveryData', () => {
     it('should handle iterations load error', async () => {
       const mockError = new Error('Iterations fetch failed');
 
-      vi.mocked(supabase.from('project_assumptions').select).mockResolvedValueOnce({
-        data: [],
-        error: null,
-      } as any);
+      let callCount = 0;
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        callCount++;
 
-      vi.mocked(supabase.from('project_interviews_enhanced').select).mockResolvedValueOnce({
-        data: [],
-        error: null,
-      } as any);
-
-      vi.mocked(supabase.from('project_iterations').select).mockResolvedValueOnce({
-        data: null,
-        error: mockError,
-      } as any);
+        if (callCount === 1 || callCount === 2) {
+          // First two calls: project_assumptions and project_interviews_enhanced - success
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          } as any;
+        } else {
+          // Third call: project_iterations - error
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: null,
+                error: mockError,
+              }),
+            }),
+          } as any;
+        }
+      });
 
       const { result } = renderHook(() => useDiscoveryData('test-project-id'), { wrapper });
 

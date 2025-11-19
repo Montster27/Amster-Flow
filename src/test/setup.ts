@@ -62,7 +62,7 @@ vi.mock('../lib/supabase', () => {
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        then: vi.fn((resolve) => resolve({ data: [], error: null })),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
       })),
     },
   };
@@ -99,13 +99,13 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Mock IntersectionObserver (used by lazy loading)
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
+  constructor() { }
+  disconnect() { }
+  observe() { }
   takeRecords() {
     return [];
   }
-  unobserve() {}
+  unobserve() { }
 } as any;
 
 // Suppress console errors in tests (unless debugging)

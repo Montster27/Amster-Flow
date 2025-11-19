@@ -112,9 +112,18 @@ describe('useProjectData', () => {
     it('should handle database load errors', async () => {
       const mockError = new Error('Database connection failed');
 
-      vi.mocked(supabase.from('project_modules').select).mockResolvedValueOnce({
+      // Mock the chain: from().select().eq()
+      const mockEq = vi.fn().mockResolvedValue({
         data: null,
         error: mockError,
+      });
+
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: mockEq,
+      });
+
+      vi.mocked(supabase.from).mockReturnValue({
+        select: mockSelect,
       } as any);
 
       const { result } = renderHook(() => useProjectData('test-project-id'), { wrapper });
@@ -129,15 +138,32 @@ describe('useProjectData', () => {
     it('should handle completion load errors', async () => {
       const mockError = new Error('Completion fetch failed');
 
-      vi.mocked(supabase.from('project_modules').select).mockResolvedValueOnce({
-        data: [],
-        error: null,
-      } as any);
+      let callCount = 0;
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        callCount++;
 
-      vi.mocked(supabase.from('project_module_completion').select).mockResolvedValueOnce({
-        data: null,
-        error: mockError,
-      } as any);
+        if (callCount === 1) {
+          // First call: project_modules - success
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          } as any;
+        } else {
+          // Second call: project_module_completion - error
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: null,
+                error: mockError,
+              }),
+            }),
+          } as any;
+        }
+      });
 
       const { result } = renderHook(() => useProjectData('test-project-id'), { wrapper });
 
