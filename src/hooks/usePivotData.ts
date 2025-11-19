@@ -45,10 +45,10 @@ export function usePivotData(projectId?: string) {
           .is('completed_at', null)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          // PGRST116 = no rows returned, which is fine
+        if (fetchError) {
           throw fetchError;
         }
 
