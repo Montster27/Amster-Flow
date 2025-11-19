@@ -36,7 +36,17 @@ export const QuestionPanel = ({
     );
     setAnswer(savedAnswer?.answer || '');
     setShowHint(false);
-  }, [currentQuestionIndex, module, getModuleProgress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, module]);
+
+  // Auto-save answer to context (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveAnswer(module, currentQuestionIndex, answer);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [answer, module, currentQuestionIndex, saveAnswer]);
 
   const handleSaveAndContinue = () => {
     if (answer.trim()) {
@@ -126,11 +136,10 @@ export const QuestionPanel = ({
         <button
           onClick={handleBack}
           disabled={currentQuestionIndex === 0}
-          className={`px-6 py-3 rounded-lg font-medium transition-all ${
-            currentQuestionIndex === 0
+          className={`px-6 py-3 rounded-lg font-medium transition-all ${currentQuestionIndex === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
           aria-label="Go to previous question"
         >
           ← Back
@@ -139,11 +148,10 @@ export const QuestionPanel = ({
         <button
           onClick={handleSaveAndContinue}
           disabled={!answer.trim()}
-          className={`px-6 py-3 rounded-lg font-medium transition-all ${
-            answer.trim()
+          className={`px-6 py-3 rounded-lg font-medium transition-all ${answer.trim()
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
+            }`}
           aria-label={isLastQuestion ? 'Complete this module' : 'Save answer and continue to next question'}
         >
           {isLastQuestion ? 'Complete Module ✓' : 'Save & Continue →'}
