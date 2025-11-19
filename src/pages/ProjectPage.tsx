@@ -9,6 +9,8 @@ import { supabase } from '../lib/supabase';
 
 import App from '../App';
 
+import { ProjectDataProvider } from '../components/ProjectDataProvider';
+
 import type { Database } from '../types/database';
 
 
@@ -101,7 +103,9 @@ export function ProjectPage() {
 
       {/* Main App - with padding for header and projectId */}
       <div className="pt-12">
-        <App projectId={projectId} />
+        <ProjectDataProvider projectId={projectId}>
+          <App projectId={projectId} />
+        </ProjectDataProvider>
       </div>
     </div>
   );
