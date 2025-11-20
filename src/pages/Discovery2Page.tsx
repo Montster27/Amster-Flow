@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Discovery2Module } from '../components/discovery2/Discovery2Module';
 import { Discovery2Provider } from '../contexts/Discovery2Context';
