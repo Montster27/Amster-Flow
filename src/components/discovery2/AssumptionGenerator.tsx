@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CanvasArea, AssumptionType, ConfidenceLevel, PriorityLevel } from '../../types/discovery';
+import type { CanvasArea, AssumptionType, ConfidenceLevel } from '../../types/discovery';
 
 interface AssumptionGeneratorProps {
   onClose: () => void;

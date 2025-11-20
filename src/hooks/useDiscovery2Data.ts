@@ -60,13 +60,13 @@ export function useDiscovery2Data(projectId: string | undefined) {
           confidence: (row.confidence || 3) as ConfidenceLevel,
           evidence: row.evidence || [],
 
-          // Discovery 2.0 specific fields
-          canvasArea: row.canvas_area as CanvasArea,
-          importance: (row.importance || 3) as ConfidenceLevel,
-          priority: (row.priority || 'medium') as PriorityLevel,
-          riskScore: row.risk_score || undefined,
-          interviewCount: row.interview_count || 0,
-          lastTestedDate: row.last_tested_date || undefined,
+          // Discovery 2.0 specific fields (use type assertion to handle missing properties)
+          canvasArea: (row as any).canvas_area as CanvasArea,
+          importance: ((row as any).importance || 3) as ConfidenceLevel,
+          priority: ((row as any).priority || 'medium') as PriorityLevel,
+          riskScore: (row as any).risk_score || undefined,
+          interviewCount: (row as any).interview_count || 0,
+          lastTestedDate: (row as any).last_tested_date || undefined,
         }));
 
         // Import into store
@@ -117,7 +117,7 @@ export function useDiscovery2Data(projectId: string | undefined) {
             risk_score: assumption.riskScore,
             interview_count: assumption.interviewCount,
             last_tested_date: assumption.lastTestedDate,
-          }));
+          } as any)); // Type assertion to allow new fields
 
           await supabase
             .from('project_assumptions')
