@@ -45,23 +45,27 @@ export function ForgotPasswordPage() {
             </h2>
           </div>
           <div className="bg-green-50 border-2 border-green-400 rounded-lg p-6">
-            <p className="text-center text-green-900 mb-4">
-              ✅ Password reset instructions have been sent to <strong>{email}</strong>
-            </p>
-            <p className="text-sm text-green-800 text-center mb-4">
-              Click the link in the email to reset your password. The link will expire in 1 hour.
-            </p>
-            <p className="text-xs text-green-700 text-center">
-              Don't see the email? Check your spam folder.
-            </p>
-          </div>
-          <div className="text-center">
-            <Link
-              to="/login"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Back to Login
-            </Link>
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
+              <p className="text-gray-600 mb-6">
+                We've sent a password reset link to <strong>{email}</strong>.
+                <br />
+                <span className="text-sm text-gray-500 mt-2 block">
+                  (Don't see it? Check your spam/junk folder)
+                </span>
+              </p>
+              <Link
+                to="/login"
+                className="text-blue-600 hover:text-blue-500 font-medium"
+              >
+                Back to Login
+              </Link>
+            </div>
           </div>
         </div>
       </div>

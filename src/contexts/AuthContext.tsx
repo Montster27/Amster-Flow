@@ -111,7 +111,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Try to sign out from server
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        // If server sign out fails (403, network error, etc.),
+        // still clear local session
+        console.warn('Server sign out failed, clearing local session:', error);
+
+        // Force local sign out by clearing storage
+        await supabase.auth.signOut({ scope: 'local' });
+      }
+    } catch (err) {
+      // If anything fails, force local sign out
+      console.error('Sign out error:', err);
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (localError) {
+        console.error('Local sign out also failed:', localError);
+      }
+    }
   };
 
   const value = {
