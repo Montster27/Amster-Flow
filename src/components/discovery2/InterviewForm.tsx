@@ -6,7 +6,6 @@ import type {
   AssumptionTag,
   IntervieweeTypeEnhanced,
   ConfidenceLevel,
-  ValidationEffect,
 } from '../../types/discovery';
 
 interface InterviewFormProps {
