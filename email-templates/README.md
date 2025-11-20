@@ -1,6 +1,6 @@
 # Email Templates
 
-This folder contains improved email templates for ArmsterFlow authentication emails.
+This folder contains improved email templates for Pivot Kit authentication emails.
 
 ## Files
 
@@ -10,7 +10,7 @@ This folder contains improved email templates for ArmsterFlow authentication ema
 ## Features
 
 ### Visual Improvements
-- ✅ Professional gradient header with ArmsterFlow branding
+- ✅ Professional gradient header with Pivot Kit branding
 - ✅ Clear, prominent CTA button (blue, rounded)
 - ✅ Responsive design (works on mobile and desktop)
 - ✅ Modern, clean layout with proper spacing
@@ -28,7 +28,7 @@ This folder contains improved email templates for ArmsterFlow authentication ema
 
 1. **Go to Supabase Dashboard**
    - Navigate to https://supabase.com/dashboard
-   - Select your ArmsterFlow project
+   - Select your Pivot Kit project
 
 2. **Open Email Templates**
    - Click **Authentication** in left sidebar
@@ -53,7 +53,7 @@ This folder contains improved email templates for ArmsterFlow authentication ema
    - Paste into the "Message (Text)" field
 
 6. **Update Subject Line**
-   - Change to: `Confirm Your ArmsterFlow Account 🎉`
+   - Change to: `Confirm Your Pivot Kit Account 🎉`
 
 7. **Save**
    - Click "Save" button at bottom
@@ -65,7 +65,7 @@ If you have direct access to email configuration:
 ```bash
 # Copy the HTML template
 supabase email templates update confirm-signup \
-  --subject "Confirm Your ArmsterFlow Account 🎉" \
+  --subject "Confirm Your Pivot Kit Account 🎉" \
   --html-file email-templates/signup-confirmation.html \
   --text-file email-templates/signup-confirmation.txt
 ```
@@ -103,13 +103,13 @@ To customize further:
 
 2. **Logo**: Add your logo
    ```html
-   <img src="YOUR_LOGO_URL" alt="ArmsterFlow" style="height: 40px;">
+   <img src="YOUR_LOGO_URL" alt="Pivot Kit" style="height: 40px;">
    ```
 
 3. **Footer**: Update copyright year or add links
    ```html
-   <a href="https://armsterflow.com/terms">Terms</a> |
-   <a href="https://armsterflow.com/privacy">Privacy</a>
+   <a href="https://pivotkit.biz/terms">Terms</a> |
+   <a href="https://pivotkit.biz/privacy">Privacy</a>
    ```
 
 ## Other Email Templates

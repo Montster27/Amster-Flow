@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-    SUPPORT_EMAIL: 'Monty_Sharma@brown.edu',
+    SUPPORT_EMAIL: 'support@pivotkit.biz',
     THRESHOLDS: {
         MIN_INTERVIEWS_FOR_PIVOT: 3,
     },

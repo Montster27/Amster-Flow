@@ -7,8 +7,8 @@
 ┌─────────────────────────────────────────┐
 │   [Blue Gradient Background]            │
 │                                          │
-│         ArmsterFlow                      │
-│     Lean Canvas Made Simple              │
+│         Pivot Kit                        │
+│     Startup Validation Guide             │
 │                                          │
 └─────────────────────────────────────────┘
 ```
@@ -16,7 +16,7 @@
 ### Main Content
 ```
 ┌─────────────────────────────────────────┐
-│ Welcome to ArmsterFlow! 🎉               │
+│ Welcome to Pivot Kit! 🎉                 │
 │                                          │
 │ Thank you for signing up! You're just   │
 │ one click away from starting your       │
@@ -48,7 +48,7 @@
 │ ┌─────────────────────────────────────┐ │
 │ │ 💡 Pro Tip: You'll have access to a │ │
 │ │ demo project "Walking on the Sun"   │ │
-│ │ to see how ArmsterFlow works...     │ │
+│ │ to see how Pivot Kit works...       │ │
 │ └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
 ```
@@ -62,10 +62,10 @@
 │ 24 hours.                                │
 │                                          │
 │ If you didn't create an account with    │
-│ ArmsterFlow, you can safely ignore      │
+│ Pivot Kit, you can safely ignore        │
 │ this email.                              │
 │                                          │
-│ © 2025 ArmsterFlow. All rights reserved.│
+│ © 2025 Pivot Kit. All rights reserved.  │
 └─────────────────────────────────────────┘
 ```
 
@@ -81,7 +81,7 @@ Follow this link to confirm your user:
 
 ### After
 - ✅ **Professional branding** with gradient header
-- ✅ **Clear headline** "Welcome to ArmsterFlow! 🎉"
+- ✅ **Clear headline** "Welcome to Pivot Kit! 🎉"
 - ✅ **Prominent CTA button** instead of plain link
 - ✅ **Informative content** about what users get
 - ✅ **Pro tip** about demo project and workspace

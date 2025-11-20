@@ -1,10 +1,10 @@
-# ArmsterFlow
+# Pivot Kit
 
-**A comprehensive platform for guiding startups through the Armster methodology** - from problem discovery to pivot decisions, powered by structured frameworks and evidence-based decision making.
+**A comprehensive platform for guiding startups through structured validation** - from problem discovery to pivot decisions, powered by structured frameworks and evidence-based decision making.
 
 ## 🚀 Overview
 
-ArmsterFlow helps entrepreneurs and startup teams systematically validate their business ideas through:
+Pivot Kit helps entrepreneurs and startup teams systematically validate their business ideas through:
 
 - **Guided Discovery**: Structured customer interviews and assumption tracking
 - **Visual Sector Mapping**: Understand your ecosystem, competitors, and decision makers
@@ -34,8 +34,8 @@ ArmsterFlow helps entrepreneurs and startup teams systematically validate their 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/Montster27/ArmsterFlow.git
-cd ArmsterFlow
+git clone https://github.com/Montster27/PivotKit.git
+cd PivotKit
 npm install
 ```
 
@@ -88,7 +88,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## 🏗️ Project Structure
 
 ```
-ArmsterFlow/
+PivotKit/
 ├── src/
 │   ├── components/          # React components
 │   │   ├── discovery/      # Interview & assumption tracking
@@ -224,8 +224,8 @@ MIT
 ## 📧 Support
 
 For questions or issues:
-- Create an issue on [GitHub](https://github.com/Montster27/ArmsterFlow/issues)
-- Contact: monty.sharma@massdigi.org
+- Create an issue on [GitHub](https://github.com/Montster27/PivotKit/issues)
+- Contact: support@pivotkit.biz
 
 ---
 

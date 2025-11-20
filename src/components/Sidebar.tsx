@@ -27,7 +27,7 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
   return (
     <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-blue-600">ArmsterFlow</h1>
+        <h1 className="text-2xl font-bold text-blue-600">Pivot Kit</h1>
         <p className="text-sm text-gray-500 mt-1">Startup Validation Guide</p>
       </div>
 
@@ -61,24 +61,39 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           }
 
           return (
-            <button
-              key={module}
-              onClick={() => onModuleClick(module)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${isActive
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <span className="font-medium capitalize">
-                {module.replace(/([A-Z])/g, ' $1').trim()}
-              </span>
-              {isCompleted && (
-                <span className="text-green-500" aria-label="Completed">
-                  ✓
+            <>
+              <button
+                key={module}
+                onClick={() => onModuleClick(module)}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${isActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="font-medium capitalize">
+                  {module.replace(/([A-Z])/g, ' $1').trim()}
                 </span>
+                {isCompleted && (
+                  <span className="text-green-500" aria-label="Completed">
+                    ✓
+                  </span>
+                )}
+              </button>
+
+              {/* Discovery 2.0 Link - appears after "discovery" module */}
+              {module === 'discovery' && projectId && (
+                <button
+                  onClick={() => navigate(`/project/${projectId}/discovery2`)}
+                  className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
+                >
+                  <span className="font-medium">Discovery 2.0</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    New
+                  </span>
+                </button>
               )}
-            </button>
+            </>
           );
         })}
 
@@ -88,19 +103,6 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
         >
           <span className="font-medium">View Summary</span>
         </button>
-
-        {/* Discovery 2.0 Link */}
-        {projectId && (
-          <button
-            onClick={() => navigate(`/project/${projectId}/discovery2`)}
-            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
-          >
-            <span className="font-medium">Discovery 2.0</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-              New
-            </span>
-          </button>
-        )}
       </nav>
 
       <div className="pt-4 border-t border-gray-200">
@@ -125,9 +127,9 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
               ✕
             </button>
 
-            <h2 className="text-xl font-bold mb-4">About ArmsterFlow</h2>
+            <h2 className="text-xl font-bold mb-4">About Pivot Kit</h2>
             <p className="text-gray-600 mb-4">
-              ArmsterFlow is a structured guide designed to help entrepreneurs validate their startup ideas through rigorous customer discovery and problem validation.
+              Pivot Kit is a structured guide designed to help entrepreneurs validate their startup ideas through rigorous customer discovery and problem validation.
             </p>
 
             <h3 className="font-semibold mb-2">Need Help?</h3>
