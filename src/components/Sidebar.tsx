@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '../config/constants';
 import { useGuide } from '../contexts/GuideContext';
 import { useDiscovery } from '../contexts/DiscoveryContext';
@@ -12,6 +13,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: SidebarProps) {
+  const navigate = useNavigate();
   const { currentModule, progress } = useGuide();
   const { interviews } = useDiscovery();
   const { interviews: enhancedInterviews } = useEnhancedInterviews(projectId);
@@ -86,6 +88,19 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
         >
           <span className="font-medium">View Summary</span>
         </button>
+
+        {/* Discovery 2.0 Link */}
+        {projectId && (
+          <button
+            onClick={() => navigate(`/project/${projectId}/discovery2`)}
+            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
+          >
+            <span className="font-medium">Discovery 2.0</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+              New
+            </span>
+          </button>
+        )}
       </nav>
 
       <div className="pt-4 border-t border-gray-200">
