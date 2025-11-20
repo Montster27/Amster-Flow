@@ -329,7 +329,7 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
             </p>
           ) : (
             <div className="space-y-3">
-              {metrics.highRiskUntested.map((assumption, index) => (
+              {metrics.highRiskUntested.map((assumption) => (
                 <div key={assumption.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
