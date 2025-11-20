@@ -1,0 +1,158 @@
+{
+  "assumptionTemplates": {
+    "problem": {
+      "title": "Problem Assumptions",
+      "description": "What problems do you assume exist and how painful are they?",
+      "prompts": [
+        "The top problem customers face is...",
+        "This problem is urgent because...",
+        "Customers experience this problem when...",
+        "The current workarounds fail because...",
+        "The cost of not solving this is...",
+        "This problem affects [X]% of our target market...",
+        "The problem is getting worse because...",
+        "Customers are actively seeking solutions because..."
+      ]
+    },
+    "existingAlternatives": {
+      "title": "Existing Alternatives Assumptions",
+      "description": "What do you assume about how customers currently solve this?",
+      "prompts": [
+        "Customers currently use [solution] to solve this...",
+        "The main alternatives cost approximately...",
+        "Existing solutions are inadequate because...",
+        "Competitors charge around [price] for...",
+        "The switching cost from alternatives is...",
+        "Current workarounds involve...",
+        "Market leaders in this space are...",
+        "Customers are dissatisfied with alternatives because..."
+      ]
+    },
+    "customerSegments": {
+      "title": "Customer Segment Assumptions",
+      "description": "Who do you believe experiences this problem most acutely?",
+      "prompts": [
+        "Our primary customer segment is...",
+        "They are defined by [characteristics] such as...",
+        "They experience the problem differently because...",
+        "The decision maker is typically...",
+        "The size of this segment is approximately...",
+        "Key influencers in the buying decision include...",
+        "This segment is willing to pay because...",
+        "We can identify them by..."
+      ]
+    },
+    "earlyAdopters": {
+      "title": "Early Adopter Assumptions",
+      "description": "Who will try your solution first and why?",
+      "prompts": [
+        "Our early adopters are...",
+        "They are willing to try new solutions because...",
+        "They experience the problem more acutely than others because...",
+        "We can reach them through...",
+        "Their motivation to switch is...",
+        "They are less sensitive to...",
+        "We can find them in [communities/channels]...",
+        "They will advocate for us because..."
+      ]
+    },
+    "solution": {
+      "title": "Solution Assumptions",
+      "description": "What do you assume about how your solution will work?",
+      "prompts": [
+        "Our minimum viable solution must include...",
+        "The core feature that solves the problem is...",
+        "Customers will adopt it because...",
+        "It will be 10x better than alternatives by...",
+        "The solution works by...",
+        "Integration requirements include...",
+        "Technical feasibility depends on...",
+        "Time to value for users is..."
+      ]
+    },
+    "uniqueValueProposition": {
+      "title": "Unique Value Proposition Assumptions",
+      "description": "What makes your solution uniquely valuable?",
+      "prompts": [
+        "Our unique value proposition is...",
+        "We are different from competitors because...",
+        "Customers should choose us instead of [alternative] because...",
+        "Our promise that others cannot make is...",
+        "The key benefit customers care about most is...",
+        "We can deliver this value because...",
+        "Our positioning in the market is...",
+        "The emotional benefit customers get is..."
+      ]
+    },
+    "channels": {
+      "title": "Channel Assumptions",
+      "description": "How will you reach and acquire customers?",
+      "prompts": [
+        "We will reach customers primarily through...",
+        "Our most cost-effective acquisition channel is...",
+        "Customers discover solutions like ours via...",
+        "Our customer acquisition cost will be approximately...",
+        "Conversion rates from [channel] will be...",
+        "Our go-to-market strategy involves...",
+        "Partners who can help us reach customers include...",
+        "Viral/referral growth will come from..."
+      ]
+    },
+    "revenueStreams": {
+      "title": "Revenue Stream Assumptions",
+      "description": "How will you monetize and what will customers pay?",
+      "prompts": [
+        "Customers will pay approximately [price] per...",
+        "Our pricing model will be [subscription/one-time/usage-based]...",
+        "Willingness to pay is driven by...",
+        "We will capture value through...",
+        "Lifetime value of a customer is approximately...",
+        "Revenue will come from [primary source]...",
+        "Upsell/cross-sell opportunities include...",
+        "Payment terms that work best are..."
+      ]
+    },
+    "costStructure": {
+      "title": "Cost Structure Assumptions",
+      "description": "What will it cost to build and run your business?",
+      "prompts": [
+        "Our primary costs will be...",
+        "Cost per customer acquisition is...",
+        "Infrastructure/hosting costs are approximately...",
+        "Development costs will be around...",
+        "Fixed costs include...",
+        "Variable costs scale with...",
+        "Our burn rate will be approximately...",
+        "Break-even requires [X] customers because..."
+      ]
+    },
+    "keyMetrics": {
+      "title": "Key Metrics Assumptions",
+      "description": "What numbers will indicate success?",
+      "prompts": [
+        "Our North Star metric is...",
+        "We will measure product-market fit by...",
+        "Success looks like [X] customers by [date]...",
+        "Key leading indicators include...",
+        "Monthly recurring revenue target is...",
+        "Customer retention rate should be at least...",
+        "Activation rate will be approximately...",
+        "We will know we have traction when..."
+      ]
+    },
+    "unfairAdvantage": {
+      "title": "Unfair Advantage Assumptions",
+      "description": "What do you have that cannot be easily copied or bought?",
+      "prompts": [
+        "Our unfair advantage is...",
+        "This cannot be easily copied because...",
+        "Our unique assets include...",
+        "We have exclusive access to...",
+        "Our team's background provides advantage in...",
+        "Barriers to entry we can create include...",
+        "Our network effects will come from...",
+        "Our defensibility comes from..."
+      ]
+    }
+  }
+}
