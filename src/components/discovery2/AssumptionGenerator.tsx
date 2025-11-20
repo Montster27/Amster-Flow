@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CanvasArea, AssumptionType, ConfidenceLevel } from '../../types/discovery';
+import { captureException } from '../../lib/sentry';
 
 interface AssumptionGeneratorProps {
   onClose: () => void;
@@ -125,6 +126,18 @@ export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProp
   const [description, setDescription] = useState('');
   const [importance, setImportance] = useState<ConfidenceLevel>(3);
   const [confidence, setConfidence] = useState<ConfidenceLevel>(3);
+  const [templates, setTemplates] = useState<any>(null);
+
+  // Load assumption templates
+  useEffect(() => {
+    fetch('/discovery2-templates.json')
+      .then((res) => res.json())
+      .then((data) => setTemplates(data.assumptionTemplates))
+      .catch((err) => {
+        const error = err instanceof Error ? err : new Error('Failed to load templates');
+        captureException(error, { extra: { context: 'AssumptionGenerator load' } });
+      });
+  }, []);
 
   const handleSubmit = () => {
     if (!canvasArea || !description.trim()) return;
@@ -249,6 +262,29 @@ export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProp
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                   Describe Your Assumption
                 </label>
+
+                {/* Template Prompts */}
+                {templates && templates[canvasArea] && (
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      💡 {templates[canvasArea].description}
+                    </p>
+                    <p className="text-xs text-gray-600 mb-2">Click a prompt to get started:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {templates[canvasArea].prompts.map((prompt: string, index: number) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setDescription(prompt)}
+                          className="text-xs px-3 py-1.5 bg-white border border-blue-300 rounded-full hover:bg-blue-100 transition-colors text-left"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   id="description"
                   rows={4}
