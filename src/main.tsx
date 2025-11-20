@@ -15,6 +15,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TermsOfServicePage } from './pages/TermsOfServicePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
+import { Discovery2Page } from './pages/Discovery2Page'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminUserDetail } from './pages/AdminUserDetail'
@@ -57,6 +58,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <ProjectPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId/discovery2"
+                    element={
+                      <ProtectedRoute>
+                        <Discovery2Page />
                       </ProtectedRoute>
                     }
                   />

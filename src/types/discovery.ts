@@ -6,6 +6,27 @@ export type InterviewFormat = 'in-person' | 'phone' | 'video' | 'survey';
 export type IntervieweeType = 'potential-buyer' | 'competitor' | 'substitute' | 'knowledgeable';
 export type ConfidenceLevel = 1 | 2 | 3 | 4 | 5; // 1=very low, 5=very high
 
+// ============================================================================
+// DISCOVERY 2.0 TYPES (Lean Business Model Canvas Integration)
+// ============================================================================
+
+// Lean Business Model Canvas (LBMC) areas
+export type CanvasArea =
+  | 'problem'
+  | 'existingAlternatives'
+  | 'customerSegments'
+  | 'earlyAdopters'
+  | 'solution'
+  | 'uniqueValueProposition'
+  | 'channels'
+  | 'revenueStreams'
+  | 'costStructure'
+  | 'keyMetrics'
+  | 'unfairAdvantage';
+
+// Priority level for assumption testing
+export type PriorityLevel = 'high' | 'medium' | 'low';
+
 export interface Assumption {
   id: string;
   type: AssumptionType;
@@ -133,4 +154,22 @@ export interface InterviewSynthesis {
     contradictingEvidence: string[];
     netEffect: ValidationEffect;
   }[];
+}
+
+// ============================================================================
+// DISCOVERY 2.0 ASSUMPTION (Extended with LBMC Integration)
+// ============================================================================
+
+export interface Discovery2Assumption extends Assumption {
+  // LBMC Integration
+  canvasArea: CanvasArea; // Which LBMC area this assumption relates to
+
+  // Risk-based prioritization
+  importance: ConfidenceLevel; // 1-5: How critical is this assumption?
+  priority: PriorityLevel; // Calculated or manually set: high/medium/low
+  riskScore?: number; // Calculated: (6 - confidence) * importance
+
+  // Enhanced tracking
+  interviewCount?: number; // Number of interviews that addressed this
+  lastTestedDate?: string; // ISO date of most recent interview
 }
