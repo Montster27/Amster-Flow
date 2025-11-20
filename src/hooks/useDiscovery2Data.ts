@@ -4,11 +4,14 @@ import { useAuth } from './useAuth';
 import { useDiscovery2 } from '../contexts/Discovery2Context';
 import type {
   Discovery2Assumption,
+  EnhancedInterview,
   AssumptionType,
   AssumptionStatus,
   CanvasArea,
   PriorityLevel,
   ConfidenceLevel,
+  IntervieweeTypeEnhanced,
+  AssumptionTag,
 } from '../types/discovery';
 import { captureException } from '../lib/sentry';
 
@@ -20,7 +23,7 @@ export function useDiscovery2Data(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { assumptions, importData, reset } = useDiscovery2();
+  const { assumptions, interviews, importData, reset } = useDiscovery2();
   const initialLoadRef = useRef(false);
   const isSavingRef = useRef(false);
 
@@ -69,8 +72,37 @@ export function useDiscovery2Data(projectId: string | undefined) {
           lastTestedDate: (row as any).last_tested_date || undefined,
         }));
 
+        // Load enhanced interviews
+        const { data: interviewsData, error: interviewsError } = await supabase
+          .from('enhanced_interviews')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (interviewsError) throw interviewsError;
+
+        // Convert database rows to EnhancedInterview format
+        const interviews: EnhancedInterview[] = (interviewsData || []).map(row => ({
+          id: row.id,
+          intervieweeType: row.interviewee_type as IntervieweeTypeEnhanced,
+          segmentName: row.segment_name,
+          date: row.date,
+          context: row.context || '',
+          status: row.status as 'draft' | 'completed',
+          mainPainPoints: row.main_pain_points,
+          problemImportance: row.problem_importance as ConfidenceLevel,
+          problemImportanceQuote: row.problem_importance_quote || undefined,
+          currentAlternatives: row.current_alternatives,
+          memorableQuotes: row.memorable_quotes || [],
+          surprisingFeedback: row.surprising_feedback || '',
+          assumptionTags: row.assumption_tags as AssumptionTag[] || [],
+          studentReflection: row.student_reflection,
+          mentorFeedback: row.mentor_feedback || undefined,
+          created: row.created_at || new Date().toISOString(),
+          lastUpdated: row.updated_at || new Date().toISOString(),
+        }));
+
         // Import into store
-        importData({ assumptions });
+        importData({ assumptions, interviews });
         initialLoadRef.current = true;
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Error loading Discovery 2.0 data');
@@ -136,6 +168,58 @@ export function useDiscovery2Data(projectId: string | undefined) {
     const timeoutId = setTimeout(saveAssumptions, 1000);
     return () => clearTimeout(timeoutId);
   }, [projectId, user, assumptions, loading]);
+
+  // Save interviews to Supabase whenever they change
+  useEffect(() => {
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
+
+    const saveInterviews = async () => {
+      if (isSavingRef.current) return;
+
+      try {
+        isSavingRef.current = true;
+
+        // Upsert all current enhanced interviews
+        if (interviews.length > 0) {
+          const rows = interviews.map(interview => ({
+            id: interview.id,
+            project_id: projectId,
+            interviewee_type: interview.intervieweeType,
+            segment_name: interview.segmentName,
+            date: interview.date,
+            context: interview.context,
+            status: interview.status,
+            main_pain_points: interview.mainPainPoints,
+            problem_importance: interview.problemImportance,
+            problem_importance_quote: interview.problemImportanceQuote,
+            current_alternatives: interview.currentAlternatives,
+            memorable_quotes: interview.memorableQuotes,
+            surprising_feedback: interview.surprisingFeedback,
+            assumption_tags: interview.assumptionTags,
+            student_reflection: interview.studentReflection,
+            mentor_feedback: interview.mentorFeedback,
+            created_at: interview.created,
+            updated_at: interview.lastUpdated,
+            created_by: user.id,
+          } as any)); // Type assertion to allow new fields
+
+          await supabase
+            .from('enhanced_interviews')
+            .upsert(rows, { onConflict: 'id' });
+        }
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Error saving interviews');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscovery2Data save interviews' },
+        });
+      } finally {
+        isSavingRef.current = false;
+      }
+    };
+
+    const timeoutId = setTimeout(saveInterviews, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [projectId, user, interviews, loading]);
 
   return { loading, error };
 }
