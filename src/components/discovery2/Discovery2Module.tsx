@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useDiscovery2 } from '../../contexts/Discovery2Context';
+import { AssumptionGenerator } from './AssumptionGenerator';
+import { AssumptionFrameworkTable } from './AssumptionFrameworkTable';
+import type { Discovery2Assumption, AssumptionStatus } from '../../types/discovery';
 
 /**
  * Discovery 2.0 Main Module
@@ -11,6 +15,56 @@ import { useState } from 'react';
  */
 export function Discovery2Module() {
   const [activeTab, setActiveTab] = useState<'assumptions' | 'board' | 'interviews' | 'dashboard'>('assumptions');
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [editingAssumption, setEditingAssumption] = useState<Discovery2Assumption | null>(null);
+
+  const { assumptions, addAssumption, updateAssumption, deleteAssumption } = useDiscovery2();
+
+  const handleCreateAssumption = (newAssumption: any) => {
+    // Calculate risk score
+    const riskScore = (6 - newAssumption.confidence) * newAssumption.importance;
+
+    // Determine priority based on risk score
+    let priority: 'high' | 'medium' | 'low' = 'medium';
+    if (riskScore >= 15) {
+      priority = 'high';
+    } else if (riskScore >= 8) {
+      priority = 'medium';
+    } else {
+      priority = 'low';
+    }
+
+    const assumption: Discovery2Assumption = {
+      id: crypto.randomUUID(),
+      type: newAssumption.type,
+      description: newAssumption.description,
+      created: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      status: 'untested' as AssumptionStatus,
+      confidence: newAssumption.confidence,
+      evidence: newAssumption.evidence || [],
+
+      // Discovery 2.0 specific fields
+      canvasArea: newAssumption.canvasArea,
+      importance: newAssumption.importance,
+      priority,
+      riskScore,
+      interviewCount: 0,
+    };
+
+    addAssumption(assumption);
+  };
+
+  const handleEditAssumption = (assumption: Discovery2Assumption) => {
+    setEditingAssumption(assumption);
+    setShowGenerator(true);
+  };
+
+  const handleDeleteAssumption = (id: string) => {
+    if (confirm('Are you sure you want to delete this assumption?')) {
+      deleteAssumption(id);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,27 +172,61 @@ export function Discovery2Module() {
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'assumptions' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Assumptions Framework</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Generate and manage assumptions linked to your Lean Business Model Canvas
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Create First Assumption
-                </button>
+          <div>
+            {/* Header with Create Button */}
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Assumptions Framework</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Generate and manage assumptions linked to your Lean Business Model Canvas
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowGenerator(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Assumption
+              </button>
             </div>
+
+            {/* Assumptions Table or Empty State */}
+            {assumptions.length > 0 ? (
+              <div className="bg-white rounded-lg shadow">
+                <AssumptionFrameworkTable
+                  assumptions={assumptions}
+                  onEdit={handleEditAssumption}
+                  onDelete={handleDeleteAssumption}
+                />
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="text-center py-12">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No assumptions yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get started by creating your first assumption
+                  </p>
+                  <div className="mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowGenerator(true)}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Create First Assumption
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -152,6 +240,7 @@ export function Discovery2Module() {
               <p className="mt-1 text-sm text-gray-500">
                 Kanban-style board to track assumption validation progress
               </p>
+              <p className="mt-4 text-xs text-gray-400">Coming soon...</p>
             </div>
           </div>
         )}
@@ -166,17 +255,7 @@ export function Discovery2Module() {
               <p className="mt-1 text-sm text-gray-500">
                 Conduct interviews with "Big 3 + Why" guidance and link findings to assumptions
               </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Start Interview
-                </button>
-              </div>
+              <p className="mt-4 text-xs text-gray-400">Coming soon...</p>
             </div>
           </div>
         )}
@@ -191,10 +270,22 @@ export function Discovery2Module() {
               <p className="mt-1 text-sm text-gray-500">
                 View synthesis, patterns, and insights from your discovery process
               </p>
+              <p className="mt-4 text-xs text-gray-400">Coming soon...</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Assumption Generator Modal */}
+      {showGenerator && (
+        <AssumptionGenerator
+          onClose={() => {
+            setShowGenerator(false);
+            setEditingAssumption(null);
+          }}
+          onSave={handleCreateAssumption}
+        />
+      )}
     </div>
   );
 }
