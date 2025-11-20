@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { petFinderAssumptions, petFinderInterviews } from '../data/petFinderSeedData';
-import type { Discovery2Assumption, EnhancedInterview, AssumptionTag } from '../types/discovery';
+import type { AssumptionTag } from '../types/discovery';
 
 /**
  * Seeds Discovery 2.0 data for Pet Finder project
