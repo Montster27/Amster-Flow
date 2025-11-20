@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import type { Discovery2Assumption } from '../types/discovery';
+import type { Discovery2Assumption, EnhancedInterview } from '../types/discovery';
 
 interface Discovery2ContextType {
   assumptions: Discovery2Assumption[];
@@ -9,7 +9,12 @@ interface Discovery2ContextType {
   getAssumptionById: (id: string) => Discovery2Assumption | undefined;
   getAssumptionsByCanvasArea: (canvasArea: string) => Discovery2Assumption[];
   getHighPriorityAssumptions: () => Discovery2Assumption[];
-  importData: (data: { assumptions: Discovery2Assumption[] }) => void;
+  interviews: EnhancedInterview[];
+  addInterview: (interview: EnhancedInterview) => void;
+  updateInterview: (id: string, updates: Partial<EnhancedInterview>) => void;
+  deleteInterview: (id: string) => void;
+  getInterviewById: (id: string) => EnhancedInterview | undefined;
+  importData: (data: { assumptions: Discovery2Assumption[]; interviews?: EnhancedInterview[] }) => void;
   reset: () => void;
 }
 
@@ -29,6 +34,7 @@ interface Discovery2ProviderProps {
 
 export function Discovery2Provider({ children }: Discovery2ProviderProps) {
   const [assumptions, setAssumptions] = useState<Discovery2Assumption[]>([]);
+  const [interviews, setInterviews] = useState<EnhancedInterview[]>([]);
 
   const addAssumption = useCallback((assumption: Discovery2Assumption) => {
     setAssumptions((prev) => [...prev, assumption]);
@@ -70,12 +76,46 @@ export function Discovery2Provider({ children }: Discovery2ProviderProps) {
     return assumptions.filter((a) => a.priority === 'high');
   }, [assumptions]);
 
-  const importData = useCallback((data: { assumptions: Discovery2Assumption[] }) => {
+  // Interview management
+  const addInterview = useCallback((interview: EnhancedInterview) => {
+    setInterviews((prev) => [...prev, interview]);
+  }, []);
+
+  const updateInterview = useCallback((id: string, updates: Partial<EnhancedInterview>) => {
+    setInterviews((prev) =>
+      prev.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              ...updates,
+              lastUpdated: new Date().toISOString(),
+            }
+          : i
+      )
+    );
+  }, []);
+
+  const deleteInterview = useCallback((id: string) => {
+    setInterviews((prev) => prev.filter((i) => i.id !== id));
+  }, []);
+
+  const getInterviewById = useCallback(
+    (id: string) => {
+      return interviews.find((i) => i.id === id);
+    },
+    [interviews]
+  );
+
+  const importData = useCallback((data: { assumptions: Discovery2Assumption[]; interviews?: EnhancedInterview[] }) => {
     setAssumptions(data.assumptions);
+    if (data.interviews) {
+      setInterviews(data.interviews);
+    }
   }, []);
 
   const reset = useCallback(() => {
     setAssumptions([]);
+    setInterviews([]);
   }, []);
 
   const value: Discovery2ContextType = {
@@ -86,6 +126,11 @@ export function Discovery2Provider({ children }: Discovery2ProviderProps) {
     getAssumptionById,
     getAssumptionsByCanvasArea,
     getHighPriorityAssumptions,
+    interviews,
+    addInterview,
+    updateInterview,
+    deleteInterview,
+    getInterviewById,
     importData,
     reset,
   };
