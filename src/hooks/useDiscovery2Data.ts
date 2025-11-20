@@ -74,7 +74,7 @@ export function useDiscovery2Data(projectId: string | undefined) {
 
         // Load enhanced interviews
         const { data: interviewsData, error: interviewsError } = await supabase
-          .from('enhanced_interviews')
+          .from('project_interviews_enhanced')
           .select('*')
           .eq('project_id', projectId);
 
@@ -204,7 +204,7 @@ export function useDiscovery2Data(projectId: string | undefined) {
           } as any)); // Type assertion to allow new fields
 
           await supabase
-            .from('enhanced_interviews')
+            .from('project_interviews_enhanced')
             .upsert(rows, { onConflict: 'id' });
         }
       } catch (err) {
