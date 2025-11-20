@@ -16,9 +16,8 @@ import type { Discovery2Assumption, AssumptionStatus } from '../../types/discove
 export function Discovery2Module() {
   const [activeTab, setActiveTab] = useState<'assumptions' | 'board' | 'interviews' | 'dashboard'>('assumptions');
   const [showGenerator, setShowGenerator] = useState(false);
-  const [editingAssumption, setEditingAssumption] = useState<Discovery2Assumption | null>(null);
 
-  const { assumptions, addAssumption, updateAssumption, deleteAssumption } = useDiscovery2();
+  const { assumptions, addAssumption, deleteAssumption } = useDiscovery2();
 
   const handleCreateAssumption = (newAssumption: any) => {
     // Calculate risk score
@@ -56,8 +55,8 @@ export function Discovery2Module() {
   };
 
   const handleEditAssumption = (assumption: Discovery2Assumption) => {
-    setEditingAssumption(assumption);
-    setShowGenerator(true);
+    // TODO: Implement edit functionality
+    console.log('Edit assumption:', assumption);
   };
 
   const handleDeleteAssumption = (id: string) => {
@@ -279,10 +278,7 @@ export function Discovery2Module() {
       {/* Assumption Generator Modal */}
       {showGenerator && (
         <AssumptionGenerator
-          onClose={() => {
-            setShowGenerator(false);
-            setEditingAssumption(null);
-          }}
+          onClose={() => setShowGenerator(false)}
           onSave={handleCreateAssumption}
         />
       )}
