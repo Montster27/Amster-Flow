@@ -37,8 +37,14 @@ BEGIN
   )
   SELECT
     pi.project_id,
-    -- Map old interviewee_type or default to 'customer'
-    COALESCE(pi.interviewee_type::TEXT, 'customer'),
+    -- Map old interviewee_type to new enum values
+    CASE pi.interviewee_type
+      WHEN 'potential-buyer' THEN 'customer'
+      WHEN 'competitor' THEN 'expert'
+      WHEN 'substitute' THEN 'expert'
+      WHEN 'knowledgeable' THEN 'expert'
+      ELSE COALESCE(pi.interviewee_type::TEXT, 'customer')
+    END,
     -- Use customer_segment as segment_name
     COALESCE(pi.customer_segment, 'Unknown Segment'),
     -- Convert date string to timestamp

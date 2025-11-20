@@ -1,0 +1,141 @@
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './useAuth';
+import { useDiscovery2 } from '../contexts/Discovery2Context';
+import type {
+  Discovery2Assumption,
+  AssumptionType,
+  AssumptionStatus,
+  CanvasArea,
+  PriorityLevel,
+  ConfidenceLevel,
+} from '../types/discovery';
+import { captureException } from '../lib/sentry';
+
+/**
+ * Hook to sync Discovery 2.0 data with Supabase
+ * Loads assumptions on mount and saves changes to database
+ */
+export function useDiscovery2Data(projectId: string | undefined) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { assumptions, importData, reset } = useDiscovery2();
+  const initialLoadRef = useRef(false);
+  const isSavingRef = useRef(false);
+
+  // Load Discovery 2.0 data from Supabase on mount
+  useEffect(() => {
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+
+    const loadDiscovery2Data = async () => {
+      try {
+        // Reset store immediately when projectId changes to clear old data
+        reset();
+        initialLoadRef.current = false;
+
+        setLoading(true);
+        setError(null);
+
+        // Load assumptions with Discovery 2.0 fields
+        const { data: assumptionsData, error: assumptionsError } = await supabase
+          .from('project_assumptions')
+          .select('*')
+          .eq('project_id', projectId)
+          .not('canvas_area', 'is', null); // Only load Discovery 2.0 assumptions
+
+        if (assumptionsError) throw assumptionsError;
+
+        // Convert database rows to Discovery2Assumption format
+        const assumptions: Discovery2Assumption[] = (assumptionsData || []).map(row => ({
+          id: row.id,
+          type: row.type as AssumptionType,
+          description: row.description,
+          created: row.created_at || new Date().toISOString(),
+          lastUpdated: row.updated_at || new Date().toISOString(),
+          status: row.status as AssumptionStatus,
+          confidence: (row.confidence || 3) as ConfidenceLevel,
+          evidence: row.evidence || [],
+
+          // Discovery 2.0 specific fields
+          canvasArea: row.canvas_area as CanvasArea,
+          importance: (row.importance || 3) as ConfidenceLevel,
+          priority: (row.priority || 'medium') as PriorityLevel,
+          riskScore: row.risk_score || undefined,
+          interviewCount: row.interview_count || 0,
+          lastTestedDate: row.last_tested_date || undefined,
+        }));
+
+        // Import into store
+        importData({ assumptions });
+        initialLoadRef.current = true;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Error loading Discovery 2.0 data');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscovery2Data load' },
+        });
+        setError('Failed to load Discovery 2.0 data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDiscovery2Data();
+  }, [projectId, importData, reset]);
+
+  // Save assumptions to Supabase whenever they change
+  useEffect(() => {
+    if (!projectId || !user || loading || !initialLoadRef.current) return;
+
+    const saveAssumptions = async () => {
+      if (isSavingRef.current) return;
+
+      try {
+        isSavingRef.current = true;
+
+        // Upsert all current Discovery 2.0 assumptions
+        if (assumptions.length > 0) {
+          const rows = assumptions.map(assumption => ({
+            id: assumption.id,
+            project_id: projectId,
+            type: assumption.type,
+            description: assumption.description,
+            status: assumption.status,
+            confidence: assumption.confidence,
+            evidence: assumption.evidence,
+            created_at: assumption.created,
+            updated_at: assumption.lastUpdated,
+            created_by: user.id,
+
+            // Discovery 2.0 specific fields
+            canvas_area: assumption.canvasArea,
+            importance: assumption.importance,
+            priority: assumption.priority,
+            risk_score: assumption.riskScore,
+            interview_count: assumption.interviewCount,
+            last_tested_date: assumption.lastTestedDate,
+          }));
+
+          await supabase
+            .from('project_assumptions')
+            .upsert(rows, { onConflict: 'id' });
+        }
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Error saving Discovery 2.0 data');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscovery2Data save' },
+        });
+      } finally {
+        isSavingRef.current = false;
+      }
+    };
+
+    const timeoutId = setTimeout(saveAssumptions, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [projectId, user, assumptions, loading]);
+
+  return { loading, error };
+}
