@@ -130,12 +130,14 @@ serve(async (req) => {
                 return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
             }
 
-            // Check if user is an admin
-            // For MVP, we'll check against a hardcoded list or env var. 
-            // Ideally, this should be a role check in the database.
-            const ADMIN_EMAILS = (Deno.env.get("ADMIN_EMAILS") || "").split(",");
+            // Check if user is an admin (via database)
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single();
 
-            if (!ADMIN_EMAILS.includes(user.email)) {
+            if (profileError || !profile?.is_admin) {
                 return new Response(JSON.stringify({ error: "Forbidden: Not an admin" }), { status: 403 });
             }
 
