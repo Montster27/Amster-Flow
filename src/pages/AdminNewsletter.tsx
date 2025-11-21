@@ -64,18 +64,28 @@ export const AdminNewsletter: React.FC = () => {
         setTestMessage('');
 
         try {
+            // Get current session to ensure we're authenticated
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                throw new Error('Not authenticated. Please log in again.');
+            }
+
             const { data, error } = await supabase.functions.invoke('newsletter/test', {
                 body: { subject, content },
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Edge Function error:', error);
+                throw new Error(error.message || JSON.stringify(error));
+            }
 
             setTestStatus('success');
             setTestMessage(data.message || 'Test newsletter sent to montys@mit.edu! Check your inbox.');
         } catch (err: any) {
             console.error('Test newsletter error:', err);
             setTestStatus('error');
-            setTestMessage(err.message || 'Failed to send test newsletter.');
+            setTestMessage(`Error: ${err.message || 'Failed to send test newsletter.'}`);
         }
     };
 
@@ -87,11 +97,21 @@ export const AdminNewsletter: React.FC = () => {
         setMessage('');
 
         try {
+            // Get current session to ensure we're authenticated
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                throw new Error('Not authenticated. Please log in again.');
+            }
+
             const { data, error } = await supabase.functions.invoke('newsletter/broadcast', {
                 body: { subject, content },
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Edge Function error:', error);
+                throw new Error(error.message || JSON.stringify(error));
+            }
 
             setStatus('success');
             setMessage(data.message || 'Newsletter sent successfully!');
@@ -100,7 +120,7 @@ export const AdminNewsletter: React.FC = () => {
         } catch (err: any) {
             console.error('Broadcast error:', err);
             setStatus('error');
-            setMessage(err.message || 'Failed to send newsletter.');
+            setMessage(`Error: ${err.message || 'Failed to send newsletter.'}`);
         }
     };
 
