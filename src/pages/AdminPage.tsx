@@ -300,18 +300,37 @@ export function AdminPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Sentry Test Button - Only visible to monty.sharma@gmail.com */}
-        {user?.email === 'monty.sharma@gmail.com' && (
-          <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
-            <p className="text-sm font-medium text-yellow-800 mb-2">
-              🧪 Sentry Integration Test (Only visible to you):
+        {/* Admin Tools - Only visible to admins */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Newsletter Management */}
+          <div className="p-4 bg-blue-50 border-2 border-blue-400 rounded-lg">
+            <p className="text-sm font-medium text-blue-800 mb-2">
+              📧 Newsletter Management
             </p>
-            <p className="text-xs text-yellow-700 mb-3">
-              Click the button below to trigger a test error and verify Sentry is capturing errors correctly.
+            <p className="text-xs text-blue-700 mb-3">
+              Send newsletter broadcasts to all subscribed users. Manage subscribers and view email analytics.
             </p>
-            <ErrorButton />
+            <button
+              onClick={() => navigate('/admin/newsletter')}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+            >
+              📧 Open Newsletter Admin
+            </button>
           </div>
-        )}
+
+          {/* Sentry Test Button - Only visible to monty.sharma@gmail.com */}
+          {user?.email === 'monty.sharma@gmail.com' && (
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+              <p className="text-sm font-medium text-yellow-800 mb-2">
+                🧪 Sentry Integration Test (Only visible to you):
+              </p>
+              <p className="text-xs text-yellow-700 mb-3">
+                Click the button below to trigger a test error and verify Sentry is capturing errors correctly.
+              </p>
+              <ErrorButton />
+            </div>
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
