@@ -1,11 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+
+interface SubscriberStats {
+    subscribed: number;
+    unsubscribed: number;
+    total: number;
+}
 
 export const AdminNewsletter: React.FC = () => {
     const [subject, setSubject] = useState('');
     const [content, setContent] = useState('');
     const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
+    const [stats, setStats] = useState<SubscriberStats>({ subscribed: 0, unsubscribed: 0, total: 0 });
+    const [loadingStats, setLoadingStats] = useState(true);
+
+    useEffect(() => {
+        fetchStats();
+    }, []);
+
+    const fetchStats = async () => {
+        try {
+            setLoadingStats(true);
+
+            // Get count of subscribed users
+            const { count: subscribedCount, error: subError } = await supabase
+                .from('newsletter_subscribers')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'subscribed');
+
+            if (subError) throw subError;
+
+            // Get count of unsubscribed users
+            const { count: unsubscribedCount, error: unsubError } = await supabase
+                .from('newsletter_subscribers')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'unsubscribed');
+
+            if (unsubError) throw unsubError;
+
+            setStats({
+                subscribed: subscribedCount || 0,
+                unsubscribed: unsubscribedCount || 0,
+                total: (subscribedCount || 0) + (unsubscribedCount || 0),
+            });
+        } catch (err) {
+            console.error('Error fetching stats:', err);
+        } finally {
+            setLoadingStats(false);
+        }
+    };
 
     const handleBroadcast = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,7 +78,34 @@ export const AdminNewsletter: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Newsletter Broadcast</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Newsletter Broadcast</h1>
+
+            {/* Subscriber Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-green-600">Active Subscribers</div>
+                    <div className="mt-2 text-3xl font-bold text-green-900">
+                        {loadingStats ? '...' : stats.subscribed}
+                    </div>
+                    <div className="mt-1 text-xs text-green-600">Will receive broadcasts</div>
+                </div>
+
+                <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-red-600">Unsubscribed</div>
+                    <div className="mt-2 text-3xl font-bold text-red-900">
+                        {loadingStats ? '...' : stats.unsubscribed}
+                    </div>
+                    <div className="mt-1 text-xs text-red-600">Opted out of emails</div>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-blue-600">Total Users</div>
+                    <div className="mt-2 text-3xl font-bold text-blue-900">
+                        {loadingStats ? '...' : stats.total}
+                    </div>
+                    <div className="mt-1 text-xs text-blue-600">All newsletter records</div>
+                </div>
+            </div>
 
             <div className="bg-white shadow rounded-lg p-6">
                 <form onSubmit={handleBroadcast} className="space-y-6">
