@@ -1,0 +1,115 @@
+import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
+
+export const AdminNewsletter: React.FC = () => {
+    const [subject, setSubject] = useState('');
+    const [content, setContent] = useState('');
+    const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+    const [message, setMessage] = useState('');
+
+    const handleBroadcast = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!confirm('Are you sure you want to send this to ALL subscribers?')) return;
+
+        setStatus('sending');
+        setMessage('');
+
+        try {
+            const { data, error } = await supabase.functions.invoke('newsletter/broadcast', {
+                body: { subject, content },
+            });
+
+            if (error) throw error;
+
+            setStatus('success');
+            setMessage(data.message || 'Newsletter sent successfully!');
+            setSubject('');
+            setContent('');
+        } catch (err: any) {
+            console.error('Broadcast error:', err);
+            setStatus('error');
+            setMessage(err.message || 'Failed to send newsletter.');
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto p-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Newsletter Broadcast</h1>
+
+            <div className="bg-white shadow rounded-lg p-6">
+                <form onSubmit={handleBroadcast} className="space-y-6">
+                    <div>
+                        <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
+                            Subject Line
+                        </label>
+                        <input
+                            type="text"
+                            id="subject"
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            required
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            placeholder="e.g., Monthly Update: New Features!"
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+                            Email Content (HTML supported)
+                        </label>
+                        <div className="mt-1">
+                            <textarea
+                                id="content"
+                                rows={10}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                required
+                                className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md font-mono"
+                                placeholder="<h1>Hello!</h1><p>Write your newsletter content here...</p>"
+                            />
+                        </div>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Basic HTML is supported. An unsubscribe link will be automatically appended.
+                        </p>
+                    </div>
+
+                    {status === 'error' && (
+                        <div className="rounded-md bg-red-50 p-4">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                                    <div className="mt-2 text-sm text-red-700">
+                                        <p>{message}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {status === 'success' && (
+                        <div className="rounded-md bg-green-50 p-4">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-green-800">Success</h3>
+                                    <div className="mt-2 text-sm text-green-700">
+                                        <p>{message}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={status === 'sending'}
+                            className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                        >
+                            {status === 'sending' ? 'Sending...' : 'Send Broadcast'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
