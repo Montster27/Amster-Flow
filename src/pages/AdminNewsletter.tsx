@@ -258,7 +258,7 @@ export const AdminNewsletter: React.FC = () => {
                             disabled={testStatus === 'sending' || !subject.trim() || !content.trim()}
                             className="inline-flex justify-center py-2 px-4 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {testStatus === 'sending' ? 'Sending Test...' : '📧 Send Test to montys@mit.edu'}
+                            {testStatus === 'sending' ? 'Sending Test...' : '📧 Send Test (2 recipients)'}
                         </button>
                         <button
                             type="submit"
