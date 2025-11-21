@@ -14,6 +14,8 @@ export const AdminNewsletter: React.FC = () => {
     const [message, setMessage] = useState('');
     const [stats, setStats] = useState<SubscriberStats>({ subscribed: 0, unsubscribed: 0, total: 0 });
     const [loadingStats, setLoadingStats] = useState(true);
+    const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+    const [testMessage, setTestMessage] = useState('');
 
     useEffect(() => {
         fetchStats();
@@ -48,6 +50,32 @@ export const AdminNewsletter: React.FC = () => {
             console.error('Error fetching stats:', err);
         } finally {
             setLoadingStats(false);
+        }
+    };
+
+    const handleTestNewsletter = async () => {
+        if (!subject.trim() || !content.trim()) {
+            setTestStatus('error');
+            setTestMessage('Please fill in both subject and content before testing.');
+            return;
+        }
+
+        setTestStatus('sending');
+        setTestMessage('');
+
+        try {
+            const { data, error } = await supabase.functions.invoke('newsletter/test', {
+                body: { subject, content },
+            });
+
+            if (error) throw error;
+
+            setTestStatus('success');
+            setTestMessage(data.message || 'Test newsletter sent to montys@mit.edu! Check your inbox.');
+        } catch (err: any) {
+            console.error('Test newsletter error:', err);
+            setTestStatus('error');
+            setTestMessage(err.message || 'Failed to send test newsletter.');
         }
     };
 
@@ -144,6 +172,32 @@ export const AdminNewsletter: React.FC = () => {
                         </p>
                     </div>
 
+                    {testStatus === 'error' && (
+                        <div className="rounded-md bg-red-50 p-4">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-red-800">Test Error</h3>
+                                    <div className="mt-2 text-sm text-red-700">
+                                        <p>{testMessage}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {testStatus === 'success' && (
+                        <div className="rounded-md bg-blue-50 p-4">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-blue-800">Test Sent</h3>
+                                    <div className="mt-2 text-sm text-blue-700">
+                                        <p>{testMessage}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {status === 'error' && (
                         <div className="rounded-md bg-red-50 p-4">
                             <div className="flex">
@@ -170,11 +224,19 @@ export const AdminNewsletter: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex justify-end">
+                    <div className="flex justify-between items-center">
+                        <button
+                            type="button"
+                            onClick={handleTestNewsletter}
+                            disabled={testStatus === 'sending' || !subject.trim() || !content.trim()}
+                            className="inline-flex justify-center py-2 px-4 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {testStatus === 'sending' ? 'Sending Test...' : '📧 Send Test to montys@mit.edu'}
+                        </button>
                         <button
                             type="submit"
                             disabled={status === 'sending'}
-                            className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                         >
                             {status === 'sending' ? 'Sending...' : 'Send Broadcast'}
                         </button>
