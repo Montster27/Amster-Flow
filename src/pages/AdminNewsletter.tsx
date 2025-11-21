@@ -77,7 +77,14 @@ export const AdminNewsletter: React.FC = () => {
 
             if (error) {
                 console.error('Edge Function error:', error);
-                throw new Error(error.message || JSON.stringify(error));
+                console.error('Error details:', JSON.stringify(error, null, 2));
+
+                // Try to extract the actual error message
+                const errorMessage = error.context?.error
+                    || error.message
+                    || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+
+                throw new Error(errorMessage);
             }
 
             setTestStatus('success');
