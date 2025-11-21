@@ -5,8 +5,6 @@ import { ModuleReview } from './components/ModuleReview';
 import { Summary } from './components/Summary';
 import { useGuide } from './contexts/GuideContext';
 import { useProjectContext } from './contexts/ProjectDataContext';
-import { Routes, Route } from 'react-router-dom';
-import { AdminNewsletter } from './pages/AdminNewsletter';
 
 // Lazy load heavy modules
 const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
@@ -95,13 +93,10 @@ function App({ projectId }: AppProps = {}) {
   };
 
   return (
-    <Routes>
-      <Route path="/admin/newsletter" element={<AdminNewsletter />} />
-      <Route path="*" element={
-        <div className="min-h-screen bg-gray-50 flex">
-          <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} projectId={projectId} />
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} projectId={projectId} />
 
-          <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
             {showSummary ? (
               <Summary
                 questionsData={questionsData}
@@ -137,10 +132,8 @@ function App({ projectId }: AppProps = {}) {
                 onComplete={handleModuleComplete}
               />
             )}
-          </main>
-        </div>
-      } />
-    </Routes>
+      </main>
+    </div>
   );
 }
 
