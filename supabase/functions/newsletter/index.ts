@@ -176,11 +176,11 @@ serve(async (req) => {
                     });
                 }
 
-                // Send test email to montys@mit.edu
-                const testEmail = "montys@mit.edu";
+                // Send test email to test recipients
+                const testEmails = ["montys@mit.edu", "monty.sharma@massdigi.org"];
                 const emailHtml = `${content}<br/><br/><p><small>This is a test newsletter.</small></p>`;
 
-                console.log("Sending test email to:", testEmail);
+                console.log("Sending test email to:", testEmails.join(", "));
 
                 const res = await fetch("https://api.resend.com/emails", {
                     method: "POST",
@@ -190,7 +190,7 @@ serve(async (req) => {
                     },
                     body: JSON.stringify({
                         from: "Pivot Kit <noreply@pivotkit.biz>",
-                        to: [testEmail],
+                        to: testEmails,
                         subject: `[TEST] ${subject}`,
                         html: emailHtml,
                     }),
@@ -210,7 +210,7 @@ serve(async (req) => {
 
                 console.log("Test email sent successfully");
 
-                return new Response(JSON.stringify({ message: `Test email sent to ${testEmail}` }), {
+                return new Response(JSON.stringify({ message: `Test email sent to ${testEmails.join(" and ")}` }), {
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
                 });
             } catch (error) {
