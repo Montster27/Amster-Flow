@@ -27,7 +27,7 @@ export const AdminNewsletter: React.FC = () => {
 
             // Get count of subscribed users
             const { count: subscribedCount, error: subError } = await supabase
-                .from('newsletter_subscribers')
+                .from('newsletter_subscribers' as any)
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'subscribed');
 
@@ -35,7 +35,7 @@ export const AdminNewsletter: React.FC = () => {
 
             // Get count of unsubscribed users
             const { count: unsubscribedCount, error: unsubError } = await supabase
-                .from('newsletter_subscribers')
+                .from('newsletter_subscribers' as any)
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'unsubscribed');
 
