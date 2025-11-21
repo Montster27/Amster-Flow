@@ -115,6 +115,64 @@ serve(async (req) => {
             );
         }
 
+        if (path === "test") {
+            const { subject, content } = await req.json();
+
+            // Get user from Auth header
+            const authHeader = req.headers.get('Authorization');
+            if (!authHeader) {
+                return new Response(JSON.stringify({ error: "Missing Authorization header" }), { status: 401 });
+            }
+
+            const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+
+            if (userError || !user || !user.email) {
+                return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+            }
+
+            // Check if user is an admin (via database)
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError || !profile?.is_admin) {
+                return new Response(JSON.stringify({ error: "Forbidden: Not an admin" }), { status: 403 });
+            }
+
+            // Send test email to montys@mit.edu
+            const testEmail = "montys@mit.edu";
+            const emailHtml = `${content}<br/><br/><p><small>This is a test newsletter.</small></p>`;
+
+            const res = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${RESEND_API_KEY}`,
+                },
+                body: JSON.stringify({
+                    from: "Pivot Kit <noreply@pivotkit.biz>",
+                    to: [testEmail],
+                    subject: `[TEST] ${subject}`,
+                    html: emailHtml,
+                }),
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("Resend error:", errorText);
+                return new Response(JSON.stringify({ error: "Failed to send test email" }), {
+                    status: 500,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+            }
+
+            return new Response(JSON.stringify({ message: `Test email sent to ${testEmail}` }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         if (path === "broadcast") {
             const { subject, content } = await req.json();
 
