@@ -16,7 +16,7 @@ interface SectorMapState extends SectorMapData {
   updateFirstTarget: (target: Partial<FirstTarget>) => void;
 
   // Actions for competitors
-  addCompetitor: (name: string, description: string) => void;
+  addCompetitor: (name: string, description: string, suppliers?: string[], customers?: string[]) => void;
   updateCompetitor: (id: string, updates: Partial<Competitor>) => void;
   deleteCompetitor: (id: string) => void;
   addSupplierToCompetitor: (competitorId: string, supplier: string) => void;
@@ -61,13 +61,13 @@ export function SectorMapProvider({ children }: { children: ReactNode }) {
     setFirstTarget((prev) => ({ ...prev, ...target }));
   }, []);
 
-  const addCompetitor = useCallback((name: string, description: string) => {
+  const addCompetitor = useCallback((name: string, description: string, suppliers: string[] = [], customers: string[] = []) => {
     const newCompetitor: Competitor = {
       id: generateId(),
       name,
       description,
-      suppliers: [],
-      customers: [],
+      suppliers,
+      customers,
       created: new Date().toISOString(),
     };
     setCompetitors((prev) => [...prev, newCompetitor]);
