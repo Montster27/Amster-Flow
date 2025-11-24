@@ -18,6 +18,7 @@ import { EditTargetModal } from './modals/EditTargetModal';
 import { ManageCompetitorModal } from './modals/ManageCompetitorModal';
 import { ManageDecisionMakerModal } from './modals/ManageDecisionMakerModal';
 import { Competitor, DecisionMaker } from '../../types/sectorMap';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function SectorMapDashboard() {
   const {
@@ -36,6 +37,7 @@ export function SectorMapDashboard() {
   } = useSectorMap();
 
   const [activeTab, setActiveTab] = useState<'competitors' | 'decision-makers'>('competitors');
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
   // Modal states
   const [isEditTargetModalOpen, setIsEditTargetModalOpen] = useState(false);
@@ -125,20 +127,35 @@ export function SectorMapDashboard() {
         />
 
         {/* 2-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Zone A: Target Customer (Left - Sticky) */}
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-6">
-              <TargetCustomerCard
-                target={firstTarget}
-                customerType={customerType}
-                onEdit={handleEditTarget}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+          {/* Zone A: Target Customer (Left - Sticky) - Collapsible */}
+          {!isLeftPanelCollapsed && (
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-6">
+                <TargetCustomerCard
+                  target={firstTarget}
+                  customerType={customerType}
+                  onEdit={handleEditTarget}
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Toggle Button */}
+          <button
+            onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
+            className="hidden lg:flex fixed left-4 top-1/2 -translate-y-1/2 z-10 items-center justify-center w-8 h-16 bg-white border border-gray-300 rounded-r-lg shadow-md hover:bg-gray-50 transition-colors"
+            title={isLeftPanelCollapsed ? "Show target customer" : "Hide target customer"}
+          >
+            {isLeftPanelCollapsed ? (
+              <ChevronRight className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
 
           {/* Zone B: Ecosystem (Right) */}
-          <div className="lg:col-span-2">
+          <div className={isLeftPanelCollapsed ? "lg:col-span-3" : "lg:col-span-2"}>
             {/* Tab Toggle */}
             <div className="flex gap-2 mb-4">
               <button
