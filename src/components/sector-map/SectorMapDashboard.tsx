@@ -71,9 +71,12 @@ export function SectorMapDashboard() {
     if (editingCompetitor) {
       updateCompetitor(editingCompetitor.id, competitorData);
     } else {
-      addCompetitor(competitorData.name, competitorData.description);
-      // Note: suppliers and customers will need to be added separately
-      // This is a limitation of the current context API
+      addCompetitor(
+        competitorData.name,
+        competitorData.description,
+        competitorData.suppliers,
+        competitorData.customers
+      );
     }
   };
 
