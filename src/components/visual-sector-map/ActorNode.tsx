@@ -6,14 +6,17 @@ import {
   ACTOR_ICONS,
   ActorCategory,
   ACTOR_LABELS,
+  getRiskLevel,
+  RISK_COLORS,
 } from '../../types/visualSectorMap';
 
 interface ActorNodeProps {
   actor: Actor;
   readOnly?: boolean;
+  onClick?: () => void;
 }
 
-export const ActorNode = ({ actor, readOnly = false }: ActorNodeProps) => {
+export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) => {
   const { updateActor, moveActor, deleteActor } = useVisualSectorMap();
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -22,6 +25,9 @@ export const ActorNode = ({ actor, readOnly = false }: ActorNodeProps) => {
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const colors = ACTOR_COLORS[actor.category];
+  const riskLevel = getRiskLevel(actor.riskScore);
+  const riskColors = RISK_COLORS[riskLevel];
+  const hasAssumptions = (actor.linkedAssumptions?.length || 0) > 0;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (readOnly || isEditing) return;
@@ -68,6 +74,12 @@ export const ActorNode = ({ actor, readOnly = false }: ActorNodeProps) => {
     setShowMenu(false);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isDragging || isEditing || showMenu || readOnly) return;
+    e.stopPropagation();
+    onClick?.();
+  };
+
   return (
     <>
       {/* Actor Node */}
@@ -92,8 +104,19 @@ export const ActorNode = ({ actor, readOnly = false }: ActorNodeProps) => {
       >
         {/* Actor Card */}
         <div
-          className={`${colors.bg} ${colors.border} border-2 rounded-lg shadow-lg hover:shadow-xl transition-all p-3 min-w-[120px] max-w-[200px]`}
+          className={`relative ${colors.bg} ${riskLevel !== 'none' ? riskColors.border : colors.border} border-2 rounded-lg shadow-lg hover:shadow-xl transition-all p-3 min-w-[120px] max-w-[200px] ${riskColors.glow} ${onClick ? 'cursor-pointer' : ''}`}
+          onClick={handleCardClick}
         >
+          {/* Assumption Badge */}
+          {hasAssumptions && (
+            <div
+              className={`absolute -top-2 -right-2 w-6 h-6 rounded-full ${riskColors.bg} ${riskColors.border} border-2 flex items-center justify-center text-xs font-bold ${riskColors.text}`}
+              title={`${actor.linkedAssumptions?.length} linked assumption${actor.linkedAssumptions?.length !== 1 ? 's' : ''}`}
+            >
+              {actor.linkedAssumptions?.length}
+            </div>
+          )}
+
           <div className="flex items-start gap-2">
             <span className="text-2xl flex-shrink-0">{ACTOR_ICONS[actor.category]}</span>
             <div className="flex-1 min-w-0">
