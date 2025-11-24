@@ -80,11 +80,16 @@ export function SignUpPage() {
         throw new Error('Sign up failed - no user returned');
       }
 
-      // Update profile with affiliation
+      // Upsert profile with affiliation (handles both new profiles and updates)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ affiliation: finalAffiliation })
-        .eq('id', authData.user.id);
+        .upsert({
+          id: authData.user.id,
+          email: authData.user.email!,
+          affiliation: finalAffiliation,
+        }, {
+          onConflict: 'id'
+        });
 
       if (profileError) {
         captureException(new Error('Error updating profile with affiliation'), {
