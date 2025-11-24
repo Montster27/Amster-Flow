@@ -41,6 +41,9 @@ export interface Actor {
   position: Position;
   description?: string;
   created: string;
+  // Assumptions integration
+  linkedAssumptions?: string[]; // Array of assumption IDs from Discovery module
+  riskScore?: number; // 1-5: calculated from linked assumptions' status/confidence
 }
 
 export interface Connection {
@@ -51,6 +54,9 @@ export interface Connection {
   description: string;
   layer?: LayerType; // Which layer this connection belongs to
   created: string;
+  // Assumptions integration
+  linkedAssumptions?: string[]; // Array of assumption IDs
+  riskScore?: number; // 1-5: calculated from linked assumptions
 }
 
 export interface Annotation {
@@ -145,3 +151,20 @@ export const LAYER_DESCRIPTIONS: Record<LayerType, string> = {
   information: 'Who talks to whom, how decisions are made',
   regulation: 'What rules shape the sector',
 };
+
+// Risk level colors and labels
+export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
+
+export const RISK_COLORS: Record<RiskLevel, { border: string; bg: string; text: string; glow: string }> = {
+  none: { border: 'border-gray-300', bg: 'bg-gray-50', text: 'text-gray-600', glow: '' },
+  low: { border: 'border-green-400', bg: 'bg-green-50', text: 'text-green-700', glow: 'shadow-green-200' },
+  medium: { border: 'border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-700', glow: 'shadow-yellow-200' },
+  high: { border: 'border-red-400', bg: 'bg-red-50', text: 'text-red-700', glow: 'shadow-red-200' },
+};
+
+export function getRiskLevel(riskScore: number | undefined): RiskLevel {
+  if (!riskScore || riskScore === 0) return 'none';
+  if (riskScore <= 2) return 'low';
+  if (riskScore <= 3.5) return 'medium';
+  return 'high';
+}
