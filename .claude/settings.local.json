@@ -64,7 +64,17 @@
       "Bash(else echo \"No .vercel/project.json found\")",
       "Bash(fi)",
       "Bash(~/.local/bin/supabase functions:*)",
-      "Bash(~/.local/bin/supabase secrets:*)"
+      "Bash(~/.local/bin/supabase secrets:*)",
+      "Bash(npx tsx:*)",
+      "Bash(supabase migration:*)",
+      "Bash(supabase db pull:*)",
+      "Bash(supabase db push:*)",
+      "Bash(supabase db remote commit:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase secrets:*)",
+      "Bash(supabase functions logs:*)",
+      "Bash(supabase db execute:*)",
+      "Bash(supabase db --help:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
-import { ActorCategory } from '../../types/visualSectorMap';
+import { ActorCategory, Actor, Connection } from '../../types/visualSectorMap';
 import { ActorNode } from './ActorNode';
+import { Inspector } from './Inspector';
 
 interface VisualCanvasProps {
   selectedCategory: ActorCategory;
@@ -20,6 +21,8 @@ export const VisualCanvas = ({
   const [nameInputPosition, setNameInputPosition] = useState<{ x: number; y: number } | null>(
     null
   );
+  const [inspectorTarget, setInspectorTarget] = useState<Actor | Connection | null>(null);
+  const [inspectorType, setInspectorType] = useState<'actor' | 'connection' | null>(null);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (readOnly || nextActorName !== null) return;
@@ -54,6 +57,21 @@ export const VisualCanvas = ({
   const handleNameCancel = () => {
     setNameInputPosition(null);
     setNextActorName(null);
+  };
+
+  const handleActorClick = (actor: Actor) => {
+    setInspectorTarget(actor);
+    setInspectorType('actor');
+  };
+
+  const handleConnectionClick = (connection: Connection) => {
+    setInspectorTarget(connection);
+    setInspectorType('connection');
+  };
+
+  const handleInspectorClose = () => {
+    setInspectorTarget(null);
+    setInspectorType(null);
   };
 
   return (
@@ -139,7 +157,12 @@ export const VisualCanvas = ({
 
         {/* Actors Layer */}
         {actors.map((actor) => (
-          <ActorNode key={actor.id} actor={actor} readOnly={readOnly} />
+          <ActorNode
+            key={actor.id}
+            actor={actor}
+            readOnly={readOnly}
+            onClick={() => handleActorClick(actor)}
+          />
         ))}
 
         {/* Name Input Dialog */}
@@ -160,6 +183,13 @@ export const VisualCanvas = ({
           </div>
         )}
       </div>
+
+      {/* Inspector Drawer */}
+      <Inspector
+        target={inspectorTarget}
+        targetType={inspectorType}
+        onClose={handleInspectorClose}
+      />
     </div>
   );
 };

@@ -42,20 +42,18 @@ export const AnnotationManagement = ({ onContinue, onBack }: AnnotationManagemen
       <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="px-6 py-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            Step 4: Add Annotations
+          <h1 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+            <span>📌</span> Add Annotations
           </h1>
-          <p className="text-sm text-gray-600">
-            Highlight pain points, opportunities, and uncertainties in your sector map.
-          </p>
+          <p className="text-sm text-gray-600">Highlight insights and questions</p>
         </div>
 
         {/* Annotation Form */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Annotation Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              1. Annotation type:
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <span>①</span> Type
             </label>
             <div className="space-y-2">
               {annotationTypes.map((type) => {
@@ -83,8 +81,8 @@ export const AnnotationManagement = ({ onContinue, onBack }: AnnotationManagemen
 
           {/* Target Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              2. Attach to:
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <span>②</span> Attach to
             </label>
             <div className="flex gap-2">
               <button
@@ -118,8 +116,8 @@ export const AnnotationManagement = ({ onContinue, onBack }: AnnotationManagemen
 
           {/* Target Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              3. Select {targetType}:
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <span>③</span> Select {targetType}
             </label>
             <select
               value={targetId}
@@ -147,8 +145,8 @@ export const AnnotationManagement = ({ onContinue, onBack }: AnnotationManagemen
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              4. Validation status:
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <span>④</span> Status
             </label>
             <div className="space-y-1">
               {statusOptions.map((s) => {
@@ -176,8 +174,8 @@ export const AnnotationManagement = ({ onContinue, onBack }: AnnotationManagemen
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              5. Description:
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <span>⑤</span> Description
             </label>
             <textarea
               value={content}

@@ -34,18 +34,16 @@ export const ActorManagement = ({ onContinue, onBack }: ActorManagementProps) =>
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-4">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Step 2: Add Key Actors
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <span>👥</span> Add Key Actors
             </h1>
-            <p className="text-gray-600">
-              <strong>Your question:</strong> {scope.question}
-            </p>
+            <p className="text-sm text-gray-500 italic">{scope.question}</p>
           </div>
 
           {/* Category Selection */}
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-3">
-              Select actor type, then click on the canvas to place:
+            <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <span>👆</span> Select type → Click canvas to place
             </p>
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => {

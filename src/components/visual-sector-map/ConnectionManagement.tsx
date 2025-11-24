@@ -47,20 +47,18 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
       <div className="w-96 bg-white border-r border-gray-200 flex flex-col relative">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800 mb-1">
-            Step 3: Connect Actors
+          <h1 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <span>🔗</span> Connect Actors
           </h1>
-          <p className="text-xs text-gray-600">
-            Draw relationships between actors to map value flows, information exchange, and regulatory connections.
-          </p>
+          <p className="text-xs text-gray-600">Map flows and relationships</p>
         </div>
 
         {/* Connection Form - Add padding bottom for fixed footer */}
         <div className="flex-1 overflow-y-auto px-6 py-3 pb-40 space-y-2">
           {/* Source Actor */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              1. Select source actor:
+            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <span>①</span> From
             </label>
             <select
               value={selectedSourceId || ''}
@@ -78,8 +76,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Target Actor */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              2. Select target actor:
+            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <span>②</span> To
             </label>
             <select
               value={selectedTargetId || ''}
@@ -99,8 +97,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Connection Type */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              3. Connection type:
+            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <span>③</span> Type
             </label>
             <div className="grid grid-cols-2 gap-2">
               {connectionTypes.map((type) => {
@@ -124,8 +122,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Layer */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              4. Layer:
+            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <span>④</span> Layer
             </label>
             <div className="space-y-1">
               {layers.map((l) => {
@@ -149,8 +147,8 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              5. Describe the connection:
+            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <span>⑤</span> Description
             </label>
             <textarea
               value={description}
