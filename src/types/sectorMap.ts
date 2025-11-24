@@ -1,5 +1,7 @@
 export type CustomerType = 'consumer' | 'business';
 
+export type InfluenceLevel = 'decision-maker' | 'influencer' | 'payer';
+
 export interface FirstTarget {
   description: string;
   companySize?: string; // For B2B
@@ -24,7 +26,7 @@ export interface Competitor {
 export interface DecisionMaker {
   id: string;
   role: string;
-  influence: 'decision-maker' | 'influencer' | 'payer';
+  influence: InfluenceLevel;
   description: string;
   created: string;
 }
