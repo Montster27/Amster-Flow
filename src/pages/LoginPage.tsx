@@ -15,15 +15,6 @@ export function LoginPage() {
   const [resendMessage, setResendMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isResending, setIsResending] = useState(false);
 
-  // Handle loading state to prevent form flash
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   // Redirect to dashboard if already logged in or after successful login
   // We use a useEffect with a check for !loading to ensure the session is fully established
   // and to avoid race conditions with the initial load.
@@ -69,6 +60,15 @@ export function LoginPage() {
       setIsResending(false);
     }
   };
+
+  // Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
