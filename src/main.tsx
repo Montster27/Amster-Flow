@@ -16,6 +16,7 @@ import { TermsOfServicePage } from './pages/TermsOfServicePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
 import { Discovery2Page } from './pages/Discovery2Page'
+import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminUserDetail } from './pages/AdminUserDetail'
@@ -67,6 +68,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <Discovery2Page />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId/sector-map"
+                    element={
+                      <ProtectedRoute>
+                        <SectorMapPage />
                       </ProtectedRoute>
                     }
                   />
