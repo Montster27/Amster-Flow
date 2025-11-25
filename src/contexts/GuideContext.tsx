@@ -11,6 +11,13 @@ export interface ModuleProgress {
   completed: boolean;
 }
 
+// Phase 2: Navigation context for cross-module communication
+export interface NavigationContext {
+  actorId?: string;
+  connectionId?: string;
+  action?: 'create' | 'view' | 'filter';
+}
+
 interface GuideState {
   currentModule: string;
   currentQuestionIndex: number;
@@ -22,6 +29,11 @@ interface GuideState {
   getModuleProgress: (module: string) => ModuleProgress | undefined;
   importProgress: (progress: Record<string, ModuleProgress>) => void;
   reset: () => void;
+
+  // Phase 2: Cross-module navigation with context
+  navigationContext: NavigationContext | null;
+  navigateToModuleWithContext: (module: string, context: NavigationContext) => void;
+  clearNavigationContext: () => void;
 }
 
 const GuideContext = createContext<GuideState | undefined>(undefined);
@@ -36,6 +48,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const [currentModule, setCurrentModuleState] = useState(initialState.currentModule);
   const [currentQuestionIndex, setCurrentQuestionIndexState] = useState(initialState.currentQuestionIndex);
   const [progress, setProgress] = useState<Record<string, ModuleProgress>>(initialState.progress);
+  const [navigationContext, setNavigationContext] = useState<NavigationContext | null>(null);
 
   const setCurrentModule = useCallback((module: string) => {
     setCurrentModuleState(module);
@@ -102,6 +115,18 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     setCurrentModuleState(initialState.currentModule);
     setCurrentQuestionIndexState(initialState.currentQuestionIndex);
     setProgress(initialState.progress);
+    setNavigationContext(null);
+  }, []);
+
+  // Phase 2: Cross-module navigation implementations
+  const navigateToModuleWithContext = useCallback((module: string, context: NavigationContext) => {
+    setNavigationContext(context);
+    setCurrentModuleState(module);
+    setCurrentQuestionIndexState(0);
+  }, []);
+
+  const clearNavigationContext = useCallback(() => {
+    setNavigationContext(null);
   }, []);
 
   const value: GuideState = useMemo(
@@ -116,6 +141,9 @@ export function GuideProvider({ children }: { children: ReactNode }) {
       getModuleProgress,
       importProgress,
       reset,
+      navigationContext,
+      navigateToModuleWithContext,
+      clearNavigationContext,
     }),
     [
       currentModule,
@@ -128,6 +156,9 @@ export function GuideProvider({ children }: { children: ReactNode }) {
       getModuleProgress,
       importProgress,
       reset,
+      navigationContext,
+      navigateToModuleWithContext,
+      clearNavigationContext,
     ]
   );
 

@@ -119,6 +119,24 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
           }
         }}
       >
+        {/* Risk Halo - Phase 2: Visual indicator of linked assumption risk */}
+        {riskLevel !== 'none' && (
+          <div
+            className={`absolute inset-0 rounded-lg animate-pulse`}
+            style={{
+              padding: '4px',
+              background: `radial-gradient(circle, transparent 60%, ${
+                riskLevel === 'high'
+                  ? 'rgba(239, 68, 68, 0.3)'
+                  : riskLevel === 'medium'
+                  ? 'rgba(234, 179, 8, 0.3)'
+                  : 'rgba(34, 197, 94, 0.3)'
+              } 100%)`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
         {/* Actor Card */}
         <div
           className={`relative ${colors.bg} ${riskLevel !== 'none' ? riskColors.border : colors.border} border-2 rounded-lg shadow-lg hover:shadow-xl transition-all p-3 min-w-[120px] max-w-[200px] ${riskColors.glow} ${onClick ? 'cursor-pointer' : ''}`}
