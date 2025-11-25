@@ -44,6 +44,14 @@ interface DiscoveryState {
   getValidatedAssumptions: () => Assumption[];
   getInvalidatedAssumptions: () => Assumption[];
 
+  // Phase 1: System Structure Integration - Linking functions
+  linkAssumptionToActor: (assumptionId: string, actorId: string) => void;
+  unlinkAssumptionFromActor: (assumptionId: string, actorId: string) => void;
+  linkAssumptionToConnection: (assumptionId: string, connectionId: string) => void;
+  unlinkAssumptionFromConnection: (assumptionId: string, connectionId: string) => void;
+  getAssumptionsByActor: (actorId: string) => Assumption[];
+  getAssumptionsByConnection: (connectionId: string) => Assumption[];
+
   // Import
   importData: (data: { assumptions: Assumption[]; interviews: Interview[]; iterations: Iteration[] }) => void;
 
@@ -196,6 +204,85 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
     return getAssumptionsByStatus('invalidated');
   }, [getAssumptionsByStatus]);
 
+  // Phase 1: System Structure Integration - Linking implementations
+  const linkAssumptionToActor = useCallback((assumptionId: string, actorId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId) {
+          const linkedActorIds = assumption.linkedActorIds || [];
+          if (!linkedActorIds.includes(actorId)) {
+            return {
+              ...assumption,
+              linkedActorIds: [...linkedActorIds, actorId],
+              lastUpdated: new Date().toISOString(),
+            };
+          }
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const unlinkAssumptionFromActor = useCallback((assumptionId: string, actorId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId && assumption.linkedActorIds) {
+          return {
+            ...assumption,
+            linkedActorIds: assumption.linkedActorIds.filter((id) => id !== actorId),
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const linkAssumptionToConnection = useCallback((assumptionId: string, connectionId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId) {
+          const linkedConnectionIds = assumption.linkedConnectionIds || [];
+          if (!linkedConnectionIds.includes(connectionId)) {
+            return {
+              ...assumption,
+              linkedConnectionIds: [...linkedConnectionIds, connectionId],
+              lastUpdated: new Date().toISOString(),
+            };
+          }
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const unlinkAssumptionFromConnection = useCallback((assumptionId: string, connectionId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId && assumption.linkedConnectionIds) {
+          return {
+            ...assumption,
+            linkedConnectionIds: assumption.linkedConnectionIds.filter((id) => id !== connectionId),
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const getAssumptionsByActor = useCallback((actorId: string) => {
+    return assumptions.filter((assumption) =>
+      assumption.linkedActorIds?.includes(actorId)
+    );
+  }, [assumptions]);
+
+  const getAssumptionsByConnection = useCallback((connectionId: string) => {
+    return assumptions.filter((assumption) =>
+      assumption.linkedConnectionIds?.includes(connectionId)
+    );
+  }, [assumptions]);
+
   const importData = useCallback((data: { assumptions: Assumption[]; interviews: Interview[]; iterations: Iteration[] }) => {
     setAssumptions(data.assumptions || []);
     setInterviews(data.interviews || []);
@@ -233,6 +320,12 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
       getUntestedAssumptions,
       getValidatedAssumptions,
       getInvalidatedAssumptions,
+      linkAssumptionToActor,
+      unlinkAssumptionFromActor,
+      linkAssumptionToConnection,
+      unlinkAssumptionFromConnection,
+      getAssumptionsByActor,
+      getAssumptionsByConnection,
       importData,
       reset,
     }),
@@ -259,6 +352,12 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
       getUntestedAssumptions,
       getValidatedAssumptions,
       getInvalidatedAssumptions,
+      linkAssumptionToActor,
+      unlinkAssumptionFromActor,
+      linkAssumptionToConnection,
+      unlinkAssumptionFromConnection,
+      getAssumptionsByActor,
+      getAssumptionsByConnection,
       importData,
       reset,
     ]
