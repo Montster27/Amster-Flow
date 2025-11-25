@@ -8,12 +8,14 @@ interface VisualCanvasProps {
   selectedCategory: ActorCategory;
   showConnections?: boolean;
   readOnly?: boolean;
+  visibleCategories?: Set<ActorCategory>; // Phase 2 Part 3: Filter actors by category
 }
 
 export const VisualCanvas = ({
   selectedCategory,
   showConnections = false,
   readOnly = false,
+  visibleCategories,
 }: VisualCanvasProps) => {
   const { actors, connections, activeLayers, addActor, deleteActor, deleteConnection } = useVisualSectorMap();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -161,14 +163,16 @@ export const VisualCanvas = ({
         )}
 
         {/* Actors Layer */}
-        {actors.map((actor) => (
-          <ActorNode
-            key={actor.id}
-            actor={actor}
-            readOnly={readOnly}
-            onClick={() => handleActorClick(actor)}
-          />
-        ))}
+        {actors
+          .filter((actor) => !visibleCategories || visibleCategories.has(actor.category))
+          .map((actor) => (
+            <ActorNode
+              key={actor.id}
+              actor={actor}
+              readOnly={readOnly}
+              onClick={() => handleActorClick(actor)}
+            />
+          ))}
 
         {/* Name Input Dialog */}
         {nameInputPosition && !readOnly && (
