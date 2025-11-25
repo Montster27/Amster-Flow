@@ -9,7 +9,7 @@ import {
 } from '../types/discovery';
 import { generateId } from '../utils/idGenerator';
 
-export type DiscoveryView = 'assumptions' | 'interviews' | 'board' | 'dashboard';
+export type DiscoveryView = 'assumptions' | 'interviews' | 'board' | 'dashboard' | 'matrix';
 
 interface DiscoveryState {
   // UI State
