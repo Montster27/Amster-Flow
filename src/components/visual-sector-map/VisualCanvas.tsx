@@ -64,11 +64,6 @@ export const VisualCanvas = ({
     setInspectorType('actor');
   };
 
-  const handleConnectionClick = (connection: Connection) => {
-    setInspectorTarget(connection);
-    setInspectorType('connection');
-  };
-
   const handleInspectorClose = () => {
     setInspectorTarget(null);
     setInspectorType(null);
