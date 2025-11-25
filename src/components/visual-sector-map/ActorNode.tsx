@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 import {
   Actor,
   ACTOR_COLORS,
@@ -8,6 +9,7 @@ import {
   ACTOR_LABELS,
   getRiskLevel,
   RISK_COLORS,
+  calculateRiskScore,
 } from '../../types/visualSectorMap';
 
 interface ActorNodeProps {
@@ -18,6 +20,7 @@ interface ActorNodeProps {
 
 export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) => {
   const { updateActor, moveActor, deleteActor } = useVisualSectorMap();
+  const { assumptions } = useDiscovery();
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,9 +28,23 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const colors = ACTOR_COLORS[actor.category];
-  const riskLevel = getRiskLevel(actor.riskScore);
+
+  // Fetch and calculate real-time risk
+  const linkedAssumptionData = actor.linkedAssumptions
+    ?.map(id => assumptions.find(a => a.id === id))
+    .filter(a => a !== undefined) || [];
+
+  const hasAssumptions = linkedAssumptionData.length > 0;
+
+  const calculatedRiskScore = hasAssumptions
+    ? calculateRiskScore(linkedAssumptionData.map(a => ({
+        status: a.status,
+        confidence: a.confidence
+      })))
+    : (actor.riskScore || 0);
+
+  const riskLevel = getRiskLevel(calculatedRiskScore);
   const riskColors = RISK_COLORS[riskLevel];
-  const hasAssumptions = (actor.linkedAssumptions?.length || 0) > 0;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (readOnly || isEditing) return;

@@ -168,3 +168,36 @@ export function getRiskLevel(riskScore: number | undefined): RiskLevel {
   if (riskScore <= 3.5) return 'medium';
   return 'high';
 }
+
+/**
+ * Calculate risk score (1-5) based on linked assumptions
+ * @param assumptions - Array of assumptions from Discovery module
+ * @returns Risk score from 1 (lowest) to 5 (highest)
+ */
+export function calculateRiskScore(assumptions: Array<{
+  status: 'untested' | 'testing' | 'validated' | 'invalidated';
+  confidence: number; // 1-5
+}>): number {
+  if (assumptions.length === 0) return 0;
+
+  // Status weights (higher = more risky)
+  const statusWeights = {
+    validated: 1,    // Low risk - assumption proven true
+    testing: 2,      // Low-medium risk - actively validating
+    untested: 3.5,   // Medium-high risk - no validation yet
+    invalidated: 5,  // High risk - assumption proven false
+  };
+
+  // Calculate average risk considering both status and confidence
+  const totalRisk = assumptions.reduce((sum, assumption) => {
+    const statusRisk = statusWeights[assumption.status];
+    // Lower confidence = higher risk multiplier (inverted scale)
+    const confidenceMultiplier = (6 - assumption.confidence) / 5; // 1.0 (low conf) to 0.2 (high conf)
+    return sum + (statusRisk * (0.7 + confidenceMultiplier * 0.3)); // Weight status more than confidence
+  }, 0);
+
+  const avgRisk = totalRisk / assumptions.length;
+
+  // Clamp to 1-5 range
+  return Math.max(1, Math.min(5, Math.round(avgRisk * 10) / 10));
+}
