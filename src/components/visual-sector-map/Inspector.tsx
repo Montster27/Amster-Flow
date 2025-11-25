@@ -7,6 +7,8 @@ interface InspectorProps {
   target: Actor | Connection | null;
   targetType: 'actor' | 'connection' | null;
   onClose: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
 }
 
 // Status badge styles
@@ -17,7 +19,7 @@ const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: 
   invalidated: { bg: 'bg-red-100', text: 'text-red-700', icon: '❌' },
 };
 
-export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
+export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: InspectorProps) => {
   if (!target || !targetType) return null;
 
   const { assumptions } = useDiscovery();
@@ -42,6 +44,18 @@ export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
 
   const riskLevel = getRiskLevel(calculatedRiskScore);
   const riskColors = RISK_COLORS[riskLevel];
+
+  const handleDelete = () => {
+    const targetName = isActor ? actor!.name : 'connection';
+    if (window.confirm(`Delete ${targetName}?`)) {
+      onDelete?.();
+      onClose();
+    }
+  };
+
+  const handleEdit = () => {
+    onEdit?.();
+  };
 
   return (
     <>
@@ -164,15 +178,29 @@ export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
           <div className="pt-4 border-t border-gray-200">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">⚡ Quick Actions</h4>
             <div className="space-y-2">
-              <button className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <span>✏️</span> Edit Details
-              </button>
-              <button className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <span>📊</span> View in Discovery
-              </button>
-              <button className="w-full px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded text-sm font-medium transition-colors flex items-center gap-2">
-                <span>🗑️</span> Delete
-              </button>
+              {onEdit && (
+                <button
+                  onClick={handleEdit}
+                  className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <span>✏️</span> Edit Details
+                </button>
+              )}
+
+              {hasAssumptions && (
+                <button className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                  <span>📊</span> View in Discovery
+                </button>
+              )}
+
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <span>🗑️</span> Delete
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ export const VisualCanvas = ({
   showConnections = false,
   readOnly = false,
 }: VisualCanvasProps) => {
-  const { actors, connections, activeLayers, addActor } = useVisualSectorMap();
+  const { actors, connections, activeLayers, addActor, deleteActor, deleteConnection } = useVisualSectorMap();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [nextActorName, setNextActorName] = useState<string | null>(null);
   const [nameInputPosition, setNameInputPosition] = useState<{ x: number; y: number } | null>(
@@ -67,6 +67,16 @@ export const VisualCanvas = ({
   const handleInspectorClose = () => {
     setInspectorTarget(null);
     setInspectorType(null);
+  };
+
+  const handleInspectorDelete = () => {
+    if (!inspectorTarget) return;
+
+    if (inspectorType === 'actor') {
+      deleteActor(inspectorTarget.id);
+    } else if (inspectorType === 'connection') {
+      deleteConnection(inspectorTarget.id);
+    }
   };
 
   return (
@@ -184,6 +194,7 @@ export const VisualCanvas = ({
         target={inspectorTarget}
         targetType={inspectorType}
         onClose={handleInspectorClose}
+        onDelete={handleInspectorDelete}
       />
     </div>
   );
