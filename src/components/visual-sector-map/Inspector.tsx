@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
@@ -6,7 +6,9 @@ import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { useGuide } from '../../contexts/GuideContext';
 import { Assumption, AssumptionStatus } from '../../types/discovery';
 import { Discovery2Context } from '../../contexts/Discovery2Context';
-import type { Discovery2Assumption } from '../../types/discovery';
+import type { Discovery2Assumption, CanvasArea, PriorityLevel, ConfidenceLevel, AssumptionType } from '../../types/discovery';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface InspectorProps {
   target: Actor | Connection | null;
@@ -29,28 +31,153 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   // Check if Discovery 2.0 context is available (takes precedence)
   const discovery2Context = useContext(Discovery2Context);
+  const { user } = useAuth();
 
   // Use Discovery 2.0 if available, otherwise fallback to original Discovery
   const discoveryContext = useDiscovery();
   const isDiscovery2 = discovery2Context !== undefined && discovery2Context !== null;
 
+  // State for loading Discovery 2.0 assumptions from database when context not available
+  const [dbAssumptions, setDbAssumptions] = useState<Discovery2Assumption[]>([]);
+  const [loadingAssumptions, setLoadingAssumptions] = useState(false);
+
   // Get appropriate context functions based on which context is available
   const activeContext = isDiscovery2 ? discovery2Context! : discoveryContext;
   const {
     assumptions: rawAssumptions,
-    linkAssumptionToActor,
-    unlinkAssumptionFromActor,
-    linkAssumptionToConnection,
-    unlinkAssumptionFromConnection,
+    linkAssumptionToActor: contextLinkToActor,
+    unlinkAssumptionFromActor: contextUnlinkFromActor,
+    linkAssumptionToConnection: contextLinkToConnection,
+    unlinkAssumptionFromConnection: contextUnlinkFromConnection,
   } = activeContext;
 
   // Type assumptions as union to satisfy TypeScript
-  const assumptions = rawAssumptions as (Assumption | Discovery2Assumption)[];
+  const contextAssumptions = rawAssumptions as (Assumption | Discovery2Assumption)[];
+
+  // Use database assumptions if context not available and we have loaded them
+  const assumptions = !isDiscovery2 && dbAssumptions.length > 0 ? dbAssumptions : contextAssumptions;
 
   const { navigateToModuleWithContext } = useGuide();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const [showLinkDropdown, setShowLinkDropdown] = useState(false);
+
+  // Load Discovery 2.0 assumptions from database when context not available
+  useEffect(() => {
+    if (!isDiscovery2 && projectId && !loadingAssumptions) {
+      setLoadingAssumptions(true);
+      supabase
+        .from('project_assumptions')
+        .select('*')
+        .eq('project_id', projectId)
+        .not('canvas_area', 'is', null)
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const assumptions: Discovery2Assumption[] = data.map(row => ({
+              id: row.id,
+              type: row.type as AssumptionType,
+              description: row.description,
+              created: row.created_at || new Date().toISOString(),
+              lastUpdated: row.updated_at || new Date().toISOString(),
+              status: row.status as AssumptionStatus,
+              confidence: (row.confidence || 3) as ConfidenceLevel,
+              evidence: row.evidence || [],
+              linkedActorIds: (row as any).linked_actor_ids || [],
+              linkedConnectionIds: (row as any).linked_connection_ids || [],
+              canvasArea: (row as any).canvas_area as CanvasArea,
+              importance: ((row as any).importance || 3) as ConfidenceLevel,
+              priority: ((row as any).priority || 'medium') as PriorityLevel,
+              riskScore: (row as any).risk_score || undefined,
+              interviewCount: (row as any).interview_count || 0,
+            }));
+            setDbAssumptions(assumptions);
+          }
+          setLoadingAssumptions(false);
+        });
+    }
+  }, [isDiscovery2, projectId, target, loadingAssumptions]);
+
+  // Database-based linking functions (used when context not available)
+  const dbLinkAssumptionToActor = async (assumptionId: string, actorId: string) => {
+    if (!projectId || !user) return;
+
+    const assumption = dbAssumptions.find(a => a.id === assumptionId);
+    if (!assumption) return;
+
+    const linkedActorIds = assumption.linkedActorIds || [];
+    if (linkedActorIds.includes(actorId)) return;
+
+    const updated = [...linkedActorIds, actorId];
+    await supabase
+      .from('project_assumptions')
+      .update({ linked_actor_ids: updated } as any)
+      .eq('id', assumptionId);
+
+    // Update local state
+    setDbAssumptions(prev => prev.map(a =>
+      a.id === assumptionId ? { ...a, linkedActorIds: updated } : a
+    ));
+  };
+
+  const dbUnlinkAssumptionFromActor = async (assumptionId: string, actorId: string) => {
+    if (!projectId || !user) return;
+
+    const assumption = dbAssumptions.find(a => a.id === assumptionId);
+    if (!assumption) return;
+
+    const updated = (assumption.linkedActorIds || []).filter(id => id !== actorId);
+    await supabase
+      .from('project_assumptions')
+      .update({ linked_actor_ids: updated } as any)
+      .eq('id', assumptionId);
+
+    setDbAssumptions(prev => prev.map(a =>
+      a.id === assumptionId ? { ...a, linkedActorIds: updated } : a
+    ));
+  };
+
+  const dbLinkAssumptionToConnection = async (assumptionId: string, connectionId: string) => {
+    if (!projectId || !user) return;
+
+    const assumption = dbAssumptions.find(a => a.id === assumptionId);
+    if (!assumption) return;
+
+    const linkedConnectionIds = assumption.linkedConnectionIds || [];
+    if (linkedConnectionIds.includes(connectionId)) return;
+
+    const updated = [...linkedConnectionIds, connectionId];
+    await supabase
+      .from('project_assumptions')
+      .update({ linked_connection_ids: updated } as any)
+      .eq('id', assumptionId);
+
+    setDbAssumptions(prev => prev.map(a =>
+      a.id === assumptionId ? { ...a, linkedConnectionIds: updated } : a
+    ));
+  };
+
+  const dbUnlinkAssumptionFromConnection = async (assumptionId: string, connectionId: string) => {
+    if (!projectId || !user) return;
+
+    const assumption = dbAssumptions.find(a => a.id === assumptionId);
+    if (!assumption) return;
+
+    const updated = (assumption.linkedConnectionIds || []).filter(id => id !== connectionId);
+    await supabase
+      .from('project_assumptions')
+      .update({ linked_connection_ids: updated } as any)
+      .eq('id', assumptionId);
+
+    setDbAssumptions(prev => prev.map(a =>
+      a.id === assumptionId ? { ...a, linkedConnectionIds: updated } : a
+    ));
+  };
+
+  // Wrapper functions that use either context or database methods
+  const linkAssumptionToActor = isDiscovery2 ? contextLinkToActor : dbLinkAssumptionToActor;
+  const unlinkAssumptionFromActor = isDiscovery2 ? contextUnlinkFromActor : dbUnlinkAssumptionFromActor;
+  const linkAssumptionToConnection = isDiscovery2 ? contextLinkToConnection : dbLinkAssumptionToConnection;
+  const unlinkAssumptionFromConnection = isDiscovery2 ? contextUnlinkFromConnection : dbUnlinkAssumptionFromConnection;
 
   const isActor = targetType === 'actor';
   const actor = isActor ? (target as Actor) : null;
