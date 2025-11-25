@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { captureException } from '../../lib/sentry';
 
 import { useDiscovery } from '../../contexts/DiscoveryContext';
-import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
+import { VisualSectorMapContext } from '../../contexts/VisualSectorMapContext';
 import type { NavigationContext } from '../../contexts/GuideContext';
 
 import { AssumptionType, ConfidenceLevel, AssumptionStatus } from '../../types/discovery';
@@ -30,7 +30,10 @@ export const AssumptionTable = ({ navigationContext, onClearContext }: Assumptio
     linkAssumptionToConnection,
   } = useDiscovery();
 
-  const { actors, connections } = useVisualSectorMap();
+  // Safely access Visual Sector Map context (may not be available in all contexts)
+  const visualSectorMapContext = useContext(VisualSectorMapContext);
+  const actors = visualSectorMapContext?.actors || [];
+  const connections = visualSectorMapContext?.connections || [];
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
