@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { CanvasArea, AssumptionType, ConfidenceLevel } from '../../types/discovery';
+import type { CanvasArea, AssumptionType, ConfidenceLevel, ValidationGroup } from '../../types/discovery';
+import { getValidationGroup, VALIDATION_GROUPS } from '../../types/discovery';
 import { captureException } from '../../lib/sentry';
 
 interface AssumptionGeneratorProps {
@@ -119,6 +120,31 @@ const CANVAS_AREA_PROMPTS: Record<CanvasArea, { title: string; prompts: string[]
   },
 };
 
+// Group color themes matching the framework table
+const GROUP_COLORS: Record<ValidationGroup, { border: string; borderHover: string; bg: string; text: string; badge: string }> = {
+  group1: {
+    border: 'border-blue-400',
+    borderHover: 'hover:border-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    badge: 'bg-blue-600',
+  },
+  group2: {
+    border: 'border-purple-400',
+    borderHover: 'hover:border-purple-500',
+    bg: 'bg-purple-50',
+    text: 'text-purple-700',
+    badge: 'bg-purple-600',
+  },
+  group3: {
+    border: 'border-green-400',
+    borderHover: 'hover:border-green-500',
+    bg: 'bg-green-50',
+    text: 'text-green-700',
+    badge: 'bg-green-600',
+  },
+};
+
 export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [canvasArea, setCanvasArea] = useState<CanvasArea | null>(null);
@@ -195,23 +221,38 @@ export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProp
                 Which Lean Business Model Canvas area does this assumption relate to?
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(Object.keys(CANVAS_AREA_PROMPTS) as CanvasArea[]).map((area) => (
-                  <button
-                    key={area}
-                    onClick={() => setCanvasArea(area)}
-                    className={`
-                      p-4 border-2 rounded-lg text-left transition-all
-                      ${canvasArea === area
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }
-                    `}
-                  >
-                    <div className="font-medium text-gray-900">
-                      {CANVAS_AREA_PROMPTS[area].title}
-                    </div>
-                  </button>
-                ))}
+                {(Object.keys(CANVAS_AREA_PROMPTS) as CanvasArea[]).map((area) => {
+                  const group = getValidationGroup(area);
+                  const groupInfo = VALIDATION_GROUPS[group];
+                  const colors = GROUP_COLORS[group];
+                  const groupNumber = group === 'group1' ? 1 : group === 'group2' ? 2 : 3;
+
+                  return (
+                    <button
+                      key={area}
+                      onClick={() => setCanvasArea(area)}
+                      className={`
+                        p-4 border-2 rounded-lg text-left transition-all relative
+                        ${canvasArea === area
+                          ? `${colors.border} ${colors.bg}`
+                          : `border-gray-200 ${colors.borderHover} bg-white`
+                        }
+                      `}
+                    >
+                      {/* Stage Badge */}
+                      <div className={`absolute -top-2 -right-2 ${colors.badge} text-white px-2 py-0.5 rounded-full text-xs font-bold`}>
+                        Stage {groupNumber}
+                      </div>
+
+                      <div className="font-medium text-gray-900">
+                        {CANVAS_AREA_PROMPTS[area].title}
+                      </div>
+                      <div className={`text-xs ${colors.text} font-medium mt-1`}>
+                        {groupInfo.name}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
