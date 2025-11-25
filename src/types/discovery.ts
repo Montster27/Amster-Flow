@@ -71,6 +71,10 @@ export interface Assumption {
   linkedModule?: string; // e.g., "problem", "customerSegments", "solution"
   linkedQuestionIndex?: number;
   validationNotes?: string;
+
+  // System Structure integration (Phase 1)
+  linkedActorIds?: string[]; // Links to actors in Visual Sector Map
+  linkedConnectionIds?: string[]; // Links to connections in Visual Sector Map
 }
 
 export interface Interview {

@@ -50,6 +50,10 @@ interface VisualSectorMapState extends VisualSectorMapData {
   toggleLayer: (layer: LayerType) => void;
   setActiveLayers: (layers: LayerType[]) => void;
 
+  // Phase 1: Discovery Integration - Helper functions
+  getActorsByAssumption: (assumptionId: string) => Actor[];
+  getConnectionsByAssumption: (assumptionId: string) => Connection[];
+
   // Utility
   reset: () => void;
   importData: (data: VisualSectorMapData) => void;
@@ -191,6 +195,19 @@ export function VisualSectorMapProvider({ children }: { children: ReactNode }) {
     setActiveLayersState(layers);
   }, []);
 
+  // Phase 1: Discovery Integration - Helper implementations
+  const getActorsByAssumption = useCallback((assumptionId: string) => {
+    return actors.filter((actor) =>
+      actor.linkedAssumptions?.includes(assumptionId)
+    );
+  }, [actors]);
+
+  const getConnectionsByAssumption = useCallback((assumptionId: string) => {
+    return connections.filter((connection) =>
+      connection.linkedAssumptions?.includes(assumptionId)
+    );
+  }, [connections]);
+
   // Utility
   const reset = useCallback(() => {
     setScope(initialState.scope);
@@ -238,6 +255,8 @@ export function VisualSectorMapProvider({ children }: { children: ReactNode }) {
       deleteAnnotation,
       toggleLayer,
       setActiveLayers,
+      getActorsByAssumption,
+      getConnectionsByAssumption,
       reset,
       importData,
       exportData,
@@ -261,6 +280,8 @@ export function VisualSectorMapProvider({ children }: { children: ReactNode }) {
       deleteAnnotation,
       toggleLayer,
       setActiveLayers,
+      getActorsByAssumption,
+      getConnectionsByAssumption,
       reset,
       importData,
       exportData,

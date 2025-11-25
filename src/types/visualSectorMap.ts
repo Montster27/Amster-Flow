@@ -41,9 +41,10 @@ export interface Actor {
   position: Position;
   description?: string;
   created: string;
-  // Assumptions integration
-  linkedAssumptions?: string[]; // Array of assumption IDs from Discovery module
+  // Assumptions integration (Phase 1: bidirectional with Discovery)
+  linkedAssumptions?: string[]; // Array of assumption IDs - maintained by linking hooks
   riskScore?: number; // 1-5: calculated from linked assumptions' status/confidence
+  notes?: string; // Optional notes about this actor
 }
 
 export interface Connection {
@@ -54,8 +55,8 @@ export interface Connection {
   description: string;
   layer?: LayerType; // Which layer this connection belongs to
   created: string;
-  // Assumptions integration
-  linkedAssumptions?: string[]; // Array of assumption IDs
+  // Assumptions integration (Phase 1: bidirectional with Discovery)
+  linkedAssumptions?: string[]; // Array of assumption IDs - maintained by linking hooks
   riskScore?: number; // 1-5: calculated from linked assumptions
 }
 
