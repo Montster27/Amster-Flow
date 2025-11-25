@@ -1,4 +1,5 @@
 import { useState, useContext } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
@@ -47,6 +48,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const assumptions = rawAssumptions as (Assumption | Discovery2Assumption)[];
 
   const { navigateToModuleWithContext } = useGuide();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
   const [showLinkDropdown, setShowLinkDropdown] = useState(false);
 
   const isActor = targetType === 'actor';
@@ -84,22 +87,44 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   };
 
   // Phase 2: Navigation handlers for cross-module integration
+  // Always navigate to Discovery 2.0 when projectId is available
   const handleCreateAssumption = () => {
-    const context = isActor
-      ? { actorId: actor!.id, action: 'create' as const }
-      : { connectionId: connection!.id, action: 'create' as const };
-
-    navigateToModuleWithContext('discovery', context);
-    onClose();
+    if (projectId) {
+      // Navigate to Discovery 2.0 page
+      // Store navigation context in sessionStorage for Discovery 2.0 to pick up
+      const context = isActor
+        ? { actorId: actor!.id, action: 'create' as const }
+        : { connectionId: connection!.id, action: 'create' as const };
+      sessionStorage.setItem('discovery2NavigationContext', JSON.stringify(context));
+      navigate(`/project/${projectId}/discovery2`);
+      onClose();
+    } else {
+      // Fallback to original Discovery module navigation (if no projectId)
+      const context = isActor
+        ? { actorId: actor!.id, action: 'create' as const }
+        : { connectionId: connection!.id, action: 'create' as const };
+      navigateToModuleWithContext('discovery', context);
+      onClose();
+    }
   };
 
   const handleViewInDiscovery = () => {
-    const context = isActor
-      ? { actorId: actor!.id, action: 'filter' as const }
-      : { connectionId: connection!.id, action: 'filter' as const };
-
-    navigateToModuleWithContext('discovery', context);
-    onClose();
+    if (projectId) {
+      // Navigate to Discovery 2.0 page
+      const context = isActor
+        ? { actorId: actor!.id, action: 'filter' as const }
+        : { connectionId: connection!.id, action: 'filter' as const };
+      sessionStorage.setItem('discovery2NavigationContext', JSON.stringify(context));
+      navigate(`/project/${projectId}/discovery2`);
+      onClose();
+    } else {
+      // Fallback to original Discovery module navigation (if no projectId)
+      const context = isActor
+        ? { actorId: actor!.id, action: 'filter' as const }
+        : { connectionId: connection!.id, action: 'filter' as const };
+      navigateToModuleWithContext('discovery', context);
+      onClose();
+    }
   };
 
   // Phase 3: Linking/Unlinking handlers

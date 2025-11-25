@@ -30,9 +30,32 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
   const [showGenerator, setShowGenerator] = useState(false);
   const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
   const [autoSeedAttempted, setAutoSeedAttempted] = useState(false);
+  const [navigationContext, setNavigationContext] = useState<any>(null);
 
-  const { assumptions, interviews, addAssumption, deleteAssumption } = useDiscovery2();
+  const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery2();
   const { user } = useAuth();
+
+  // Handle navigation context from Visual Sector Map
+  useEffect(() => {
+    const contextStr = sessionStorage.getItem('discovery2NavigationContext');
+    if (contextStr) {
+      try {
+        const context = JSON.parse(contextStr);
+        setNavigationContext(context);
+
+        // Auto-open generator if action is 'create'
+        if (context.action === 'create') {
+          setShowGenerator(true);
+          setActiveTab('assumptions');
+        }
+
+        // Clear the context from sessionStorage
+        sessionStorage.removeItem('discovery2NavigationContext');
+      } catch (error) {
+        console.error('Failed to parse navigation context:', error);
+      }
+    }
+  }, []);
 
   // Auto-seed Pet Finder Discovery 2.0 data if project is Pet Finder and has no data
   useEffect(() => {
@@ -87,8 +110,9 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
       priority = 'low';
     }
 
+    const assumptionId = crypto.randomUUID();
     const assumption: Discovery2Assumption = {
-      id: crypto.randomUUID(),
+      id: assumptionId,
       type: newAssumption.type,
       description: newAssumption.description,
       created: new Date().toISOString(),
@@ -106,6 +130,19 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
     };
 
     addAssumption(assumption);
+
+    // Auto-link to actor/connection from navigation context
+    if (navigationContext) {
+      setTimeout(() => {
+        if (navigationContext.actorId) {
+          linkAssumptionToActor(assumptionId, navigationContext.actorId);
+        } else if (navigationContext.connectionId) {
+          linkAssumptionToConnection(assumptionId, navigationContext.connectionId);
+        }
+        // Clear navigation context after linking
+        setNavigationContext(null);
+      }, 100);
+    }
   };
 
   const handleEditAssumption = (assumption: Discovery2Assumption) => {
