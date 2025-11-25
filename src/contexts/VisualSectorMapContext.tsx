@@ -62,6 +62,9 @@ interface VisualSectorMapState extends VisualSectorMapData {
 
 const VisualSectorMapContext = createContext<VisualSectorMapState | undefined>(undefined);
 
+// Export the context for direct access when needed
+export { VisualSectorMapContext };
+
 const initialState: VisualSectorMapData = {
   scope: {
     sector: '',
