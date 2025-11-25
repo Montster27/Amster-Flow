@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
@@ -23,8 +24,16 @@ const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: 
 export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: InspectorProps) => {
   if (!target || !targetType) return null;
 
-  const { assumptions } = useDiscovery();
+  const {
+    assumptions,
+    linkAssumptionToActor,
+    unlinkAssumptionFromActor,
+    linkAssumptionToConnection,
+    unlinkAssumptionFromConnection,
+  } = useDiscovery();
   const { navigateToModuleWithContext } = useGuide();
+  const [showLinkDropdown, setShowLinkDropdown] = useState(false);
+
   const isActor = targetType === 'actor';
   const actor = isActor ? (target as Actor) : null;
   const connection = !isActor ? (target as Connection) : null;
@@ -77,6 +86,29 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     navigateToModuleWithContext('discovery', context);
     onClose();
   };
+
+  // Phase 3: Linking/Unlinking handlers
+  const handleLinkAssumption = (assumptionId: string) => {
+    if (isActor) {
+      linkAssumptionToActor(assumptionId, actor!.id);
+    } else {
+      linkAssumptionToConnection(assumptionId, connection!.id);
+    }
+    setShowLinkDropdown(false);
+  };
+
+  const handleUnlinkAssumption = (assumptionId: string) => {
+    if (isActor) {
+      unlinkAssumptionFromActor(assumptionId, actor!.id);
+    } else {
+      unlinkAssumptionFromConnection(assumptionId, connection!.id);
+    }
+  };
+
+  // Get unlinked assumptions (available to link)
+  const unlinkedAssumptions = assumptions.filter(
+    (a) => !target.linkedAssumptions?.includes(a.id)
+  );
 
   return (
     <>
@@ -151,9 +183,18 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
             {!hasAssumptions ? (
               <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
                 <p className="text-sm text-gray-500">No assumptions linked yet</p>
-                <button className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium">
-                  + Link Assumption
-                </button>
+                {unlinkedAssumptions.length > 0 ? (
+                  <button
+                    onClick={() => setShowLinkDropdown(!showLinkDropdown)}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    + Link Assumption
+                  </button>
+                ) : (
+                  <p className="mt-2 text-xs text-gray-400 italic">
+                    No assumptions available to link
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -162,9 +203,16 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                   return (
                     <div
                       key={assumption.id}
-                      className="bg-gray-50 border border-gray-200 rounded p-3 hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="bg-gray-50 border border-gray-200 rounded p-3 hover:bg-gray-100 transition-colors relative group"
                     >
-                      <div className="flex items-start gap-2 mb-2">
+                      <button
+                        onClick={() => handleUnlinkAssumption(assumption.id)}
+                        className="absolute top-2 right-2 p-1 bg-white rounded-full border border-gray-300 hover:bg-red-50 hover:border-red-300 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Unlink assumption"
+                      >
+                        <X className="w-3 h-3 text-gray-600 hover:text-red-600" />
+                      </button>
+                      <div className="flex items-start gap-2 mb-2 pr-6">
                         <span className="text-sm">{statusStyle.icon}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-700 font-medium line-clamp-2">
@@ -188,9 +236,53 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                     </div>
                   );
                 })}
-                <button className="w-full text-xs text-blue-600 hover:text-blue-700 font-medium py-2">
-                  + Link Another
-                </button>
+                {unlinkedAssumptions.length > 0 && (
+                  <button
+                    onClick={() => setShowLinkDropdown(!showLinkDropdown)}
+                    className="w-full text-xs text-blue-600 hover:text-blue-700 font-medium py-2"
+                  >
+                    + Link Another
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Link Dropdown */}
+            {showLinkDropdown && unlinkedAssumptions.length > 0 && (
+              <div className="mt-2 bg-white border-2 border-blue-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-700">Select an assumption to link:</p>
+                  <button
+                    onClick={() => setShowLinkDropdown(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {unlinkedAssumptions.map((assumption) => {
+                    const statusStyle = STATUS_STYLES[assumption.status];
+                    return (
+                      <button
+                        key={assumption.id}
+                        onClick={() => handleLinkAssumption(assumption.id)}
+                        className="w-full text-left p-2 rounded hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs">{statusStyle.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-700 line-clamp-1">
+                              {assumption.description}
+                            </p>
+                            <span className={`text-xs px-1 py-0.5 ${statusStyle.bg} ${statusStyle.text} rounded capitalize`}>
+                              {assumption.status}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

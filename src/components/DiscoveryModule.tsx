@@ -4,6 +4,7 @@ import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewSystemWrapper } from './discovery/InterviewSystemWrapper';
 import { IterationDashboard } from './discovery/IterationDashboard';
 import { AssumptionBoard } from './discovery/AssumptionBoard';
+import { RiskMatrix } from './discovery/RiskMatrix';
 
 interface DiscoveryModuleProps {
   projectId?: string;
@@ -15,6 +16,7 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
 
   const tabs = [
     { id: 'assumptions' as const, label: 'Assumptions', icon: '📋' },
+    { id: 'matrix' as const, label: 'Risk Matrix', icon: '🎯' },
     { id: 'interviews' as const, label: 'Interviews', icon: '💬' },
     { id: 'board' as const, label: 'Validation Board', icon: '📊' },
     { id: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
@@ -60,6 +62,7 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
             onClearContext={clearNavigationContext}
           />
         )}
+        {currentView === 'matrix' && <RiskMatrix />}
         {currentView === 'interviews' && <InterviewSystemWrapper projectId={projectId} />}
         {currentView === 'board' && <AssumptionBoard projectId={projectId} />}
         {currentView === 'dashboard' && <IterationDashboard />}

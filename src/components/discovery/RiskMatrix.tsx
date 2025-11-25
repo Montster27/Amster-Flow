@@ -1,0 +1,324 @@
+import { useState } from 'react';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { Assumption, AssumptionStatus } from '../../types/discovery';
+import { AssumptionDetailDrawer } from './AssumptionDetailDrawer';
+
+interface RiskMatrixProps {
+  onAssumptionClick?: (assumption: Assumption) => void;
+}
+
+export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
+  const { assumptions } = useDiscovery();
+  const [hoveredQuadrant, setHoveredQuadrant] = useState<string | null>(null);
+  const [selectedAssumption, setSelectedAssumption] = useState<Assumption | null>(null);
+
+  // Calculate risk score for an assumption
+  // Higher score = higher risk (untested/invalidated = high risk)
+  const getRiskScore = (assumption: Assumption): number => {
+    const statusWeight: Record<AssumptionStatus, number> = {
+      untested: 5,      // Highest risk - we don't know if it's true
+      testing: 4,       // High risk - being validated
+      invalidated: 3,   // Medium risk - we know it's false
+      validated: 1,     // Low risk - confirmed true
+    };
+
+    const baseRisk = statusWeight[assumption.status];
+    // Invert confidence: low confidence = higher risk
+    const confidenceRisk = (6 - assumption.confidence) * 0.8;
+
+    return (baseRisk + confidenceRisk) / 2; // Average to get score 1-5
+  };
+
+  // Categorize assumptions into quadrants
+  const categorizeAssumption = (assumption: Assumption): string => {
+    const risk = getRiskScore(assumption);
+    const confidence = assumption.confidence;
+
+    // High/Low thresholds
+    const riskThreshold = 3;
+    const confidenceThreshold = 3;
+
+    if (risk > riskThreshold && confidence <= confidenceThreshold) {
+      return 'critical'; // High Risk, Low Confidence
+    } else if (risk > riskThreshold && confidence > confidenceThreshold) {
+      return 'monitor'; // High Risk, High Confidence
+    } else if (risk <= riskThreshold && confidence <= confidenceThreshold) {
+      return 'defer'; // Low Risk, Low Confidence
+    } else {
+      return 'safe'; // Low Risk, High Confidence
+    }
+  };
+
+  // Group assumptions by quadrant
+  const quadrants = {
+    critical: assumptions.filter((a) => categorizeAssumption(a) === 'critical'),
+    monitor: assumptions.filter((a) => categorizeAssumption(a) === 'monitor'),
+    defer: assumptions.filter((a) => categorizeAssumption(a) === 'defer'),
+    safe: assumptions.filter((a) => categorizeAssumption(a) === 'safe'),
+  };
+
+  const quadrantConfig = {
+    critical: {
+      title: '🚨 Critical',
+      subtitle: 'High Risk, Low Confidence',
+      bg: 'bg-red-50',
+      border: 'border-red-300',
+      hoverBg: 'hover:bg-red-100',
+      description: 'These assumptions pose high risk and need immediate validation',
+    },
+    monitor: {
+      title: '👀 Monitor',
+      subtitle: 'High Risk, High Confidence',
+      bg: 'bg-orange-50',
+      border: 'border-orange-300',
+      hoverBg: 'hover:bg-orange-100',
+      description: 'Validated but still high-stakes - keep an eye on these',
+    },
+    defer: {
+      title: '⏸️ Defer',
+      subtitle: 'Low Risk, Low Confidence',
+      bg: 'bg-gray-50',
+      border: 'border-gray-300',
+      hoverBg: 'hover:bg-gray-100',
+      description: 'Low priority - validate when time permits',
+    },
+    safe: {
+      title: '✅ Safe',
+      subtitle: 'Low Risk, High Confidence',
+      bg: 'bg-green-50',
+      border: 'border-green-300',
+      hoverBg: 'hover:bg-green-100',
+      description: 'Well-validated and low risk',
+    },
+  };
+
+  const AssumptionCard = ({ assumption }: { assumption: Assumption }) => {
+    const statusColors: Record<AssumptionStatus, string> = {
+      untested: 'bg-gray-200 text-gray-700',
+      testing: 'bg-blue-200 text-blue-700',
+      validated: 'bg-green-200 text-green-700',
+      invalidated: 'bg-red-200 text-red-700',
+    };
+
+    const handleClick = () => {
+      setSelectedAssumption(assumption);
+      onAssumptionClick?.(assumption);
+    };
+
+    return (
+      <button
+        onClick={handleClick}
+        className="w-full text-left p-3 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:shadow-md transition-all"
+      >
+        <div className="flex items-start gap-2 mb-2">
+          <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusColors[assumption.status]} capitalize`}>
+            {assumption.status}
+          </span>
+          <span className="text-xs text-gray-500">
+            Confidence: {assumption.confidence}/5
+          </span>
+        </div>
+        <p className="text-sm text-gray-800 font-medium line-clamp-2">
+          {assumption.description}
+        </p>
+        {assumption.evidence.length > 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            📊 {assumption.evidence.length} evidence item{assumption.evidence.length !== 1 ? 's' : ''}
+          </p>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Risk Matrix</h2>
+        <p className="text-sm text-gray-600">
+          Visualize and prioritize assumptions based on risk and confidence
+        </p>
+      </div>
+
+      {/* Legend */}
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">💡</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-700 mb-1">How to use this matrix:</p>
+            <ul className="text-xs text-gray-600 space-y-1">
+              <li>• <strong>Critical (top-left)</strong>: Focus here first - high risk, needs validation</li>
+              <li>• <strong>Monitor (top-right)</strong>: Keep watching - validated but high stakes</li>
+              <li>• <strong>Safe (bottom-right)</strong>: Well-validated, low risk</li>
+              <li>• <strong>Defer (bottom-left)</strong>: Low priority - validate later</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-4 min-h-[600px]">
+        {/* Top Left: Critical */}
+        <div
+          className={`${quadrantConfig.critical.bg} ${quadrantConfig.critical.border} border-2 rounded-lg p-4 flex flex-col`}
+          onMouseEnter={() => setHoveredQuadrant('critical')}
+          onMouseLeave={() => setHoveredQuadrant(null)}
+        >
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              {quadrantConfig.critical.title}
+              <span className="text-xs font-normal text-gray-600 bg-white px-2 py-0.5 rounded-full">
+                {quadrants.critical.length}
+              </span>
+            </h3>
+            <p className="text-xs text-gray-600">{quadrantConfig.critical.subtitle}</p>
+            {hoveredQuadrant === 'critical' && (
+              <p className="text-xs text-gray-500 mt-1 italic">
+                {quadrantConfig.critical.description}
+              </p>
+            )}
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto">
+            {quadrants.critical.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-8 italic">
+                No critical assumptions - great job! 🎉
+              </p>
+            ) : (
+              quadrants.critical.map((assumption) => (
+                <AssumptionCard key={assumption.id} assumption={assumption} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Top Right: Monitor */}
+        <div
+          className={`${quadrantConfig.monitor.bg} ${quadrantConfig.monitor.border} border-2 rounded-lg p-4 flex flex-col`}
+          onMouseEnter={() => setHoveredQuadrant('monitor')}
+          onMouseLeave={() => setHoveredQuadrant(null)}
+        >
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              {quadrantConfig.monitor.title}
+              <span className="text-xs font-normal text-gray-600 bg-white px-2 py-0.5 rounded-full">
+                {quadrants.monitor.length}
+              </span>
+            </h3>
+            <p className="text-xs text-gray-600">{quadrantConfig.monitor.subtitle}</p>
+            {hoveredQuadrant === 'monitor' && (
+              <p className="text-xs text-gray-500 mt-1 italic">
+                {quadrantConfig.monitor.description}
+              </p>
+            )}
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto">
+            {quadrants.monitor.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-8 italic">
+                No assumptions to monitor
+              </p>
+            ) : (
+              quadrants.monitor.map((assumption) => (
+                <AssumptionCard key={assumption.id} assumption={assumption} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Left: Defer */}
+        <div
+          className={`${quadrantConfig.defer.bg} ${quadrantConfig.defer.border} border-2 rounded-lg p-4 flex flex-col`}
+          onMouseEnter={() => setHoveredQuadrant('defer')}
+          onMouseLeave={() => setHoveredQuadrant(null)}
+        >
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              {quadrantConfig.defer.title}
+              <span className="text-xs font-normal text-gray-600 bg-white px-2 py-0.5 rounded-full">
+                {quadrants.defer.length}
+              </span>
+            </h3>
+            <p className="text-xs text-gray-600">{quadrantConfig.defer.subtitle}</p>
+            {hoveredQuadrant === 'defer' && (
+              <p className="text-xs text-gray-500 mt-1 italic">
+                {quadrantConfig.defer.description}
+              </p>
+            )}
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto">
+            {quadrants.defer.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-8 italic">
+                No deferred assumptions
+              </p>
+            ) : (
+              quadrants.defer.map((assumption) => (
+                <AssumptionCard key={assumption.id} assumption={assumption} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Right: Safe */}
+        <div
+          className={`${quadrantConfig.safe.bg} ${quadrantConfig.safe.border} border-2 rounded-lg p-4 flex flex-col`}
+          onMouseEnter={() => setHoveredQuadrant('safe')}
+          onMouseLeave={() => setHoveredQuadrant(null)}
+        >
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              {quadrantConfig.safe.title}
+              <span className="text-xs font-normal text-gray-600 bg-white px-2 py-0.5 rounded-full">
+                {quadrants.safe.length}
+              </span>
+            </h3>
+            <p className="text-xs text-gray-600">{quadrantConfig.safe.subtitle}</p>
+            {hoveredQuadrant === 'safe' && (
+              <p className="text-xs text-gray-500 mt-1 italic">
+                {quadrantConfig.safe.description}
+              </p>
+            )}
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto">
+            {quadrants.safe.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-8 italic">
+                No safe assumptions yet
+              </p>
+            ) : (
+              quadrants.safe.map((assumption) => (
+                <AssumptionCard key={assumption.id} assumption={assumption} />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">Summary Statistics</h4>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-red-600">{quadrants.critical.length}</p>
+            <p className="text-xs text-gray-600">Critical</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-orange-600">{quadrants.monitor.length}</p>
+            <p className="text-xs text-gray-600">Monitor</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-600">{quadrants.defer.length}</p>
+            <p className="text-xs text-gray-600">Defer</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-600">{quadrants.safe.length}</p>
+            <p className="text-xs text-gray-600">Safe</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Assumption Detail Drawer */}
+      <AssumptionDetailDrawer
+        assumption={selectedAssumption}
+        onClose={() => setSelectedAssumption(null)}
+      />
+    </div>
+  );
+};
