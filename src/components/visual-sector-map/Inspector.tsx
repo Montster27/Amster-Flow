@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
-import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS } from '../../types/visualSectorMap';
+import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { Assumption, AssumptionStatus } from '../../types/discovery';
 
 interface InspectorProps {
   target: Actor | Connection | null;
@@ -7,16 +9,39 @@ interface InspectorProps {
   onClose: () => void;
 }
 
+// Status badge styles
+const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: string }> = {
+  untested: { bg: 'bg-gray-100', text: 'text-gray-700', icon: '❓' },
+  testing: { bg: 'bg-blue-100', text: 'text-blue-700', icon: '🔬' },
+  validated: { bg: 'bg-green-100', text: 'text-green-700', icon: '✅' },
+  invalidated: { bg: 'bg-red-100', text: 'text-red-700', icon: '❌' },
+};
+
 export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
   if (!target || !targetType) return null;
 
+  const { assumptions } = useDiscovery();
   const isActor = targetType === 'actor';
   const actor = isActor ? (target as Actor) : null;
   const connection = !isActor ? (target as Connection) : null;
 
-  const riskLevel = getRiskLevel(target.riskScore);
+  // Fetch actual assumption data
+  const linkedAssumptionData = target.linkedAssumptions
+    ?.map(id => assumptions.find(a => a.id === id))
+    .filter((a): a is Assumption => a !== undefined) || [];
+
+  const hasAssumptions = linkedAssumptionData.length > 0;
+
+  // Calculate real-time risk score based on linked assumptions
+  const calculatedRiskScore = hasAssumptions
+    ? calculateRiskScore(linkedAssumptionData.map(a => ({
+        status: a.status,
+        confidence: a.confidence
+      })))
+    : (target.riskScore || 0);
+
+  const riskLevel = getRiskLevel(calculatedRiskScore);
   const riskColors = RISK_COLORS[riskLevel];
-  const hasAssumptions = (target.linkedAssumptions?.length || 0) > 0;
 
   return (
     <>
@@ -61,7 +86,10 @@ export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
                 <span className="text-lg">⚠️</span>
                 <div>
                   <p className={`font-semibold ${riskColors.text} capitalize`}>{riskLevel} Risk</p>
-                  <p className="text-xs text-gray-600">Score: {target.riskScore}/5</p>
+                  <p className="text-xs text-gray-600">
+                    Score: {calculatedRiskScore.toFixed(1)}/5
+                    {hasAssumptions && <span className="ml-1">(auto-calculated)</span>}
+                  </p>
                 </div>
               </div>
             </div>
@@ -94,23 +122,37 @@ export const Inspector = ({ target, targetType, onClose }: InspectorProps) => {
               </div>
             ) : (
               <div className="space-y-2">
-                {target.linkedAssumptions!.map((assumptionId, index) => (
-                  <div
-                    key={assumptionId}
-                    className="bg-gray-50 border border-gray-200 rounded p-3 hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className="text-sm">❓</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-700 font-medium">Assumption {index + 1}</p>
-                        <p className="text-xs text-gray-500 truncate">{assumptionId}</p>
+                {linkedAssumptionData.map((assumption) => {
+                  const statusStyle = STATUS_STYLES[assumption.status];
+                  return (
+                    <div
+                      key={assumption.id}
+                      className="bg-gray-50 border border-gray-200 rounded p-3 hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-sm">{statusStyle.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-700 font-medium line-clamp-2">
+                            {assumption.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`px-2 py-0.5 ${statusStyle.bg} ${statusStyle.text} text-xs rounded font-medium capitalize`}>
+                              {assumption.status}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Confidence: {assumption.confidence}/5
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded font-medium">
-                        Untested
-                      </span>
+                      {assumption.evidence.length > 0 && (
+                        <div className="ml-6 text-xs text-gray-600">
+                          <span className="font-medium">Evidence:</span> {assumption.evidence.length} item{assumption.evidence.length !== 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <button className="w-full text-xs text-blue-600 hover:text-blue-700 font-medium py-2">
                   + Link Another
                 </button>
