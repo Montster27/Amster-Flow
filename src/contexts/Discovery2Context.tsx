@@ -16,6 +16,14 @@ interface Discovery2ContextType {
   getInterviewById: (id: string) => EnhancedInterview | undefined;
   importData: (data: { assumptions: Discovery2Assumption[]; interviews?: EnhancedInterview[] }) => void;
   reset: () => void;
+
+  // Phase 1: System Structure Integration - Linking functions
+  linkAssumptionToActor: (assumptionId: string, actorId: string) => void;
+  unlinkAssumptionFromActor: (assumptionId: string, actorId: string) => void;
+  linkAssumptionToConnection: (assumptionId: string, connectionId: string) => void;
+  unlinkAssumptionFromConnection: (assumptionId: string, connectionId: string) => void;
+  getAssumptionsByActor: (actorId: string) => Discovery2Assumption[];
+  getAssumptionsByConnection: (connectionId: string) => Discovery2Assumption[];
 }
 
 const Discovery2Context = createContext<Discovery2ContextType | undefined>(undefined);
@@ -118,6 +126,87 @@ export function Discovery2Provider({ children }: Discovery2ProviderProps) {
     setInterviews([]);
   }, []);
 
+  // Phase 1: System Structure Integration - Linking implementations
+  const linkAssumptionToActor = useCallback((assumptionId: string, actorId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId) {
+          const linkedActorIds = assumption.linkedActorIds || [];
+          if (!linkedActorIds.includes(actorId)) {
+            return {
+              ...assumption,
+              linkedActorIds: [...linkedActorIds, actorId],
+              lastUpdated: new Date().toISOString(),
+            };
+          }
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const unlinkAssumptionFromActor = useCallback((assumptionId: string, actorId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId && assumption.linkedActorIds) {
+          return {
+            ...assumption,
+            linkedActorIds: assumption.linkedActorIds.filter((id) => id !== actorId),
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const linkAssumptionToConnection = useCallback((assumptionId: string, connectionId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId) {
+          const linkedConnectionIds = assumption.linkedConnectionIds || [];
+          if (!linkedConnectionIds.includes(connectionId)) {
+            return {
+              ...assumption,
+              linkedConnectionIds: [...linkedConnectionIds, connectionId],
+              lastUpdated: new Date().toISOString(),
+            };
+          }
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const unlinkAssumptionFromConnection = useCallback((assumptionId: string, connectionId: string) => {
+    setAssumptions((prev) =>
+      prev.map((assumption) => {
+        if (assumption.id === assumptionId && assumption.linkedConnectionIds) {
+          return {
+            ...assumption,
+            linkedConnectionIds: assumption.linkedConnectionIds.filter((id) => id !== connectionId),
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return assumption;
+      })
+    );
+  }, []);
+
+  const getAssumptionsByActor = useCallback(
+    (actorId: string) => {
+      return assumptions.filter((a) => a.linkedActorIds?.includes(actorId));
+    },
+    [assumptions]
+  );
+
+  const getAssumptionsByConnection = useCallback(
+    (connectionId: string) => {
+      return assumptions.filter((a) => a.linkedConnectionIds?.includes(connectionId));
+    },
+    [assumptions]
+  );
+
   const value: Discovery2ContextType = {
     assumptions,
     addAssumption,
@@ -133,6 +222,13 @@ export function Discovery2Provider({ children }: Discovery2ProviderProps) {
     getInterviewById,
     importData,
     reset,
+    // Phase 1: System Structure Integration
+    linkAssumptionToActor,
+    unlinkAssumptionFromActor,
+    linkAssumptionToConnection,
+    unlinkAssumptionFromConnection,
+    getAssumptionsByActor,
+    getAssumptionsByConnection,
   };
 
   return (
