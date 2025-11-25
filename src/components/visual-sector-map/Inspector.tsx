@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { useGuide } from '../../contexts/GuideContext';
 import { Assumption, AssumptionStatus } from '../../types/discovery';
+import { Discovery2Context } from '../../contexts/Discovery2Context';
+import type { Discovery2Assumption } from '../../types/discovery';
 
 interface InspectorProps {
   target: Actor | Connection | null;
@@ -24,13 +26,26 @@ const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: 
 export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: InspectorProps) => {
   if (!target || !targetType) return null;
 
+  // Check if Discovery 2.0 context is available (takes precedence)
+  const discovery2Context = useContext(Discovery2Context);
+
+  // Use Discovery 2.0 if available, otherwise fallback to original Discovery
+  const discoveryContext = useDiscovery();
+  const isDiscovery2 = discovery2Context !== undefined && discovery2Context !== null;
+
+  // Get appropriate context functions based on which context is available
+  const activeContext = isDiscovery2 ? discovery2Context! : discoveryContext;
   const {
-    assumptions,
+    assumptions: rawAssumptions,
     linkAssumptionToActor,
     unlinkAssumptionFromActor,
     linkAssumptionToConnection,
     unlinkAssumptionFromConnection,
-  } = useDiscovery();
+  } = activeContext;
+
+  // Type assumptions as union to satisfy TypeScript
+  const assumptions = rawAssumptions as (Assumption | Discovery2Assumption)[];
+
   const { navigateToModuleWithContext } = useGuide();
   const [showLinkDropdown, setShowLinkDropdown] = useState(false);
 
@@ -38,10 +53,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const actor = isActor ? (target as Actor) : null;
   const connection = !isActor ? (target as Connection) : null;
 
-  // Fetch actual assumption data
+  // Fetch actual assumption data (works with both Assumption and Discovery2Assumption)
   const linkedAssumptionData = target.linkedAssumptions
-    ?.map(id => assumptions.find(a => a.id === id))
-    .filter((a): a is Assumption => a !== undefined) || [];
+    ?.map((id) => assumptions.find((a) => a.id === id))
+    .filter((a): a is Assumption | Discovery2Assumption => a !== undefined) || [];
 
   const hasAssumptions = linkedAssumptionData.length > 0;
 
