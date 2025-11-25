@@ -28,6 +28,9 @@ interface Discovery2ContextType {
 
 const Discovery2Context = createContext<Discovery2ContextType | undefined>(undefined);
 
+// Export the context for direct access when needed
+export { Discovery2Context };
+
 export function useDiscovery2() {
   const context = useContext(Discovery2Context);
   if (!context) {
