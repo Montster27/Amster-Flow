@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { useGuide } from '../../contexts/GuideContext';
 import { Assumption, AssumptionStatus } from '../../types/discovery';
 
 interface InspectorProps {
@@ -23,6 +24,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   if (!target || !targetType) return null;
 
   const { assumptions } = useDiscovery();
+  const { navigateToModuleWithContext } = useGuide();
   const isActor = targetType === 'actor';
   const actor = isActor ? (target as Actor) : null;
   const connection = !isActor ? (target as Connection) : null;
@@ -55,6 +57,25 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   const handleEdit = () => {
     onEdit?.();
+  };
+
+  // Phase 2: Navigation handlers for cross-module integration
+  const handleCreateAssumption = () => {
+    const context = isActor
+      ? { actorId: actor!.id, action: 'create' as const }
+      : { connectionId: connection!.id, action: 'create' as const };
+
+    navigateToModuleWithContext('discovery', context);
+    onClose();
+  };
+
+  const handleViewInDiscovery = () => {
+    const context = isActor
+      ? { actorId: actor!.id, action: 'filter' as const }
+      : { connectionId: connection!.id, action: 'filter' as const };
+
+    navigateToModuleWithContext('discovery', context);
+    onClose();
   };
 
   return (
@@ -187,8 +208,18 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                 </button>
               )}
 
+              <button
+                onClick={handleCreateAssumption}
+                className="w-full px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <span>➕</span> Create Assumption
+              </button>
+
               {hasAssumptions && (
-                <button className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                <button
+                  onClick={handleViewInDiscovery}
+                  className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                >
                   <span>📊</span> View in Discovery
                 </button>
               )}
