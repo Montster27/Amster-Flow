@@ -24,6 +24,38 @@ export type CanvasArea =
   | 'keyMetrics'
   | 'unfairAdvantage';
 
+// Progressive validation groups (staged approach)
+export type ValidationGroup = 'group1' | 'group2' | 'group3';
+
+// Group definitions for progressive validation workflow
+export const VALIDATION_GROUPS = {
+  group1: {
+    name: 'Problem-Solution Fit',
+    description: 'Start here: Validate the core problem and solution',
+    color: 'blue',
+    areas: ['problem', 'customerSegments', 'solution'] as CanvasArea[],
+  },
+  group2: {
+    name: 'Product-Market Fit',
+    description: 'If Group 1 looks good, validate market positioning',
+    color: 'purple',
+    areas: ['existingAlternatives', 'earlyAdopters', 'uniqueValueProposition'] as CanvasArea[],
+  },
+  group3: {
+    name: 'Business Viability',
+    description: 'Finally, validate the business model',
+    color: 'green',
+    areas: ['channels', 'revenueStreams', 'costStructure', 'keyMetrics', 'unfairAdvantage'] as CanvasArea[],
+  },
+} as const;
+
+// Helper to get validation group for a canvas area
+export function getValidationGroup(area: CanvasArea): ValidationGroup {
+  if (VALIDATION_GROUPS.group1.areas.includes(area)) return 'group1';
+  if (VALIDATION_GROUPS.group2.areas.includes(area)) return 'group2';
+  return 'group3';
+}
+
 // Priority level for assumption testing
 export type PriorityLevel = 'high' | 'medium' | 'low';
 
