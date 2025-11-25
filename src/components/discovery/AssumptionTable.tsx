@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { captureException } from '../../lib/sentry';
 
 import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
+import type { NavigationContext } from '../../contexts/GuideContext';
 
 import { AssumptionType, ConfidenceLevel, AssumptionStatus } from '../../types/discovery';
 
@@ -11,7 +13,12 @@ interface AssumptionForm {
   description: string;
 }
 
-export const AssumptionTable = () => {
+interface AssumptionTableProps {
+  navigationContext?: NavigationContext | null;
+  onClearContext?: () => void;
+}
+
+export const AssumptionTable = ({ navigationContext, onClearContext }: AssumptionTableProps) => {
   const {
     assumptions,
     addAssumption,
@@ -19,7 +26,11 @@ export const AssumptionTable = () => {
     deleteAssumption,
     updateAssumptionConfidence,
     updateAssumptionStatus,
+    linkAssumptionToActor,
+    linkAssumptionToConnection,
   } = useDiscovery();
+
+  const { actors, connections } = useVisualSectorMap();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -37,6 +48,13 @@ export const AssumptionTable = () => {
       .catch((err) => { const error = err instanceof Error ? err : new Error('Failed to load templates'); captureException(error, { extra: { context: 'AssumptionTable load' } }); });
   }, []);
 
+  // Phase 2: Handle navigation context from System Structure
+  useEffect(() => {
+    if (navigationContext?.action === 'create') {
+      setShowForm(true);
+    }
+  }, [navigationContext]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description.trim()) return;
@@ -46,6 +64,27 @@ export const AssumptionTable = () => {
       setEditingId(null);
     } else {
       addAssumption(formData.type, formData.description);
+
+      // Phase 2: Auto-link to actor/connection from navigation context
+      if (navigationContext) {
+        // Get the most recently added assumption (the one we just created)
+        const newAssumptionId = assumptions.length > 0 ? assumptions[assumptions.length - 1].id : null;
+
+        if (newAssumptionId) {
+          if (navigationContext.actorId) {
+            // Link to actor after a brief delay to ensure the assumption is in state
+            setTimeout(() => {
+              linkAssumptionToActor(newAssumptionId, navigationContext.actorId!);
+            }, 100);
+          } else if (navigationContext.connectionId) {
+            setTimeout(() => {
+              linkAssumptionToConnection(newAssumptionId, navigationContext.connectionId!);
+            }, 100);
+          }
+        }
+
+        onClearContext?.();
+      }
     }
 
     setFormData({ type: 'customer', description: '' });
@@ -82,8 +121,61 @@ export const AssumptionTable = () => {
     return labels[level];
   };
 
+  // Phase 2: Filter assumptions based on navigation context
+  const filteredAssumptions = (() => {
+    if (!navigationContext || navigationContext.action !== 'filter') {
+      return assumptions;
+    }
+
+    if (navigationContext.actorId) {
+      return assumptions.filter(a => a.linkedActorIds?.includes(navigationContext.actorId!));
+    }
+
+    if (navigationContext.connectionId) {
+      return assumptions.filter(a => a.linkedConnectionIds?.includes(navigationContext.connectionId!));
+    }
+
+    return assumptions;
+  })();
+
+  // Get actor/connection name for filter chip
+  const getContextName = () => {
+    if (!navigationContext) return null;
+
+    if (navigationContext.actorId) {
+      const actor = actors.find(a => a.id === navigationContext.actorId);
+      return actor?.name;
+    }
+
+    if (navigationContext.connectionId) {
+      const conn = connections.find(c => c.id === navigationContext.connectionId);
+      return conn?.description || 'Connection';
+    }
+
+    return null;
+  };
+
+  const contextName = getContextName();
+
   return (
     <div>
+      {/* Phase 2: Filter chip showing context */}
+      {navigationContext && contextName && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm text-gray-600">Filtered by:</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+            <span>{contextName}</span>
+            <button
+              onClick={onClearContext}
+              className="hover:bg-purple-200 rounded-full p-0.5"
+              aria-label="Clear filter"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header with Add Button */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -178,14 +270,21 @@ export const AssumptionTable = () => {
       )}
 
       {/* Assumptions List */}
-      {assumptions.length === 0 ? (
+      {filteredAssumptions.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 text-lg mb-2">No assumptions yet</p>
-          <p className="text-gray-400 text-sm">Start by adding your key assumptions about customers, problems, or your solution</p>
+          <p className="text-gray-500 text-lg mb-2">
+            {navigationContext ? 'No assumptions linked to this item yet' : 'No assumptions yet'}
+          </p>
+          <p className="text-gray-400 text-sm">
+            {navigationContext
+              ? 'Create an assumption to link it to this actor/connection'
+              : 'Start by adding your key assumptions about customers, problems, or your solution'
+            }
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {assumptions.map((assumption) => (
+          {filteredAssumptions.map((assumption) => (
             <div
               key={assumption.id}
               className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
