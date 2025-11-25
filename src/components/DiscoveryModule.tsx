@@ -1,4 +1,5 @@
 import { useDiscovery } from '../contexts/DiscoveryContext';
+import { useGuide } from '../contexts/GuideContext';
 import { AssumptionTable } from './discovery/AssumptionTable';
 import { InterviewSystemWrapper } from './discovery/InterviewSystemWrapper';
 import { IterationDashboard } from './discovery/IterationDashboard';
@@ -10,6 +11,7 @@ interface DiscoveryModuleProps {
 
 export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
   const { currentView, setCurrentView } = useDiscovery();
+  const { navigationContext, clearNavigationContext } = useGuide();
 
   const tabs = [
     { id: 'assumptions' as const, label: 'Assumptions', icon: '📋' },
@@ -52,7 +54,12 @@ export const DiscoveryModule = ({ projectId }: DiscoveryModuleProps) => {
 
       {/* Content Area */}
       <div className="min-h-[600px]">
-        {currentView === 'assumptions' && <AssumptionTable />}
+        {currentView === 'assumptions' && (
+          <AssumptionTable
+            navigationContext={navigationContext}
+            onClearContext={clearNavigationContext}
+          />
+        )}
         {currentView === 'interviews' && <InterviewSystemWrapper projectId={projectId} />}
         {currentView === 'board' && <AssumptionBoard projectId={projectId} />}
         {currentView === 'dashboard' && <IterationDashboard />}
