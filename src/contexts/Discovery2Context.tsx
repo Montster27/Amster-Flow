@@ -3,7 +3,7 @@ import type { Discovery2Assumption, EnhancedInterview } from '../types/discovery
 
 interface Discovery2ContextType {
   assumptions: Discovery2Assumption[];
-  addAssumption: (assumption: Discovery2Assumption) => void;
+  addAssumption: (assumption: Discovery2Assumption) => Discovery2Assumption;
   updateAssumption: (id: string, updates: Partial<Discovery2Assumption>) => void;
   deleteAssumption: (id: string) => void;
   getAssumptionById: (id: string) => Discovery2Assumption | undefined;
@@ -49,6 +49,7 @@ export function Discovery2Provider({ children }: Discovery2ProviderProps) {
 
   const addAssumption = useCallback((assumption: Discovery2Assumption) => {
     setAssumptions((prev) => [...prev, assumption]);
+    return assumption; // Return the assumption for immediate use
   }, []);
 
   const updateAssumption = useCallback((id: string, updates: Partial<Discovery2Assumption>) => {

@@ -18,7 +18,7 @@ interface DiscoveryState {
 
   // Assumptions
   assumptions: Assumption[];
-  addAssumption: (type: AssumptionType, description: string) => void;
+  addAssumption: (type: AssumptionType, description: string) => Assumption;
   updateAssumption: (id: string, updates: Partial<Assumption>) => void;
   deleteAssumption: (id: string) => void;
   updateAssumptionConfidence: (id: string, confidence: ConfidenceLevel) => void;
@@ -90,6 +90,7 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
       evidence: [],
     };
     setAssumptions((prev) => [...prev, newAssumption]);
+    return newAssumption; // Return the assumption for immediate use
   }, []);
 
   const updateAssumption = useCallback((id: string, updates: Partial<Assumption>) => {

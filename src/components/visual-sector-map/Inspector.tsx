@@ -40,6 +40,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   // State for loading Discovery 2.0 assumptions from database when context not available
   const [dbAssumptions, setDbAssumptions] = useState<Discovery2Assumption[]>([]);
   const [loadingAssumptions, setLoadingAssumptions] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
 
   // Get appropriate context functions based on which context is available
   const activeContext = isDiscovery2 ? discovery2Context! : discoveryContext;
@@ -71,6 +72,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
         .select('*')
         .eq('project_id', projectId)
         .not('canvas_area', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(100) // Performance: Limit to prevent loading excessive data
         .then(({ data, error }) => {
           if (!error && data) {
             const assumptions: Discovery2Assumption[] = data.map(row => ({
@@ -111,7 +114,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     await supabase
       .from('project_assumptions')
       .update({ linked_actor_ids: updated } as any)
-      .eq('id', assumptionId);
+      .eq('id', assumptionId)
+      .eq('project_id', projectId); // Security: Scope to current project
 
     // Update local state
     setDbAssumptions(prev => prev.map(a =>
@@ -129,7 +133,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     await supabase
       .from('project_assumptions')
       .update({ linked_actor_ids: updated } as any)
-      .eq('id', assumptionId);
+      .eq('id', assumptionId)
+      .eq('project_id', projectId); // Security: Scope to current project
 
     setDbAssumptions(prev => prev.map(a =>
       a.id === assumptionId ? { ...a, linkedActorIds: updated } : a
@@ -149,7 +154,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     await supabase
       .from('project_assumptions')
       .update({ linked_connection_ids: updated } as any)
-      .eq('id', assumptionId);
+      .eq('id', assumptionId)
+      .eq('project_id', projectId); // Security: Scope to current project
 
     setDbAssumptions(prev => prev.map(a =>
       a.id === assumptionId ? { ...a, linkedConnectionIds: updated } : a
@@ -166,7 +172,8 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     await supabase
       .from('project_assumptions')
       .update({ linked_connection_ids: updated } as any)
-      .eq('id', assumptionId);
+      .eq('id', assumptionId)
+      .eq('project_id', projectId); // Security: Scope to current project
 
     setDbAssumptions(prev => prev.map(a =>
       a.id === assumptionId ? { ...a, linkedConnectionIds: updated } : a
@@ -217,13 +224,12 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   // Always navigate to Discovery 2.0 when projectId is available
   const handleCreateAssumption = () => {
     if (projectId) {
-      // Navigate to Discovery 2.0 page
-      // Store navigation context in sessionStorage for Discovery 2.0 to pick up
-      const context = isActor
-        ? { actorId: actor!.id, action: 'create' as const }
-        : { connectionId: connection!.id, action: 'create' as const };
-      sessionStorage.setItem('discovery2NavigationContext', JSON.stringify(context));
-      navigate(`/project/${projectId}/discovery2`);
+      // Navigate to Discovery 2.0 page with URL parameters
+      const params = new URLSearchParams({
+        action: 'create',
+        ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })
+      });
+      navigate(`/project/${projectId}/discovery2?${params.toString()}`);
       onClose();
     } else {
       // Fallback to original Discovery module navigation (if no projectId)
@@ -237,12 +243,12 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   const handleViewInDiscovery = () => {
     if (projectId) {
-      // Navigate to Discovery 2.0 page
-      const context = isActor
-        ? { actorId: actor!.id, action: 'filter' as const }
-        : { connectionId: connection!.id, action: 'filter' as const };
-      sessionStorage.setItem('discovery2NavigationContext', JSON.stringify(context));
-      navigate(`/project/${projectId}/discovery2`);
+      // Navigate to Discovery 2.0 page with URL parameters
+      const params = new URLSearchParams({
+        action: 'filter',
+        ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })
+      });
+      navigate(`/project/${projectId}/discovery2?${params.toString()}`);
       onClose();
     } else {
       // Fallback to original Discovery module navigation (if no projectId)
@@ -255,20 +261,38 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   };
 
   // Phase 3: Linking/Unlinking handlers
-  const handleLinkAssumption = (assumptionId: string) => {
-    if (isActor) {
-      linkAssumptionToActor(assumptionId, actor!.id);
-    } else {
-      linkAssumptionToConnection(assumptionId, connection!.id);
+  const handleLinkAssumption = async (assumptionId: string) => {
+    if (isLinking) return; // Prevent double-clicks
+
+    setIsLinking(true);
+    try {
+      if (isActor) {
+        await linkAssumptionToActor(assumptionId, actor!.id);
+      } else {
+        await linkAssumptionToConnection(assumptionId, connection!.id);
+      }
+      setShowLinkDropdown(false);
+    } catch (error) {
+      console.error('Failed to link assumption:', error);
+    } finally {
+      setIsLinking(false);
     }
-    setShowLinkDropdown(false);
   };
 
-  const handleUnlinkAssumption = (assumptionId: string) => {
-    if (isActor) {
-      unlinkAssumptionFromActor(assumptionId, actor!.id);
-    } else {
-      unlinkAssumptionFromConnection(assumptionId, connection!.id);
+  const handleUnlinkAssumption = async (assumptionId: string) => {
+    if (isLinking) return; // Prevent double-clicks
+
+    setIsLinking(true);
+    try {
+      if (isActor) {
+        await unlinkAssumptionFromActor(assumptionId, actor!.id);
+      } else {
+        await unlinkAssumptionFromConnection(assumptionId, connection!.id);
+      }
+    } catch (error) {
+      console.error('Failed to unlink assumption:', error);
+    } finally {
+      setIsLinking(false);
     }
   };
 

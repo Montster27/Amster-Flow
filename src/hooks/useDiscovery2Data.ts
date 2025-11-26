@@ -70,6 +70,10 @@ export function useDiscovery2Data(projectId: string | undefined) {
           riskScore: (row as any).risk_score || undefined,
           interviewCount: (row as any).interview_count || 0,
           lastTestedDate: (row as any).last_tested_date || undefined,
+
+          // System Structure integration fields
+          linkedActorIds: (row as any).linked_actor_ids || [],
+          linkedConnectionIds: (row as any).linked_connection_ids || [],
         }));
 
         // Load enhanced interviews
@@ -149,6 +153,10 @@ export function useDiscovery2Data(projectId: string | undefined) {
             risk_score: assumption.riskScore,
             interview_count: assumption.interviewCount,
             last_tested_date: assumption.lastTestedDate,
+
+            // System Structure integration fields
+            linked_actor_ids: assumption.linkedActorIds || [],
+            linked_connection_ids: assumption.linkedConnectionIds || [],
           } as any)); // Type assertion to allow new fields
 
           await supabase

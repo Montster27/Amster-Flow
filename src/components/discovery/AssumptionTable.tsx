@@ -66,24 +66,14 @@ export const AssumptionTable = ({ navigationContext, onClearContext }: Assumptio
       updateAssumption(editingId, { description: formData.description, type: formData.type });
       setEditingId(null);
     } else {
-      addAssumption(formData.type, formData.description);
+      const newAssumption = addAssumption(formData.type, formData.description);
 
       // Phase 2: Auto-link to actor/connection from navigation context
-      if (navigationContext) {
-        // Get the most recently added assumption (the one we just created)
-        const newAssumptionId = assumptions.length > 0 ? assumptions[assumptions.length - 1].id : null;
-
-        if (newAssumptionId) {
-          if (navigationContext.actorId) {
-            // Link to actor after a brief delay to ensure the assumption is in state
-            setTimeout(() => {
-              linkAssumptionToActor(newAssumptionId, navigationContext.actorId!);
-            }, 100);
-          } else if (navigationContext.connectionId) {
-            setTimeout(() => {
-              linkAssumptionToConnection(newAssumptionId, navigationContext.connectionId!);
-            }, 100);
-          }
+      if (navigationContext && newAssumption) {
+        if (navigationContext.actorId) {
+          linkAssumptionToActor(newAssumption.id, navigationContext.actorId);
+        } else if (navigationContext.connectionId) {
+          linkAssumptionToConnection(newAssumption.id, navigationContext.connectionId);
         }
 
         onClearContext?.();
