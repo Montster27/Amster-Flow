@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDiscovery2 } from '../../contexts/Discovery2Context';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +27,7 @@ interface Discovery2ModuleProps {
  * - Enhanced synthesis and iteration tracking
  */
 export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'assumptions' | 'matrix' | 'board' | 'interviews' | 'dashboard'>('assumptions');
   const [showGenerator, setShowGenerator] = useState(false);
   const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
@@ -35,27 +37,30 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
   const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery2();
   const { user } = useAuth();
 
-  // Handle navigation context from Visual Sector Map
+  // Handle navigation context from Visual Sector Map (via URL parameters)
   useEffect(() => {
-    const contextStr = sessionStorage.getItem('discovery2NavigationContext');
-    if (contextStr) {
-      try {
-        const context = JSON.parse(contextStr);
-        setNavigationContext(context);
+    const action = searchParams.get('action');
+    const actorId = searchParams.get('actorId');
+    const connectionId = searchParams.get('connectionId');
 
-        // Auto-open generator if action is 'create'
-        if (context.action === 'create') {
-          setShowGenerator(true);
-          setActiveTab('assumptions');
-        }
+    if (action) {
+      const context = {
+        action,
+        actorId: actorId || undefined,
+        connectionId: connectionId || undefined,
+      };
+      setNavigationContext(context);
 
-        // Clear the context from sessionStorage
-        sessionStorage.removeItem('discovery2NavigationContext');
-      } catch (error) {
-        console.error('Failed to parse navigation context:', error);
+      // Auto-open generator if action is 'create'
+      if (context.action === 'create') {
+        setShowGenerator(true);
+        setActiveTab('assumptions');
       }
+
+      // Clear the parameters from URL
+      setSearchParams({});
     }
-  }, []);
+  }, [searchParams, setSearchParams]);
 
   // Auto-seed Pet Finder Discovery 2.0 data if project is Pet Finder and has no data
   useEffect(() => {
@@ -133,15 +138,13 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
 
     // Auto-link to actor/connection from navigation context
     if (navigationContext) {
-      setTimeout(() => {
-        if (navigationContext.actorId) {
-          linkAssumptionToActor(assumptionId, navigationContext.actorId);
-        } else if (navigationContext.connectionId) {
-          linkAssumptionToConnection(assumptionId, navigationContext.connectionId);
-        }
-        // Clear navigation context after linking
-        setNavigationContext(null);
-      }, 100);
+      if (navigationContext.actorId) {
+        linkAssumptionToActor(assumptionId, navigationContext.actorId);
+      } else if (navigationContext.connectionId) {
+        linkAssumptionToConnection(assumptionId, navigationContext.connectionId);
+      }
+      // Clear navigation context after linking
+      setNavigationContext(null);
     }
   };
 
