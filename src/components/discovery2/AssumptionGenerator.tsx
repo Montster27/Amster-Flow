@@ -6,6 +6,7 @@ import { captureException } from '../../lib/sentry';
 interface AssumptionGeneratorProps {
   onClose: () => void;
   onSave: (assumption: NewAssumption) => void;
+  initialCanvasArea?: CanvasArea; // Optional: pre-select canvas area and skip to step 2
 }
 
 interface NewAssumption {
@@ -145,9 +146,9 @@ const GROUP_COLORS: Record<ValidationGroup, { border: string; borderHover: strin
   },
 };
 
-export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProps) {
+export function AssumptionGenerator({ onClose, onSave, initialCanvasArea }: AssumptionGeneratorProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [canvasArea, setCanvasArea] = useState<CanvasArea | null>(null);
+  const [canvasArea, setCanvasArea] = useState<CanvasArea | null>(initialCanvasArea || null);
   const [type, setType] = useState<AssumptionType>('customer');
   const [description, setDescription] = useState('');
   const [importance, setImportance] = useState<ConfidenceLevel>(3);
@@ -230,7 +231,11 @@ export function AssumptionGenerator({ onClose, onSave }: AssumptionGeneratorProp
                   return (
                     <button
                       key={area}
-                      onClick={() => setCanvasArea(area)}
+                      onClick={() => {
+                        setCanvasArea(area);
+                        // Auto-advance to step 2 after selection
+                        setTimeout(() => setStep(2), 150);
+                      }}
                       className={`
                         p-4 border-2 rounded-lg text-left transition-all relative
                         ${canvasArea === area

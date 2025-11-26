@@ -512,6 +512,7 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
         <AssumptionGenerator
           onClose={() => setShowGenerator(false)}
           onSave={handleCreateAssumption}
+          initialCanvasArea={navigationContext ? 'customerSegments' : undefined}
         />
       )}
     </div>
