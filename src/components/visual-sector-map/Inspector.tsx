@@ -39,6 +39,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   // Use discovery context if available
   const activeContext = discoveryContext;
+  const isDiscovery2 = discoveryContext !== undefined && discoveryContext !== null;
   const {
     assumptions: rawAssumptions,
     linkAssumptionToActor: contextLinkToActor,
@@ -224,7 +225,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
         action: 'create',
         ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })
       });
-      navigate(`/project/${projectId}/discovery2?${params.toString()}`);
+      navigate(`/project/${projectId}/discovery?${params.toString()}`);
       onClose();
     } else {
       // Fallback to original Discovery module navigation (if no projectId)
@@ -243,7 +244,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
         action: 'filter',
         ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })
       });
-      navigate(`/project/${projectId}/discovery2?${params.toString()}`);
+      navigate(`/project/${projectId}/discovery?${params.toString()}`);
       onClose();
     } else {
       // Fallback to original Discovery module navigation (if no projectId)

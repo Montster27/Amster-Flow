@@ -1,11 +1,11 @@
-import type { Discovery2Assumption, EnhancedInterview } from '../types/discovery';
+import type { Assumption, EnhancedInterview } from '../types/discovery';
 
 /**
  * Seed data for Pet Finder project - Discovery 2.0
  * Demonstrates a realistic pet adoption platform discovery process
  */
 
-export const petFinderAssumptions: Omit<Discovery2Assumption, 'id' | 'created' | 'lastUpdated'>[] = [
+export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpdated'>[] = [
   // Problem Assumptions
   {
     type: 'problem',

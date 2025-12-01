@@ -15,7 +15,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TermsOfServicePage } from './pages/TermsOfServicePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
-import { Discovery2Page } from './pages/Discovery2Page'
+import { DiscoveryPage } from './pages/DiscoveryPage'
 import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
@@ -64,10 +64,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     }
                   />
                   <Route
-                    path="/project/:projectId/discovery2"
+                    path="/project/:projectId/discovery"
                     element={
                       <ProtectedRoute>
-                        <Discovery2Page />
+                        <DiscoveryPage />
                       </ProtectedRoute>
                     }
                   />
