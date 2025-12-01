@@ -2,7 +2,7 @@ import { useState, useContext, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
-import { useDiscovery, DiscoveryContext } from '../../contexts/DiscoveryContext';
+import { DiscoveryContext } from '../../contexts/DiscoveryContext';
 import { useGuide } from '../../contexts/GuideContext';
 import { Assumption, AssumptionStatus } from '../../types/discovery';
 import type { CanvasArea, PriorityLevel, ConfidenceLevel, AssumptionType } from '../../types/discovery';
@@ -41,12 +41,18 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const activeContext = discoveryContext;
   const isDiscovery2 = discoveryContext !== undefined && discoveryContext !== null;
   const {
-    assumptions: rawAssumptions,
+    assumptions: rawAssumptions = [],
     linkAssumptionToActor: contextLinkToActor,
     unlinkAssumptionFromActor: contextUnlinkFromActor,
     linkAssumptionToConnection: contextLinkToConnection,
     unlinkAssumptionFromConnection: contextUnlinkFromConnection,
-  } = activeContext;
+  } = activeContext || {
+    assumptions: [],
+    linkAssumptionToActor: undefined,
+    unlinkAssumptionFromActor: undefined,
+    linkAssumptionToConnection: undefined,
+    unlinkAssumptionFromConnection: undefined,
+  };
 
   // Type assumptions as union to satisfy TypeScript
   const contextAssumptions = rawAssumptions as (Assumption | Assumption)[];
@@ -263,9 +269,13 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     setIsLinking(true);
     try {
       if (isActor) {
-        await linkAssumptionToActor(assumptionId, actor!.id);
+        if (linkAssumptionToActor) {
+          await linkAssumptionToActor(assumptionId, actor!.id);
+        }
       } else {
-        await linkAssumptionToConnection(assumptionId, connection!.id);
+        if (linkAssumptionToConnection) {
+          await linkAssumptionToConnection(assumptionId, connection!.id);
+        }
       }
       setShowLinkDropdown(false);
     } catch (error) {
@@ -281,9 +291,13 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
     setIsLinking(true);
     try {
       if (isActor) {
-        await unlinkAssumptionFromActor(assumptionId, actor!.id);
+        if (unlinkAssumptionFromActor) {
+          await unlinkAssumptionFromActor(assumptionId, actor!.id);
+        }
       } else {
-        await unlinkAssumptionFromConnection(assumptionId, connection!.id);
+        if (unlinkAssumptionFromConnection) {
+          await unlinkAssumptionFromConnection(assumptionId, connection!.id);
+        }
       }
     } catch (error) {
       console.error('Failed to unlink assumption:', error);
