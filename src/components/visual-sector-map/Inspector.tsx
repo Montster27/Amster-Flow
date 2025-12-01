@@ -39,7 +39,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   // Use discovery context if available
   const activeContext = discoveryContext;
-  const isDiscovery2 = discoveryContext !== undefined && discoveryContext !== null;
+  const hasDiscoveryContext = discoveryContext !== undefined && discoveryContext !== null;
   const {
     assumptions: rawAssumptions = [],
     linkAssumptionToActor: contextLinkToActor,
@@ -58,7 +58,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const contextAssumptions = rawAssumptions as (Assumption | Assumption)[];
 
   // Use database assumptions if context not available and we have loaded them
-  const assumptions = !isDiscovery2 && dbAssumptions.length > 0 ? dbAssumptions : contextAssumptions;
+  const assumptions = !hasDiscoveryContext && dbAssumptions.length > 0 ? dbAssumptions : contextAssumptions;
 
   const { navigateToModuleWithContext } = useGuide();
   const navigate = useNavigate();
@@ -67,7 +67,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   // Load Discovery 2.0 assumptions from database when context not available
   useEffect(() => {
-    if (!isDiscovery2 && projectId && !loadingAssumptions) {
+    if (!hasDiscoveryContext && projectId && !loadingAssumptions) {
       setLoadingAssumptions(true);
       supabase
         .from('project_assumptions')
@@ -100,7 +100,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
           setLoadingAssumptions(false);
         });
     }
-  }, [isDiscovery2, projectId, target, loadingAssumptions]);
+  }, [hasDiscoveryContext, projectId, target, loadingAssumptions]);
 
   // Database-based linking functions (used when context not available)
   const dbLinkAssumptionToActor = async (assumptionId: string, actorId: string) => {
@@ -183,10 +183,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   };
 
   // Wrapper functions that use either context or database methods
-  const linkAssumptionToActor = isDiscovery2 ? contextLinkToActor : dbLinkAssumptionToActor;
-  const unlinkAssumptionFromActor = isDiscovery2 ? contextUnlinkFromActor : dbUnlinkAssumptionFromActor;
-  const linkAssumptionToConnection = isDiscovery2 ? contextLinkToConnection : dbLinkAssumptionToConnection;
-  const unlinkAssumptionFromConnection = isDiscovery2 ? contextUnlinkFromConnection : dbUnlinkAssumptionFromConnection;
+  const linkAssumptionToActor = hasDiscoveryContext ? contextLinkToActor : dbLinkAssumptionToActor;
+  const unlinkAssumptionFromActor = hasDiscoveryContext ? contextUnlinkFromActor : dbUnlinkAssumptionFromActor;
+  const linkAssumptionToConnection = hasDiscoveryContext ? contextLinkToConnection : dbLinkAssumptionToConnection;
+  const unlinkAssumptionFromConnection = hasDiscoveryContext ? contextUnlinkFromConnection : dbUnlinkAssumptionFromConnection;
 
   const isActor = targetType === 'actor';
   const actor = isActor ? (target as Actor) : null;
