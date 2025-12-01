@@ -2,11 +2,10 @@ import { useState, useContext, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Actor, Connection, ACTOR_ICONS, ACTOR_LABELS, CONNECTION_ICONS, CONNECTION_LABELS, getRiskLevel, RISK_COLORS, calculateRiskScore } from '../../types/visualSectorMap';
-import { useDiscovery } from '../../contexts/DiscoveryContext';
+import { useDiscovery, DiscoveryContext } from '../../contexts/DiscoveryContext';
 import { useGuide } from '../../contexts/GuideContext';
 import { Assumption, AssumptionStatus } from '../../types/discovery';
-import { Discovery2Context } from '../../contexts/Discovery2Context';
-import type { Discovery2Assumption, CanvasArea, PriorityLevel, ConfidenceLevel, AssumptionType } from '../../types/discovery';
+import type { CanvasArea, PriorityLevel, ConfidenceLevel, AssumptionType } from '../../types/discovery';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -29,21 +28,17 @@ const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: 
 export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: InspectorProps) => {
   if (!target || !targetType) return null;
 
-  // Check if Discovery 2.0 context is available (takes precedence)
-  const discovery2Context = useContext(Discovery2Context);
+  // Access Discovery context
+  const discoveryContext = useContext(DiscoveryContext);
   const { user } = useAuth();
 
-  // Use Discovery 2.0 if available, otherwise fallback to original Discovery
-  const discoveryContext = useDiscovery();
-  const isDiscovery2 = discovery2Context !== undefined && discovery2Context !== null;
-
-  // State for loading Discovery 2.0 assumptions from database when context not available
-  const [dbAssumptions, setDbAssumptions] = useState<Discovery2Assumption[]>([]);
+  // State for loading assumptions from database when context not available
+  const [dbAssumptions, setDbAssumptions] = useState<Assumption[]>([]);
   const [loadingAssumptions, setLoadingAssumptions] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
 
-  // Get appropriate context functions based on which context is available
-  const activeContext = isDiscovery2 ? discovery2Context! : discoveryContext;
+  // Use discovery context if available
+  const activeContext = discoveryContext;
   const {
     assumptions: rawAssumptions,
     linkAssumptionToActor: contextLinkToActor,
@@ -53,7 +48,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   } = activeContext;
 
   // Type assumptions as union to satisfy TypeScript
-  const contextAssumptions = rawAssumptions as (Assumption | Discovery2Assumption)[];
+  const contextAssumptions = rawAssumptions as (Assumption | Assumption)[];
 
   // Use database assumptions if context not available and we have loaded them
   const assumptions = !isDiscovery2 && dbAssumptions.length > 0 ? dbAssumptions : contextAssumptions;
@@ -76,7 +71,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
         .limit(100) // Performance: Limit to prevent loading excessive data
         .then(({ data, error }) => {
           if (!error && data) {
-            const assumptions: Discovery2Assumption[] = data.map(row => ({
+            const assumptions: Assumption[] = data.map(row => ({
               id: row.id,
               type: row.type as AssumptionType,
               description: row.description,
@@ -190,10 +185,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const actor = isActor ? (target as Actor) : null;
   const connection = !isActor ? (target as Connection) : null;
 
-  // Fetch actual assumption data (works with both Assumption and Discovery2Assumption)
+  // Fetch actual assumption data (works with both Assumption and Assumption)
   const linkedAssumptionData = target.linkedAssumptions
     ?.map((id) => assumptions.find((a) => a.id === id))
-    .filter((a): a is Assumption | Discovery2Assumption => a !== undefined) || [];
+    .filter((a): a is Assumption | Assumption => a !== undefined) || [];
 
   const hasAssumptions = linkedAssumptionData.length > 0;
 

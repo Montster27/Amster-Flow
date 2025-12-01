@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Discovery2Module } from '../components/discovery2/Discovery2Module';
+import { DiscoveryModule } from '../components/discovery/DiscoveryModule';
 import { DiscoveryProvider } from '../contexts/DiscoveryContext';
 import { useDiscoveryData } from '../hooks/useDiscoveryData';
 
@@ -43,7 +43,7 @@ function Discovery2PageInner() {
     );
   }
 
-  return <Discovery2Module projectId={projectId} onBack={() => navigate(`/project/${projectId}`)} />;
+  return <DiscoveryModule projectId={projectId} onBack={() => navigate(`/project/${projectId}`)} />;
 }
 
 export function Discovery2Page() {

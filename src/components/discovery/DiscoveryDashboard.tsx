@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import type { Discovery2Assumption, EnhancedInterview } from '../../types/discovery';
+import type { Assumption, EnhancedInterview } from '../../types/discovery';
 
 interface DiscoveryDashboardProps {
-  assumptions: Discovery2Assumption[];
+  assumptions: Assumption[];
   interviews: EnhancedInterview[];
 }
 
