@@ -59,7 +59,8 @@ export function getValidationGroup(area: CanvasArea): ValidationGroup {
 // Priority level for assumption testing
 export type PriorityLevel = 'high' | 'medium' | 'low';
 
-export interface Assumption {
+// Legacy Discovery 1.0 assumption type (kept for reference, not actively used)
+export interface LegacyAssumption {
   id: string;
   type: AssumptionType;
   description: string;
@@ -77,7 +78,8 @@ export interface Assumption {
   linkedConnectionIds?: string[]; // Links to connections in Visual Sector Map
 }
 
-export interface Interview {
+// Legacy Discovery 1.0 interview type (kept for reference, not actively used)
+export interface LegacyInterview {
   id: string;
   date: string; // ISO date string
   customerSegment: string;
@@ -124,8 +126,8 @@ export type IntervieweeTypeEnhanced = 'customer' | 'partner' | 'regulator' | 'ex
 export type ValidationEffect = 'supports' | 'contradicts' | 'neutral';
 export type InterviewStatus = 'draft' | 'completed';
 
-// Enhanced Assumption with additional tracking fields
-export interface EnhancedAssumption extends Assumption {
+// Enhanced Assumption with additional tracking fields (Legacy - extends old base)
+export interface EnhancedAssumption extends LegacyAssumption {
   category: 'problem' | 'solution' | 'customer' | 'price' | 'channel';
   evidenceCount: number;
   supportingCount: number;
@@ -193,10 +195,11 @@ export interface InterviewSynthesis {
 }
 
 // ============================================================================
-// DISCOVERY 2.0 ASSUMPTION (Extended with LBMC Integration)
+// DISCOVERY ASSUMPTION (with LBMC Integration)
+// This is the primary assumption type used throughout the Discovery module
 // ============================================================================
 
-export interface Discovery2Assumption extends Assumption {
+export interface Assumption extends LegacyAssumption {
   // LBMC Integration
   canvasArea: CanvasArea; // Which LBMC area this assumption relates to
 
@@ -209,3 +212,6 @@ export interface Discovery2Assumption extends Assumption {
   interviewCount?: number; // Number of interviews that addressed this
   lastTestedDate?: string; // ISO date of most recent interview
 }
+
+// Alias for backward compatibility during migration
+export type Discovery2Assumption = Assumption;
