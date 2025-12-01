@@ -1,48 +1,21 @@
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
-import {
-  Assumption,
-  Interview,
-  Iteration,
-  AssumptionStatus,
-  ConfidenceLevel,
-  AssumptionType,
-} from '../types/discovery';
-import { generateId } from '../utils/idGenerator';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import type { Assumption, EnhancedInterview } from '../types/discovery';
 
-export type DiscoveryView = 'assumptions' | 'interviews' | 'board' | 'dashboard' | 'matrix';
-
-interface DiscoveryState {
-  // UI State
-  currentView: DiscoveryView;
-  setCurrentView: (view: DiscoveryView) => void;
-
-  // Assumptions
+interface DiscoveryContextType {
   assumptions: Assumption[];
-  addAssumption: (type: AssumptionType, description: string) => Assumption;
+  addAssumption: (assumption: Assumption) => Assumption;
   updateAssumption: (id: string, updates: Partial<Assumption>) => void;
   deleteAssumption: (id: string) => void;
-  updateAssumptionConfidence: (id: string, confidence: ConfidenceLevel) => void;
-  updateAssumptionStatus: (id: string, status: AssumptionStatus) => void;
-  addEvidenceToAssumption: (id: string, evidence: string) => void;
-
-  // Interviews
-  interviews: Interview[];
-  addInterview: (interview: Omit<Interview, 'id'>) => void;
-  updateInterview: (id: string, updates: Partial<Interview>) => void;
+  getAssumptionById: (id: string) => Assumption | undefined;
+  getAssumptionsByCanvasArea: (canvasArea: string) => Assumption[];
+  getHighPriorityAssumptions: () => Assumption[];
+  interviews: EnhancedInterview[];
+  addInterview: (interview: EnhancedInterview) => void;
+  updateInterview: (id: string, updates: Partial<EnhancedInterview>) => void;
   deleteInterview: (id: string) => void;
-  getInterviewsForAssumption: (assumptionId: string) => Interview[];
-
-  // Iterations
-  iterations: Iteration[];
-  addIteration: (iteration: Omit<Iteration, 'id' | 'version'>) => void;
-  getLatestIteration: () => Iteration | undefined;
-
-  // Helper functions
-  getAssumptionsByType: (type: AssumptionType) => Assumption[];
-  getAssumptionsByStatus: (status: AssumptionStatus) => Assumption[];
-  getUntestedAssumptions: () => Assumption[];
-  getValidatedAssumptions: () => Assumption[];
-  getInvalidatedAssumptions: () => Assumption[];
+  getInterviewById: (id: string) => EnhancedInterview | undefined;
+  importData: (data: { assumptions: Assumption[]; interviews?: EnhancedInterview[] }) => void;
+  reset: () => void;
 
   // Phase 1: System Structure Integration - Linking functions
   linkAssumptionToActor: (assumptionId: string, actorId: string) => void;
@@ -51,159 +24,111 @@ interface DiscoveryState {
   unlinkAssumptionFromConnection: (assumptionId: string, connectionId: string) => void;
   getAssumptionsByActor: (actorId: string) => Assumption[];
   getAssumptionsByConnection: (connectionId: string) => Assumption[];
-
-  // Import
-  importData: (data: { assumptions: Assumption[]; interviews: Interview[]; iterations: Iteration[] }) => void;
-
-  // Reset
-  reset: () => void;
 }
 
-const DiscoveryContext = createContext<DiscoveryState | undefined>(undefined);
+const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefined);
 
-const initialState = {
-  currentView: 'assumptions' as DiscoveryView,
-  assumptions: [],
-  interviews: [],
-  iterations: [],
-};
+// Export the context for direct access when needed
+export { DiscoveryContext };
 
-export function DiscoveryProvider({ children }: { children: ReactNode }) {
-  const [currentView, setCurrentViewState] = useState<DiscoveryView>(initialState.currentView);
-  const [assumptions, setAssumptions] = useState<Assumption[]>(initialState.assumptions);
-  const [interviews, setInterviews] = useState<Interview[]>(initialState.interviews);
-  const [iterations, setIterations] = useState<Iteration[]>(initialState.iterations);
+export function useDiscovery() {
+  const context = useContext(DiscoveryContext);
+  if (!context) {
+    throw new Error('useDiscovery must be used within DiscoveryProvider');
+  }
+  return context;
+}
 
-  const setCurrentView = useCallback((view: DiscoveryView) => {
-    setCurrentViewState(view);
-  }, []);
+interface DiscoveryProviderProps {
+  children: ReactNode;
+}
 
-  const addAssumption = useCallback((type: AssumptionType, description: string) => {
-    const newAssumption: Assumption = {
-      id: generateId(),
-      type,
-      description,
-      created: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      status: 'untested',
-      confidence: 3, // Medium confidence by default
-      evidence: [],
-    };
-    setAssumptions((prev) => [...prev, newAssumption]);
-    return newAssumption; // Return the assumption for immediate use
+export function DiscoveryProvider({ children }: DiscoveryProviderProps) {
+  const [assumptions, setAssumptions] = useState<Assumption[]>([]);
+  const [interviews, setInterviews] = useState<EnhancedInterview[]>([]);
+
+  const addAssumption = useCallback((assumption: Assumption) => {
+    setAssumptions((prev) => [...prev, assumption]);
+    return assumption; // Return the assumption for immediate use
   }, []);
 
   const updateAssumption = useCallback((id: string, updates: Partial<Assumption>) => {
     setAssumptions((prev) =>
-      prev.map((assumption) =>
-        assumption.id === id
-          ? { ...assumption, ...updates, lastUpdated: new Date().toISOString() }
-          : assumption
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              ...updates,
+              lastUpdated: new Date().toISOString(),
+            }
+          : a
       )
     );
   }, []);
 
   const deleteAssumption = useCallback((id: string) => {
-    setAssumptions((prev) => prev.filter((assumption) => assumption.id !== id));
-    setInterviews((prev) =>
-      prev.map((interview) => ({
-        ...interview,
-        assumptionsAddressed: interview.assumptionsAddressed.filter((aid) => aid !== id),
-      }))
-    );
+    setAssumptions((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  const updateAssumptionConfidence = useCallback((id: string, confidence: ConfidenceLevel) => {
-    updateAssumption(id, { confidence });
-  }, [updateAssumption]);
+  const getAssumptionById = useCallback(
+    (id: string) => {
+      return assumptions.find((a) => a.id === id);
+    },
+    [assumptions]
+  );
 
-  const updateAssumptionStatus = useCallback((id: string, status: AssumptionStatus) => {
-    updateAssumption(id, { status });
-  }, [updateAssumption]);
+  const getAssumptionsByCanvasArea = useCallback(
+    (canvasArea: string) => {
+      return assumptions.filter((a) => a.canvasArea === canvasArea);
+    },
+    [assumptions]
+  );
 
-  const addEvidenceToAssumption = useCallback((id: string, evidence: string) => {
-    setAssumptions((prev) =>
-      prev.map((assumption) =>
-        assumption.id === id
-          ? { ...assumption, evidence: [...assumption.evidence, evidence] }
-          : assumption
+  const getHighPriorityAssumptions = useCallback(() => {
+    return assumptions.filter((a) => a.priority === 'high');
+  }, [assumptions]);
+
+  // Interview management
+  const addInterview = useCallback((interview: EnhancedInterview) => {
+    setInterviews((prev) => [...prev, interview]);
+  }, []);
+
+  const updateInterview = useCallback((id: string, updates: Partial<EnhancedInterview>) => {
+    setInterviews((prev) =>
+      prev.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              ...updates,
+              lastUpdated: new Date().toISOString(),
+            }
+          : i
       )
     );
   }, []);
 
-  const addInterview = useCallback((interview: Omit<Interview, 'id'>) => {
-    const newInterview: Interview = {
-      ...interview,
-      id: generateId(),
-    };
-    setInterviews((prev) => [...prev, newInterview]);
-
-    // Automatically mark addressed assumptions as "testing"
-    interview.assumptionsAddressed.forEach((assumptionId) => {
-      setAssumptions((prev) =>
-        prev.map((assumption) =>
-          assumption.id === assumptionId && assumption.status === 'untested'
-            ? { ...assumption, status: 'testing' as AssumptionStatus }
-            : assumption
-        )
-      );
-    });
-  }, []);
-
-  const updateInterview = useCallback((id: string, updates: Partial<Interview>) => {
-    setInterviews((prev) =>
-      prev.map((interview) => (interview.id === id ? { ...interview, ...updates } : interview))
-    );
-  }, []);
-
   const deleteInterview = useCallback((id: string) => {
-    setInterviews((prev) => prev.filter((interview) => interview.id !== id));
+    setInterviews((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const getInterviewsForAssumption = useCallback((assumptionId: string) => {
-    return interviews.filter((interview) =>
-      interview.assumptionsAddressed.includes(assumptionId)
-    );
-  }, [interviews]);
+  const getInterviewById = useCallback(
+    (id: string) => {
+      return interviews.find((i) => i.id === id);
+    },
+    [interviews]
+  );
 
-  const addIteration = useCallback((iteration: Omit<Iteration, 'id' | 'version'>) => {
-    setIterations((prev) => {
-      const version = prev.length > 0 ? Math.max(...prev.map((i) => i.version)) + 1 : 1;
-      const newIteration: Iteration = {
-        ...iteration,
-        id: generateId(),
-        version,
-      };
-      return [...prev, newIteration];
-    });
+  const importData = useCallback((data: { assumptions: Assumption[]; interviews?: EnhancedInterview[] }) => {
+    setAssumptions(data.assumptions);
+    if (data.interviews) {
+      setInterviews(data.interviews);
+    }
   }, []);
 
-  const getLatestIteration = useCallback(() => {
-    if (iterations.length === 0) return undefined;
-    return iterations.reduce((latest, current) =>
-      current.version > latest.version ? current : latest
-    );
-  }, [iterations]);
-
-  const getAssumptionsByType = useCallback((type: AssumptionType) => {
-    return assumptions.filter((assumption) => assumption.type === type);
-  }, [assumptions]);
-
-  const getAssumptionsByStatus = useCallback((status: AssumptionStatus) => {
-    return assumptions.filter((assumption) => assumption.status === status);
-  }, [assumptions]);
-
-  const getUntestedAssumptions = useCallback(() => {
-    return getAssumptionsByStatus('untested');
-  }, [getAssumptionsByStatus]);
-
-  const getValidatedAssumptions = useCallback(() => {
-    return getAssumptionsByStatus('validated');
-  }, [getAssumptionsByStatus]);
-
-  const getInvalidatedAssumptions = useCallback(() => {
-    return getAssumptionsByStatus('invalidated');
-  }, [getAssumptionsByStatus]);
+  const reset = useCallback(() => {
+    setAssumptions([]);
+    setInterviews([]);
+  }, []);
 
   // Phase 1: System Structure Integration - Linking implementations
   const linkAssumptionToActor = useCallback((assumptionId: string, actorId: string) => {
@@ -272,105 +197,47 @@ export function DiscoveryProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const getAssumptionsByActor = useCallback((actorId: string) => {
-    return assumptions.filter((assumption) =>
-      assumption.linkedActorIds?.includes(actorId)
-    );
-  }, [assumptions]);
-
-  const getAssumptionsByConnection = useCallback((connectionId: string) => {
-    return assumptions.filter((assumption) =>
-      assumption.linkedConnectionIds?.includes(connectionId)
-    );
-  }, [assumptions]);
-
-  const importData = useCallback((data: { assumptions: Assumption[]; interviews: Interview[]; iterations: Iteration[] }) => {
-    setAssumptions(data.assumptions || []);
-    setInterviews(data.interviews || []);
-    setIterations(data.iterations || []);
-  }, []);
-
-  const reset = useCallback(() => {
-    setCurrentViewState(initialState.currentView);
-    setAssumptions(initialState.assumptions);
-    setInterviews(initialState.interviews);
-    setIterations(initialState.iterations);
-  }, []);
-
-  const value: DiscoveryState = useMemo(
-    () => ({
-      currentView,
-      setCurrentView,
-      assumptions,
-      addAssumption,
-      updateAssumption,
-      deleteAssumption,
-      updateAssumptionConfidence,
-      updateAssumptionStatus,
-      addEvidenceToAssumption,
-      interviews,
-      addInterview,
-      updateInterview,
-      deleteInterview,
-      getInterviewsForAssumption,
-      iterations,
-      addIteration,
-      getLatestIteration,
-      getAssumptionsByType,
-      getAssumptionsByStatus,
-      getUntestedAssumptions,
-      getValidatedAssumptions,
-      getInvalidatedAssumptions,
-      linkAssumptionToActor,
-      unlinkAssumptionFromActor,
-      linkAssumptionToConnection,
-      unlinkAssumptionFromConnection,
-      getAssumptionsByActor,
-      getAssumptionsByConnection,
-      importData,
-      reset,
-    }),
-    [
-      currentView,
-      setCurrentView,
-      assumptions,
-      addAssumption,
-      updateAssumption,
-      deleteAssumption,
-      updateAssumptionConfidence,
-      updateAssumptionStatus,
-      addEvidenceToAssumption,
-      interviews,
-      addInterview,
-      updateInterview,
-      deleteInterview,
-      getInterviewsForAssumption,
-      iterations,
-      addIteration,
-      getLatestIteration,
-      getAssumptionsByType,
-      getAssumptionsByStatus,
-      getUntestedAssumptions,
-      getValidatedAssumptions,
-      getInvalidatedAssumptions,
-      linkAssumptionToActor,
-      unlinkAssumptionFromActor,
-      linkAssumptionToConnection,
-      unlinkAssumptionFromConnection,
-      getAssumptionsByActor,
-      getAssumptionsByConnection,
-      importData,
-      reset,
-    ]
+  const getAssumptionsByActor = useCallback(
+    (actorId: string) => {
+      return assumptions.filter((a) => a.linkedActorIds?.includes(actorId));
+    },
+    [assumptions]
   );
 
-  return <DiscoveryContext.Provider value={value}>{children}</DiscoveryContext.Provider>;
-}
+  const getAssumptionsByConnection = useCallback(
+    (connectionId: string) => {
+      return assumptions.filter((a) => a.linkedConnectionIds?.includes(connectionId));
+    },
+    [assumptions]
+  );
 
-export function useDiscovery() {
-  const context = useContext(DiscoveryContext);
-  if (context === undefined) {
-    throw new Error('useDiscovery must be used within a DiscoveryProvider');
-  }
-  return context;
+  const value: DiscoveryContextType = {
+    assumptions,
+    addAssumption,
+    updateAssumption,
+    deleteAssumption,
+    getAssumptionById,
+    getAssumptionsByCanvasArea,
+    getHighPriorityAssumptions,
+    interviews,
+    addInterview,
+    updateInterview,
+    deleteInterview,
+    getInterviewById,
+    importData,
+    reset,
+    // Phase 1: System Structure Integration
+    linkAssumptionToActor,
+    unlinkAssumptionFromActor,
+    linkAssumptionToConnection,
+    unlinkAssumptionFromConnection,
+    getAssumptionsByActor,
+    getAssumptionsByConnection,
+  };
+
+  return (
+    <DiscoveryContext.Provider value={value}>
+      {children}
+    </DiscoveryContext.Provider>
+  );
 }

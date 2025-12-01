@@ -2,29 +2,39 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useDiscovery } from '../contexts/DiscoveryContext';
-import type { Assumption, Interview, Iteration, AssumptionType, AssumptionStatus, IntervieweeType, InterviewFormat } from '../types/discovery';
+import type {
+  Assumption,
+  EnhancedInterview,
+  AssumptionType,
+  AssumptionStatus,
+  CanvasArea,
+  PriorityLevel,
+  ConfidenceLevel,
+  IntervieweeTypeEnhanced,
+  AssumptionTag,
+} from '../types/discovery';
 import { captureException } from '../lib/sentry';
 
 /**
- * Hook to sync discovery data (assumptions, interviews, iterations) with Supabase
- * Loads data on mount and saves changes to database
+ * Hook to sync Discovery data with Supabase
+ * Loads assumptions on mount and saves changes to database
  */
 export function useDiscoveryData(projectId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { assumptions, iterations, importData, reset } = useDiscovery();
+  const { assumptions, interviews, importData, reset } = useDiscovery();
   const initialLoadRef = useRef(false);
   const isSavingRef = useRef(false);
 
-  // Load discovery data from Supabase on mount
+  // Load Discovery data from Supabase on mount
   useEffect(() => {
     if (!projectId) {
       setLoading(false);
       return;
     }
 
-    const loadDiscoveryData = async () => {
+    const loadDiscovery2Data = async () => {
       try {
         // Reset store immediately when projectId changes to clear old data
         reset();
@@ -33,7 +43,7 @@ export function useDiscoveryData(projectId: string | undefined) {
         setLoading(true);
         setError(null);
 
-        // Load assumptions
+        // Load assumptions with Discovery fields
         const { data: assumptionsData, error: assumptionsError } = await supabase
           .from('project_assumptions')
           .select('*')
@@ -41,7 +51,34 @@ export function useDiscoveryData(projectId: string | undefined) {
 
         if (assumptionsError) throw assumptionsError;
 
-        // Load interviews from enhanced table
+        // Convert database rows to Assumption format
+        // Filter to only include assumptions with canvas_area (Discovery assumptions)
+        const assumptions: Assumption[] = (assumptionsData || [])
+          .filter(row => (row as any).canvas_area) // Client-side filter for Discovery assumptions
+          .map(row => ({
+          id: row.id,
+          type: row.type as AssumptionType,
+          description: row.description,
+          created: row.created_at || new Date().toISOString(),
+          lastUpdated: row.updated_at || new Date().toISOString(),
+          status: row.status as AssumptionStatus,
+          confidence: (row.confidence || 3) as ConfidenceLevel,
+          evidence: row.evidence || [],
+
+          // Discovery specific fields (use type assertion to handle missing properties)
+          canvasArea: (row as any).canvas_area as CanvasArea,
+          importance: ((row as any).importance || 3) as ConfidenceLevel,
+          priority: ((row as any).priority || 'medium') as PriorityLevel,
+          riskScore: (row as any).risk_score || undefined,
+          interviewCount: (row as any).interview_count || 0,
+          lastTestedDate: (row as any).last_tested_date || undefined,
+
+          // System Structure integration fields
+          linkedActorIds: (row as any).linked_actor_ids || [],
+          linkedConnectionIds: (row as any).linked_connection_ids || [],
+        }));
+
+        // Load enhanced interviews
         const { data: interviewsData, error: interviewsError } = await supabase
           .from('project_interviews_enhanced')
           .select('*')
@@ -49,80 +86,42 @@ export function useDiscoveryData(projectId: string | undefined) {
 
         if (interviewsError) throw interviewsError;
 
-        // Load iterations
-        const { data: iterationsData, error: iterationsError } = await supabase
-          .from('project_iterations')
-          .select('*')
-          .eq('project_id', projectId);
-
-        if (iterationsError) throw iterationsError;
-
-        // Convert database rows to app format
-        const assumptions: Assumption[] = (assumptionsData || []).map(row => ({
+        // Convert database rows to EnhancedInterview format
+        const interviews: EnhancedInterview[] = (interviewsData || []).map(row => ({
           id: row.id,
-          type: row.type as AssumptionType,
-          description: row.description,
+          intervieweeType: row.interviewee_type as IntervieweeTypeEnhanced,
+          segmentName: row.segment_name,
+          date: row.interview_date,
+          context: row.context || '',
+          status: row.status as 'draft' | 'completed',
+          mainPainPoints: row.main_pain_points,
+          problemImportance: row.problem_importance as ConfidenceLevel,
+          problemImportanceQuote: row.problem_importance_quote || undefined,
+          currentAlternatives: row.current_alternatives,
+          memorableQuotes: row.memorable_quotes || [],
+          surprisingFeedback: row.surprising_feedback || '',
+          assumptionTags: (row as any).assumption_tags as AssumptionTag[] || [],
+          studentReflection: row.student_reflection || '',
+          mentorFeedback: row.mentor_feedback || undefined,
           created: row.created_at || new Date().toISOString(),
           lastUpdated: row.updated_at || new Date().toISOString(),
-          status: row.status as AssumptionStatus,
-          confidence: (row.confidence || 3) as 1 | 2 | 3 | 4 | 5,
-          evidence: row.evidence || [],
-        }));
-
-        const interviews: Interview[] = (interviewsData || []).map(row => {
-          // Map enhanced interview fields to basic Interview type
-          const noteParts = [
-            row.context || '',
-            row.main_pain_points ? `Main Pain Points: ${row.main_pain_points}` : '',
-            row.current_alternatives ? `Current Alternatives: ${row.current_alternatives}` : '',
-            row.student_reflection || '',
-          ].filter(Boolean);
-
-          return {
-            id: row.id,
-            date: row.interview_date || new Date().toISOString(),
-            customerSegment: row.segment_name || 'Unknown',
-            interviewee: undefined, // Enhanced table uses interviewee_type instead
-            intervieweeType: row.interviewee_type ? row.interviewee_type as IntervieweeType : undefined,
-            format: 'in-person' as InterviewFormat, // Enhanced table doesn't have format field
-            duration: undefined, // Enhanced table doesn't have duration field
-            notes: noteParts.join('\n\n'),
-            assumptionsAddressed: [], // Assumption tags are in separate table
-            keyInsights: row.memorable_quotes || [],
-            surprises: row.surprising_feedback || undefined,
-            nextAction: undefined, // Enhanced table doesn't have next_action field
-            followUpNeeded: false, // Enhanced table doesn't have follow_up_needed field
-            status: row.status as 'draft' | 'completed' | undefined,
-          };
-        });
-
-        const iterations: Iteration[] = (iterationsData || []).map(row => ({
-          id: row.id,
-          version: row.version,
-          date: row.date,
-          changes: row.changes || '',
-          reasoning: row.reasoning || '',
-          assumptionsAffected: row.assumptions_affected || [],
-          patternsObserved: row.patterns_observed || undefined,
-          riskiestAssumption: row.riskiest_assumption || undefined,
-          nextExperiment: row.next_experiment || undefined,
         }));
 
         // Import into store
-        importData({ assumptions, interviews, iterations });
+        importData({ assumptions, interviews });
         initialLoadRef.current = true;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Error loading discovery data');
+        const error = err instanceof Error ? err : new Error('Error loading Discovery data');
         captureException(error, {
           extra: { projectId, context: 'useDiscoveryData load' },
         });
-        setError('Failed to load discovery data');
+        setError('Failed to load Discovery data');
       } finally {
         setLoading(false);
       }
     };
 
-    loadDiscoveryData();
+    loadDiscovery2Data();
   }, [projectId, importData, reset]);
 
   // Save assumptions to Supabase whenever they change
@@ -135,7 +134,7 @@ export function useDiscoveryData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
 
-        // Upsert all current assumptions (more efficient than delete-and-insert)
+        // Upsert all current Discovery assumptions
         if (assumptions.length > 0) {
           const rows = assumptions.map(assumption => ({
             id: assumption.id,
@@ -148,12 +147,29 @@ export function useDiscoveryData(projectId: string | undefined) {
             created_at: assumption.created,
             updated_at: assumption.lastUpdated,
             created_by: user.id,
-          }));
+
+            // Discovery specific fields
+            canvas_area: assumption.canvasArea,
+            importance: assumption.importance,
+            priority: assumption.priority,
+            risk_score: assumption.riskScore,
+            interview_count: assumption.interviewCount,
+            last_tested_date: assumption.lastTestedDate,
+
+            // System Structure integration fields
+            linked_actor_ids: assumption.linkedActorIds || [],
+            linked_connection_ids: assumption.linkedConnectionIds || [],
+          } as any)); // Type assertion to allow new fields
 
           await supabase
             .from('project_assumptions')
             .upsert(rows, { onConflict: 'id' });
         }
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Error saving Discovery data');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscoveryData save' },
+        });
       } finally {
         isSavingRef.current = false;
       }
@@ -163,50 +179,57 @@ export function useDiscoveryData(projectId: string | undefined) {
     return () => clearTimeout(timeoutId);
   }, [projectId, user, assumptions, loading]);
 
-  // NOTE: Interview saving removed - interviews are now managed exclusively through
-  // useEnhancedInterviews hook and project_interviews_enhanced table.
-  // This prevents duplicate interview systems and data fragmentation.
-  // The DiscoveryContext still holds interview state for display purposes,
-  // but persistence is handled by the Enhanced Interview System.
-
-  // Save iterations to Supabase whenever they change
+  // Save interviews to Supabase whenever they change
   useEffect(() => {
     if (!projectId || !user || loading || !initialLoadRef.current) return;
 
-    const saveIterations = async () => {
+    const saveInterviews = async () => {
       if (isSavingRef.current) return;
 
       try {
         isSavingRef.current = true;
 
-        // Upsert all current iterations (more efficient than delete-and-insert)
-        if (iterations.length > 0) {
-          const rows = iterations.map(iteration => ({
-            id: iteration.id,
+        // Upsert all current enhanced interviews
+        if (interviews.length > 0) {
+          const rows = interviews.map(interview => ({
+            id: interview.id,
             project_id: projectId,
-            version: iteration.version,
-            date: iteration.date,
-            changes: iteration.changes,
-            reasoning: iteration.reasoning,
-            assumptions_affected: iteration.assumptionsAffected,
-            patterns_observed: iteration.patternsObserved || null,
-            riskiest_assumption: iteration.riskiestAssumption || null,
-            next_experiment: iteration.nextExperiment || null,
+            interviewee_type: interview.intervieweeType,
+            segment_name: interview.segmentName,
+            interview_date: interview.date,
+            context: interview.context,
+            status: interview.status,
+            main_pain_points: interview.mainPainPoints,
+            problem_importance: interview.problemImportance,
+            problem_importance_quote: interview.problemImportanceQuote,
+            current_alternatives: interview.currentAlternatives,
+            memorable_quotes: interview.memorableQuotes,
+            surprising_feedback: interview.surprisingFeedback,
+            assumption_tags: interview.assumptionTags,
+            student_reflection: interview.studentReflection,
+            mentor_feedback: interview.mentorFeedback,
+            created_at: interview.created,
+            updated_at: interview.lastUpdated,
             created_by: user.id,
-          }));
+          } as any)); // Type assertion to allow new fields
 
           await supabase
-            .from('project_iterations')
+            .from('project_interviews_enhanced')
             .upsert(rows, { onConflict: 'id' });
         }
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Error saving interviews');
+        captureException(error, {
+          extra: { projectId, context: 'useDiscoveryData save interviews' },
+        });
       } finally {
         isSavingRef.current = false;
       }
     };
 
-    const timeoutId = setTimeout(saveIterations, 1000);
+    const timeoutId = setTimeout(saveInterviews, 1000);
     return () => clearTimeout(timeoutId);
-  }, [projectId, user, iterations, loading]);
+  }, [projectId, user, interviews, loading]);
 
   return { loading, error };
 }
