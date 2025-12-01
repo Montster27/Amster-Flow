@@ -18,7 +18,7 @@ interface DiscoveryModuleProps {
 }
 
 /**
- * Discovery 2.0 Main Module
+ * Discovery Main Module
  *
  * Enhanced discovery system with:
  * - LBMC (Lean Business Model Canvas) integration
@@ -62,7 +62,7 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
     }
   }, [searchParams, setSearchParams]);
 
-  // Auto-seed Pet Finder Discovery 2.0 data if project is Pet Finder and has no data
+  // Auto-seed Pet Finder Discovery data if project is Pet Finder and has no data
   useEffect(() => {
     async function checkAndSeedPetFinder() {
       if (!projectId || !user || autoSeedAttempted) return;
@@ -77,11 +77,11 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
 
         if (!project || !project.name.toLowerCase().includes('pet')) return;
 
-        // Check if it already has Discovery 2.0 data
+        // Check if it already has Discovery data
         const hasData = await hasDiscoveryData(projectId);
 
         if (!hasData && assumptions.length === 0) {
-          console.log('🌱 Auto-seeding Pet Finder Discovery 2.0 data...');
+          console.log('🌱 Auto-seeding Pet Finder Discovery data...');
           setAutoSeedAttempted(true);
           setIsLoadingSampleData(true);
 
@@ -126,7 +126,7 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
       confidence: newAssumption.confidence,
       evidence: newAssumption.evidence || [],
 
-      // Discovery 2.0 specific fields
+      // Discovery specific fields
       canvasArea: newAssumption.canvasArea,
       importance: newAssumption.importance,
       priority,
@@ -208,7 +208,7 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
 
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Discovery 2.0</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Discovery</h1>
                 <p className="mt-1 text-sm text-gray-500">
                   Assumptions-driven customer discovery with LBMC integration
                 </p>

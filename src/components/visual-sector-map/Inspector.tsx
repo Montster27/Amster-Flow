@@ -65,7 +65,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   const { projectId } = useParams<{ projectId: string }>();
   const [showLinkDropdown, setShowLinkDropdown] = useState(false);
 
-  // Load Discovery 2.0 assumptions from database when context not available
+  // Load Discovery assumptions from database when context not available
   useEffect(() => {
     if (!hasDiscoveryContext && projectId && !loadingAssumptions) {
       setLoadingAssumptions(true);
@@ -223,10 +223,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
   };
 
   // Phase 2: Navigation handlers for cross-module integration
-  // Always navigate to Discovery 2.0 when projectId is available
+  // Always navigate to Discovery when projectId is available
   const handleCreateAssumption = () => {
     if (projectId) {
-      // Navigate to Discovery 2.0 page with URL parameters
+      // Navigate to Discovery page with URL parameters
       const params = new URLSearchParams({
         action: 'create',
         ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })
@@ -245,7 +245,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
   const handleViewInDiscovery = () => {
     if (projectId) {
-      // Navigate to Discovery 2.0 page with URL parameters
+      // Navigate to Discovery page with URL parameters
       const params = new URLSearchParams({
         action: 'filter',
         ...(isActor ? { actorId: actor!.id } : { connectionId: connection!.id })

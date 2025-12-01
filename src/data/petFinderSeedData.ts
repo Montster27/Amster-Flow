@@ -1,7 +1,7 @@
 import type { Assumption, EnhancedInterview } from '../types/discovery';
 
 /**
- * Seed data for Pet Finder project - Discovery 2.0
+ * Seed data for Pet Finder project - Discovery
  * Demonstrates a realistic pet adoption platform discovery process
  */
 

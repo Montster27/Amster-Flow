@@ -3,7 +3,7 @@ import { petFinderAssumptions, petFinderInterviews } from '../data/petFinderSeed
 import type { AssumptionTag } from '../types/discovery';
 
 /**
- * Seeds Discovery 2.0 data for Pet Finder project
+ * Seeds Discovery data for Pet Finder project
  * @param projectId - The project ID to seed data into
  * @param userId - The user ID creating the data
  */
@@ -157,7 +157,7 @@ export async function seedPetFinderData(projectId: string, userId: string) {
 }
 
 /**
- * Check if a project already has Discovery 2.0 data
+ * Check if a project already has Discovery data
  */
 export async function hasDiscoveryData(projectId: string): Promise<boolean> {
   const { data: assumptions } = await supabase
