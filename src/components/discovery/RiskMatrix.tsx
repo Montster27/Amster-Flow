@@ -13,20 +13,26 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
   const [selectedAssumption, setSelectedAssumption] = useState<Assumption | null>(null);
 
   // Calculate risk score for an assumption
-  // Higher score = higher risk (untested/invalidated = high risk)
+  // Assumption already has riskScore, but we calculate it dynamically
   const getRiskScore = (assumption: Assumption): number => {
+    // Use the built-in riskScore if available
+    if (assumption.riskScore !== undefined) {
+      return assumption.riskScore;
+    }
+
+    // Fallback calculation
     const statusWeight: Record<AssumptionStatus, number> = {
-      untested: 5,      // Highest risk - we don't know if it's true
-      testing: 4,       // High risk - being validated
-      invalidated: 3,   // Medium risk - we know it's false
-      validated: 1,     // Low risk - confirmed true
+      untested: 5,
+      testing: 4,
+      invalidated: 3,
+      validated: 1,
     };
 
     const baseRisk = statusWeight[assumption.status];
-    // Invert confidence: low confidence = higher risk
     const confidenceRisk = (6 - assumption.confidence) * 0.8;
+    const importanceBoost = (assumption.importance || 3) * 0.5;
 
-    return (baseRisk + confidenceRisk) / 2; // Average to get score 1-5
+    return (baseRisk + confidenceRisk + importanceBoost) / 2.5;
   };
 
   // Categorize assumptions into quadrants
@@ -34,18 +40,17 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
     const risk = getRiskScore(assumption);
     const confidence = assumption.confidence;
 
-    // High/Low thresholds
     const riskThreshold = 3;
     const confidenceThreshold = 3;
 
     if (risk > riskThreshold && confidence <= confidenceThreshold) {
-      return 'critical'; // High Risk, Low Confidence
+      return 'critical';
     } else if (risk > riskThreshold && confidence > confidenceThreshold) {
-      return 'monitor'; // High Risk, High Confidence
+      return 'monitor';
     } else if (risk <= riskThreshold && confidence <= confidenceThreshold) {
-      return 'defer'; // Low Risk, Low Confidence
+      return 'defer';
     } else {
-      return 'safe'; // Low Risk, High Confidence
+      return 'safe';
     }
   };
 
@@ -63,7 +68,6 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
       subtitle: 'High Risk, Low Confidence',
       bg: 'bg-red-50',
       border: 'border-red-300',
-      hoverBg: 'hover:bg-red-100',
       description: 'These assumptions pose high risk and need immediate validation',
     },
     monitor: {
@@ -71,7 +75,6 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
       subtitle: 'High Risk, High Confidence',
       bg: 'bg-orange-50',
       border: 'border-orange-300',
-      hoverBg: 'hover:bg-orange-100',
       description: 'Validated but still high-stakes - keep an eye on these',
     },
     defer: {
@@ -79,7 +82,6 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
       subtitle: 'Low Risk, Low Confidence',
       bg: 'bg-gray-50',
       border: 'border-gray-300',
-      hoverBg: 'hover:bg-gray-100',
       description: 'Low priority - validate when time permits',
     },
     safe: {
@@ -87,7 +89,6 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
       subtitle: 'Low Risk, High Confidence',
       bg: 'bg-green-50',
       border: 'border-green-300',
-      hoverBg: 'hover:bg-green-100',
       description: 'Well-validated and low risk',
     },
   };
@@ -117,10 +118,20 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
           <span className="text-xs text-gray-500">
             Confidence: {assumption.confidence}/5
           </span>
+          {assumption.importance && (
+            <span className="text-xs text-purple-600 font-medium">
+              Importance: {assumption.importance}/5
+            </span>
+          )}
         </div>
         <p className="text-sm text-gray-800 font-medium line-clamp-2">
           {assumption.description}
         </p>
+        {assumption.canvasArea && (
+          <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+            {assumption.canvasArea}
+          </span>
+        )}
         {assumption.evidence.length > 0 && (
           <p className="text-xs text-gray-500 mt-1">
             📊 {assumption.evidence.length} evidence item{assumption.evidence.length !== 1 ? 's' : ''}
@@ -158,7 +169,7 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
 
       {/* 2x2 Grid */}
       <div className="grid grid-cols-2 gap-4 min-h-[600px]">
-        {/* Top Left: Critical */}
+        {/* Critical */}
         <div
           className={`${quadrantConfig.critical.bg} ${quadrantConfig.critical.border} border-2 rounded-lg p-4 flex flex-col`}
           onMouseEnter={() => setHoveredQuadrant('critical')}
@@ -191,7 +202,7 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
           </div>
         </div>
 
-        {/* Top Right: Monitor */}
+        {/* Monitor */}
         <div
           className={`${quadrantConfig.monitor.bg} ${quadrantConfig.monitor.border} border-2 rounded-lg p-4 flex flex-col`}
           onMouseEnter={() => setHoveredQuadrant('monitor')}
@@ -224,7 +235,7 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
           </div>
         </div>
 
-        {/* Bottom Left: Defer */}
+        {/* Defer */}
         <div
           className={`${quadrantConfig.defer.bg} ${quadrantConfig.defer.border} border-2 rounded-lg p-4 flex flex-col`}
           onMouseEnter={() => setHoveredQuadrant('defer')}
@@ -257,7 +268,7 @@ export const RiskMatrix = ({ onAssumptionClick }: RiskMatrixProps) => {
           </div>
         </div>
 
-        {/* Bottom Right: Safe */}
+        {/* Safe */}
         <div
           className={`${quadrantConfig.safe.bg} ${quadrantConfig.safe.border} border-2 rounded-lg p-4 flex flex-col`}
           onMouseEnter={() => setHoveredQuadrant('safe')}

@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { useDiscovery2 } from '../../contexts/Discovery2Context';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { InterviewForm } from './InterviewForm';
-import type { EnhancedInterview, Discovery2Assumption } from '../../types/discovery';
+import type { EnhancedInterview, Assumption } from '../../types/discovery';
 
 interface EnhancedInterviewsProps {
-  assumptions: Discovery2Assumption[];
+  assumptions: Assumption[];
 }
 
 export function EnhancedInterviews({ assumptions }: EnhancedInterviewsProps) {
-  const { interviews, deleteInterview } = useDiscovery2();
+  const { interviews, deleteInterview } = useDiscovery();
   const [showForm, setShowForm] = useState(false);
   const [editingInterview, setEditingInterview] = useState<EnhancedInterview | null>(null);
 

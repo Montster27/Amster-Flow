@@ -1,9 +1,9 @@
-import type { Discovery2Assumption, CanvasArea, PriorityLevel, ValidationGroup } from '../../types/discovery';
+import type { Assumption, CanvasArea, PriorityLevel, ValidationGroup } from '../../types/discovery';
 import { VALIDATION_GROUPS, getValidationGroup } from '../../types/discovery';
 
 interface AssumptionFrameworkTableProps {
-  assumptions: Discovery2Assumption[];
-  onEdit: (assumption: Discovery2Assumption) => void;
+  assumptions: Assumption[];
+  onEdit: (assumption: Assumption) => void;
   onDelete: (id: string) => void;
 }
 
@@ -86,7 +86,7 @@ export function AssumptionFrameworkTable({
     return { total: groupAssumptions.length, tested, validated, invalidated, percentage };
   };
 
-  const renderAssumptionRow = (assumption: Discovery2Assumption) => (
+  const renderAssumptionRow = (assumption: Assumption) => (
     <tr key={assumption.id} className="hover:bg-gray-50">
       {/* Priority */}
       <td className="px-6 py-4 whitespace-nowrap">

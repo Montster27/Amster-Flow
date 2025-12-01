@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDiscovery2 } from '../../contexts/Discovery2Context';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { AssumptionGenerator } from './AssumptionGenerator';
 import { AssumptionFrameworkTable } from './AssumptionFrameworkTable';
-import { RiskMatrix2 } from './RiskMatrix2';
+import { RiskMatrix } from './RiskMatrix';
 import { ValidationBoard } from './ValidationBoard';
 import { EnhancedInterviews } from './EnhancedInterviews';
 import { DiscoveryDashboard } from './DiscoveryDashboard';
 import { seedPetFinderData, hasDiscovery2Data } from '../../utils/seedPetFinderData';
-import type { Discovery2Assumption, AssumptionStatus } from '../../types/discovery';
+import type { Assumption, AssumptionStatus } from '../../types/discovery';
 
-interface Discovery2ModuleProps {
+interface DiscoveryModuleProps {
   projectId?: string;
   onBack?: () => void;
 }
@@ -26,7 +26,7 @@ interface Discovery2ModuleProps {
  * - Assumption-to-interview linking
  * - Enhanced synthesis and iteration tracking
  */
-export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
+export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'assumptions' | 'matrix' | 'board' | 'interviews' | 'dashboard'>('assumptions');
   const [showGenerator, setShowGenerator] = useState(false);
@@ -34,7 +34,7 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
   const [autoSeedAttempted, setAutoSeedAttempted] = useState(false);
   const [navigationContext, setNavigationContext] = useState<any>(null);
 
-  const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery2();
+  const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery();
   const { user } = useAuth();
 
   // Handle navigation context from Visual Sector Map (via URL parameters)
@@ -116,7 +116,7 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
     }
 
     const assumptionId = crypto.randomUUID();
-    const assumption: Discovery2Assumption = {
+    const assumption: Assumption = {
       id: assumptionId,
       type: newAssumption.type,
       description: newAssumption.description,
@@ -148,7 +148,7 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
     }
   };
 
-  const handleEditAssumption = (assumption: Discovery2Assumption) => {
+  const handleEditAssumption = (assumption: Assumption) => {
     // TODO: Implement edit functionality
     console.log('Edit assumption:', assumption);
   };
@@ -411,7 +411,7 @@ export function Discovery2Module({ projectId, onBack }: Discovery2ModuleProps) {
             )}
 
             {activeTab === 'matrix' && (
-              <RiskMatrix2 />
+              <RiskMatrix />
             )}
 
             {activeTab === 'board' && (

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useDiscovery2 } from '../../contexts/Discovery2Context';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
 import type {
   EnhancedInterview,
-  Discovery2Assumption,
+  Assumption,
   AssumptionTag,
   IntervieweeTypeEnhanced,
   ConfidenceLevel,
 } from '../../types/discovery';
 
 interface InterviewFormProps {
-  assumptions: Discovery2Assumption[];
+  assumptions: Assumption[];
   editingInterview: EnhancedInterview | null;
   onClose: () => void;
 }
@@ -37,7 +37,7 @@ const BIG_THREE_GUIDANCE = {
 };
 
 export function InterviewForm({ assumptions, editingInterview, onClose }: InterviewFormProps) {
-  const { addInterview, updateInterview, updateAssumption } = useDiscovery2();
+  const { addInterview, updateInterview, updateAssumption } = useDiscovery();
 
   // Form state
   const [intervieweeType, setIntervieweeType] = useState<IntervieweeTypeEnhanced>('customer');

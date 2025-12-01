@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useDiscovery2 } from '../../contexts/Discovery2Context';
-import type { Discovery2Assumption, AssumptionStatus } from '../../types/discovery';
+import { useDiscovery } from '../../contexts/DiscoveryContext';
+import type { Assumption, AssumptionStatus } from '../../types/discovery';
 
 interface ValidationBoardProps {
-  assumptions: Discovery2Assumption[];
+  assumptions: Assumption[];
 }
 
 const STATUS_COLUMNS: { status: AssumptionStatus; title: string; color: string }[] = [
@@ -14,10 +14,10 @@ const STATUS_COLUMNS: { status: AssumptionStatus; title: string; color: string }
 ];
 
 export function ValidationBoard({ assumptions }: ValidationBoardProps) {
-  const { updateAssumption } = useDiscovery2();
-  const [draggedAssumption, setDraggedAssumption] = useState<Discovery2Assumption | null>(null);
+  const { updateAssumption } = useDiscovery();
+  const [draggedAssumption, setDraggedAssumption] = useState<Assumption | null>(null);
 
-  const handleDragStart = (assumption: Discovery2Assumption) => {
+  const handleDragStart = (assumption: Assumption) => {
     setDraggedAssumption(assumption);
   };
 
