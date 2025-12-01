@@ -79,7 +79,8 @@
       "Bash(xargs -I {} sh -c 'psql $DATABASE_URL < {} 2>&1')",
       "Bash(git rm:*)",
       "Bash(git mv:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []

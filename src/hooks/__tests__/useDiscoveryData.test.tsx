@@ -208,7 +208,7 @@ describe('useDiscoveryData', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toBe('Failed to load discovery data');
+      expect(result.current.error).toBe('Failed to load Discovery data');
     });
 
     it('should handle interviews load error', async () => {
@@ -256,47 +256,10 @@ describe('useDiscoveryData', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toBe('Failed to load discovery data');
+      expect(result.current.error).toBe('Failed to load Discovery data');
     });
 
-    it('should handle iterations load error', async () => {
-      const mockError = new Error('Iterations fetch failed');
-
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-
-        if (callCount === 1 || callCount === 2) {
-          // First two calls: project_assumptions and project_interviews_enhanced - success
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: [],
-                error: null,
-              }),
-            }),
-          } as any;
-        } else {
-          // Third call: project_iterations - error
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({
-                data: null,
-                error: mockError,
-              }),
-            }),
-          } as any;
-        }
-      });
-
-      const { result } = renderHook(() => useDiscoveryData('test-project-id'), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(result.current.error).toBe('Failed to load discovery data');
-    });
+    // Note: 'iterations load error' test removed - iterations are no longer part of Discovery system
   });
 
   describe('Project ID Changes', () => {
