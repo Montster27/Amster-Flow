@@ -81,16 +81,13 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
                 )}
               </button>
 
-              {/* Discovery 2.0 Link - appears after "discovery" module */}
+              {/* Discovery Link - appears after "discovery" module */}
               {module === 'discovery' && projectId && (
                 <button
                   onClick={() => navigate(`/project/${projectId}/discovery`)}
                   className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
                 >
-                  <span className="font-medium">Discovery 2.0</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    New
-                  </span>
+                  <span className="font-medium">Discovery</span>
                 </button>
               )}
             </>

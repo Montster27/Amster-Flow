@@ -174,7 +174,7 @@ export const AssumptionDetailDrawer = ({ assumption, onClose }: AssumptionDetail
             </div>
           </div>
 
-          {/* Importance (Discovery 2.0 specific) */}
+          {/* Importance (Discovery specific) */}
           {assumption.importance !== undefined && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
