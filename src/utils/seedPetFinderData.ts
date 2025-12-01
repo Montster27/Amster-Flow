@@ -159,7 +159,7 @@ export async function seedPetFinderData(projectId: string, userId: string) {
 /**
  * Check if a project already has Discovery 2.0 data
  */
-export async function hasDiscovery2Data(projectId: string): Promise<boolean> {
+export async function hasDiscoveryData(projectId: string): Promise<boolean> {
   const { data: assumptions } = await supabase
     .from('project_assumptions')
     .select('id')

@@ -34,7 +34,7 @@ export function useDiscoveryData(projectId: string | undefined) {
       return;
     }
 
-    const loadDiscovery2Data = async () => {
+    const loadDiscoveryData = async () => {
       try {
         // Reset store immediately when projectId changes to clear old data
         reset();
@@ -121,7 +121,7 @@ export function useDiscoveryData(projectId: string | undefined) {
       }
     };
 
-    loadDiscovery2Data();
+    loadDiscoveryData();
   }, [projectId, importData, reset]);
 
   // Save assumptions to Supabase whenever they change

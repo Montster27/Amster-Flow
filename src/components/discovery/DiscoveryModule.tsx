@@ -9,7 +9,7 @@ import { RiskMatrix } from './RiskMatrix';
 import { ValidationBoard } from './ValidationBoard';
 import { EnhancedInterviews } from './EnhancedInterviews';
 import { DiscoveryDashboard } from './DiscoveryDashboard';
-import { seedPetFinderData, hasDiscovery2Data } from '../../utils/seedPetFinderData';
+import { seedPetFinderData, hasDiscoveryData } from '../../utils/seedPetFinderData';
 import type { Assumption, AssumptionStatus } from '../../types/discovery';
 
 interface DiscoveryModuleProps {
@@ -78,7 +78,7 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
         if (!project || !project.name.toLowerCase().includes('pet')) return;
 
         // Check if it already has Discovery 2.0 data
-        const hasData = await hasDiscovery2Data(projectId);
+        const hasData = await hasDiscoveryData(projectId);
 
         if (!hasData && assumptions.length === 0) {
           console.log('🌱 Auto-seeding Pet Finder Discovery 2.0 data...');
