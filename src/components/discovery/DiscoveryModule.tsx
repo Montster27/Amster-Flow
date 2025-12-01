@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { AssumptionGenerator } from './AssumptionGenerator';
 import { AssumptionFrameworkTable } from './AssumptionFrameworkTable';
+import { AssumptionDetailDrawer } from './AssumptionDetailDrawer';
 import { RiskMatrix } from './RiskMatrix';
 import { ValidationBoard } from './ValidationBoard';
 import { EnhancedInterviews } from './EnhancedInterviews';
@@ -33,6 +34,7 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
   const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
   const [autoSeedAttempted, setAutoSeedAttempted] = useState(false);
   const [navigationContext, setNavigationContext] = useState<any>(null);
+  const [selectedAssumption, setSelectedAssumption] = useState<Assumption | null>(null);
 
   const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery();
   const { user } = useAuth();
@@ -148,9 +150,8 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
     }
   };
 
-  const handleEditAssumption = (_assumption: Assumption) => {
-    // TODO: Implement edit functionality
-    // Placeholder - edit button is currently non-functional
+  const handleEditAssumption = (assumption: Assumption) => {
+    setSelectedAssumption(assumption);
   };
 
   const handleDeleteAssumption = (id: string) => {
@@ -518,6 +519,12 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
           initialCanvasArea={navigationContext ? 'customerSegments' : undefined}
         />
       )}
+
+      {/* Assumption Detail/Edit Drawer */}
+      <AssumptionDetailDrawer
+        assumption={selectedAssumption}
+        onClose={() => setSelectedAssumption(null)}
+      />
     </div>
   );
 }

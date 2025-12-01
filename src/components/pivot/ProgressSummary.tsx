@@ -27,8 +27,44 @@ export function ProgressSummary({ onContinue, onBack }: ProgressSummaryProps) {
     ? Math.round(((assumptionsValidated + assumptionsInvalidated) / assumptionsTotal) * 100)
     : 0;
 
-  // Calculate PMF score if available (placeholder - would need actual survey data)
-  const pmfScore: number | undefined = undefined; // TODO: Calculate from actual PMF survey
+  // Calculate PMF Readiness Score based on Discovery metrics
+  // This is a composite score indicating market fit evidence, not a direct user survey
+  const calculatePMFScore = (): number | undefined => {
+    // Need minimum data to calculate a meaningful score
+    if (assumptionsTotal === 0 || interviewsCount === 0) {
+      return undefined;
+    }
+
+    // Component 1: Validation Rate (40% weight)
+    // Measures how thoroughly assumptions are tested
+    const validationComponent = (validationRate / 100) * 40;
+
+    // Component 2: Success Rate (30% weight)
+    // Percentage of tested assumptions that validated (evidence of fit)
+    const testedAssumptions = assumptionsValidated + assumptionsInvalidated;
+    const successRate = testedAssumptions > 0 ? assumptionsValidated / testedAssumptions : 0;
+    const successComponent = successRate * 30;
+
+    // Component 3: Interview Quality (20% weight)
+    // Interview count relative to benchmark (capped at 100%)
+    const interviewQuality = Math.min(interviewsCount / BENCHMARKS.INTERVIEWS_TARGET, 1.0);
+    const interviewComponent = interviewQuality * 20;
+
+    // Component 4: Confidence Level (10% weight)
+    // Average confidence in validated assumptions
+    const validatedAssumptions = assumptions.filter(a => a.status === 'validated');
+    const avgConfidence = validatedAssumptions.length > 0
+      ? validatedAssumptions.reduce((sum, a) => sum + a.confidence, 0) / validatedAssumptions.length
+      : 0;
+    const confidenceComponent = (avgConfidence / 5) * 10;
+
+    // Total PMF Readiness Score
+    const totalScore = validationComponent + successComponent + interviewComponent + confidenceComponent;
+
+    return Math.round(totalScore);
+  };
+
+  const pmfScore = calculatePMFScore();
 
   const summary: ProgressSummaryType = {
     interviewsCount,
@@ -114,12 +150,15 @@ export function ProgressSummary({ onContinue, onBack }: ProgressSummaryProps) {
                     {summary.pmfScore >= BENCHMARKS.PMF_PROCEED_THRESHOLD ? '✅' :
                      summary.pmfScore >= BENCHMARKS.PMF_PATCH_MIN ? '🔶' : '⚠️'}
                   </span>
-                  <h3 className="text-lg font-semibold">Product-Market Fit Score</h3>
+                  <h3 className="text-lg font-semibold">PMF Readiness Score</h3>
                 </div>
                 <div className="mb-3">
                   <p className="text-4xl font-bold">{summary.pmfScore}%</p>
                   <p className="text-sm mt-1">
-                    Benchmark: {summary.pmfBenchmark}% indicates product-market fit
+                    Based on validation rate, success rate, interviews, and confidence
+                  </p>
+                  <p className="text-xs mt-1 opacity-75">
+                    Benchmark: {summary.pmfBenchmark}% indicates strong product-market fit evidence
                   </p>
                 </div>
                 {summary.pmfScore >= BENCHMARKS.PMF_PROCEED_THRESHOLD && (
