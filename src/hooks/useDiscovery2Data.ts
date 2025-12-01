@@ -47,13 +47,15 @@ export function useDiscovery2Data(projectId: string | undefined) {
         const { data: assumptionsData, error: assumptionsError } = await supabase
           .from('project_assumptions')
           .select('*')
-          .eq('project_id', projectId)
-          .not('canvas_area', 'is', null); // Only load Discovery 2.0 assumptions
+          .eq('project_id', projectId);
 
         if (assumptionsError) throw assumptionsError;
 
         // Convert database rows to Discovery2Assumption format
-        const assumptions: Discovery2Assumption[] = (assumptionsData || []).map(row => ({
+        // Filter to only include assumptions with canvas_area (Discovery 2.0 assumptions)
+        const assumptions: Discovery2Assumption[] = (assumptionsData || [])
+          .filter(row => (row as any).canvas_area) // Client-side filter for Discovery 2.0 assumptions
+          .map(row => ({
           id: row.id,
           type: row.type as AssumptionType,
           description: row.description,

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { X } from 'lucide-react';
 import { useDiscovery2 } from '../../contexts/Discovery2Context';
-import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
+import { VisualSectorMapContext } from '../../contexts/VisualSectorMapContext';
 import { Discovery2Assumption, AssumptionStatus, ConfidenceLevel } from '../../types/discovery';
 import { ACTOR_ICONS, CONNECTION_ICONS } from '../../types/visualSectorMap';
 
@@ -23,7 +23,10 @@ export const AssumptionDetailDrawer2 = ({ assumption, onClose }: AssumptionDetai
     deleteAssumption,
   } = useDiscovery2();
 
-  const { actors, connections } = useVisualSectorMap();
+  // Safely access Visual Sector Map context (may not be available in all contexts)
+  const visualSectorMapContext = useContext(VisualSectorMapContext);
+  const actors = visualSectorMapContext?.actors || [];
+  const connections = visualSectorMapContext?.connections || [];
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
