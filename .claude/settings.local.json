@@ -74,7 +74,9 @@
       "Bash(supabase secrets:*)",
       "Bash(supabase functions logs:*)",
       "Bash(supabase db execute:*)",
-      "Bash(supabase db --help:*)"
+      "Bash(supabase db --help:*)",
+      "Bash(~/.local/bin/supabase db pull:*)",
+      "Bash(xargs -I {} sh -c 'psql $DATABASE_URL < {} 2>&1')"
     ],
     "deny": [],
     "ask": []
