@@ -45,3 +45,8 @@ next-env.d.ts
 *_backup/
 *.zip
 node_modules*/
+
+# Playwright E2E tests
+/playwright-report/
+/test-results/
+/playwright/.cache/
