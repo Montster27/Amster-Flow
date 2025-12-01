@@ -148,9 +148,9 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
     }
   };
 
-  const handleEditAssumption = (assumption: Assumption) => {
+  const handleEditAssumption = (_assumption: Assumption) => {
     // TODO: Implement edit functionality
-    console.log('Edit assumption:', assumption);
+    // Placeholder - edit button is currently non-functional
   };
 
   const handleDeleteAssumption = (id: string) => {
