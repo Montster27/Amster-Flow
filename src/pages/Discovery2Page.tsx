@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Discovery2Module } from '../components/discovery2/Discovery2Module';
-import { Discovery2Provider } from '../contexts/Discovery2Context';
-import { useDiscovery2Data } from '../hooks/useDiscovery2Data';
+import { DiscoveryProvider } from '../contexts/DiscoveryContext';
+import { useDiscoveryData } from '../hooks/useDiscoveryData';
 
 /**
  * Discovery 2.0 Page
@@ -10,7 +10,7 @@ import { useDiscovery2Data } from '../hooks/useDiscovery2Data';
 function Discovery2PageInner() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { loading, error } = useDiscovery2Data(projectId);
+  const { loading, error } = useDiscoveryData(projectId);
 
   if (loading) {
     return (
@@ -48,8 +48,8 @@ function Discovery2PageInner() {
 
 export function Discovery2Page() {
   return (
-    <Discovery2Provider>
+    <DiscoveryProvider>
       <Discovery2PageInner />
-    </Discovery2Provider>
+    </DiscoveryProvider>
   );
 }
