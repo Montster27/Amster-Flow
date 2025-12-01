@@ -157,7 +157,7 @@ export function AssumptionGenerator({ onClose, onSave, initialCanvasArea }: Assu
 
   // Load assumption templates
   useEffect(() => {
-    fetch('/discovery2-templates.json')
+    fetch('/discovery-templates.json')
       .then((res) => res.json())
       .then((data) => setTemplates(data.assumptionTemplates))
       .catch((err) => {
