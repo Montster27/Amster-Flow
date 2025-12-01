@@ -8,7 +8,7 @@ import { useEnhancedInterviews } from '../hooks/useEnhancedInterviews';
 interface SidebarProps {
   modules: string[];
   onModuleClick: (module: string) => void;
-  onViewSummary: () => void;
+  onViewSummary?: () => void;
   projectId?: string;
 }
 
@@ -97,12 +97,14 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           );
         })}
 
-        <button
-          onClick={onViewSummary}
-          className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors mt-4 border-t border-gray-100"
-        >
-          <span className="font-medium">View Summary</span>
-        </button>
+        {onViewSummary && (
+          <button
+            onClick={onViewSummary}
+            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors mt-4 border-t border-gray-100"
+          >
+            <span className="font-medium">View Summary</span>
+          </button>
+        )}
       </nav>
 
       <div className="pt-4 border-t border-gray-200 space-y-2">

@@ -2,12 +2,10 @@ import { useState, lazy, Suspense } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { QuestionPanel } from './components/QuestionPanel';
 import { ModuleReview } from './components/ModuleReview';
-import { Summary } from './components/Summary';
 import { useGuide } from './contexts/GuideContext';
 import { useProjectContext } from './contexts/ProjectDataContext';
 
 // Lazy load heavy modules
-const DiscoveryModule = lazy(() => import('./components/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
 const VisualSectorMapTool = lazy(() => import('./components/visual-sector-map/VisualSectorMapTool').then(m => ({ default: m.VisualSectorMapTool })));
 const PivotModule = lazy(() => import('./components/pivot/PivotModule').then(m => ({ default: m.PivotModule })));
 
@@ -29,7 +27,6 @@ interface AppProps {
 
 function App({ projectId }: AppProps = {}) {
   const { questionsData } = useProjectContext();
-  const [showSummary, setShowSummary] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
   const {
@@ -44,10 +41,9 @@ function App({ projectId }: AppProps = {}) {
 
   const modules = Object.keys(questionsData);
   const currentModuleData = questionsData[currentModule];
-  const isDiscoveryModule = currentModuleData?.type === 'discovery';
   const isSectorMapModule = currentModuleData?.type === 'sectorMap';
   const isPivotModule = currentModuleData?.type === 'pivot';
-  const isStandardModule = !isDiscoveryModule && !isSectorMapModule && !isPivotModule;
+  const isStandardModule = !isSectorMapModule && !isPivotModule;
 
   const handleModuleComplete = () => {
     // For standard modules (problem, customer segments, solution), show review page
@@ -62,13 +58,13 @@ function App({ projectId }: AppProps = {}) {
   const proceedToNextModule = () => {
     markModuleComplete(currentModule);
 
-    // Move to next module or show summary
+    // Move to next module
     const currentIndex = modules.indexOf(currentModule);
     if (currentIndex < modules.length - 1) {
       setCurrentModule(modules[currentIndex + 1]);
       setShowReview(false);
     } else {
-      setShowSummary(true);
+      // All modules completed
       setShowReview(false);
     }
   };
@@ -84,25 +80,15 @@ function App({ projectId }: AppProps = {}) {
   const handleModuleClick = (module: string) => {
     setCurrentModule(module);
     setCurrentQuestionIndex(0);
-    setShowSummary(false);
     setShowReview(false);
-  };
-
-  const handleViewSummary = () => {
-    setShowSummary(true);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar modules={modules} onModuleClick={handleModuleClick} onViewSummary={handleViewSummary} projectId={projectId} />
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} />
 
       <main className="flex-1 overflow-y-auto">
-            {showSummary ? (
-              <Summary
-                questionsData={questionsData}
-                modules={modules}
-              />
-            ) : showReview && isStandardModule ? (
+            {showReview && isStandardModule ? (
               <ModuleReview
                 module={currentModule}
                 moduleTitle={currentModuleData.title}
@@ -110,10 +96,6 @@ function App({ projectId }: AppProps = {}) {
                 onConfirm={handleConfirmReview}
                 onBack={handleBackFromReview}
               />
-            ) : isDiscoveryModule ? (
-              <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
-                <DiscoveryModule projectId={projectId} />
-              </Suspense>
             ) : isSectorMapModule ? (
               <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
                 <VisualSectorMapTool />
