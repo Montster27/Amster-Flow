@@ -49,7 +49,10 @@ export function useDiscoveryData(projectId: string | undefined) {
           .select('*')
           .eq('project_id', projectId);
 
-        if (assumptionsError) throw assumptionsError;
+        if (assumptionsError) {
+          console.error('Error loading assumptions:', assumptionsError);
+          throw new Error(`Failed to load assumptions: ${assumptionsError.message}`);
+        }
 
         // Convert database rows to Assumption format
         // Filter to only include assumptions with canvas_area (Discovery assumptions)
