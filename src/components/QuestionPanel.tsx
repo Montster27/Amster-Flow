@@ -24,20 +24,25 @@ export const QuestionPanel = ({
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentHint = hints[Math.min(currentQuestionIndex, hints.length - 1)];
-  const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+  // Safety checks for undefined values
+  const safeQuestions = questions || [];
+  const safeHints = hints || [];
+  const safeIndex = currentQuestionIndex ?? 0;
+
+  const currentQuestion = safeQuestions[safeIndex];
+  const currentHint = safeHints[Math.min(safeIndex, safeHints.length - 1)];
+  const isLastQuestion = safeIndex >= safeQuestions.length - 1;
 
   // Load saved answer when question changes
   useEffect(() => {
     const moduleProgress = getModuleProgress(module);
     const savedAnswer = moduleProgress?.answers.find(
-      (a) => a.questionIndex === currentQuestionIndex
+      (a) => a.questionIndex === safeIndex
     );
     setAnswer(savedAnswer?.answer || '');
     setShowHint(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIndex, module]);
+  }, [safeIndex, module]);
 
   // Auto-save answer to context (debounced)
   useEffect(() => {
