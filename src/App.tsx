@@ -92,7 +92,7 @@ function App({ projectId }: AppProps = {}) {
               <ModuleReview
                 module={currentModule}
                 moduleTitle={currentModuleData.title}
-                questions={currentModuleData.questions!}
+                questions={currentModuleData.questions || []}
                 onConfirm={handleConfirmReview}
                 onBack={handleBackFromReview}
               />
@@ -109,8 +109,8 @@ function App({ projectId }: AppProps = {}) {
                 module={currentModule}
                 moduleTitle={currentModuleData.title}
                 intro={currentModuleData.intro}
-                questions={currentModuleData.questions!}
-                hints={currentModuleData.hints!}
+                questions={currentModuleData.questions || []}
+                hints={currentModuleData.hints || []}
                 onComplete={handleModuleComplete}
               />
             )}
