@@ -6,6 +6,7 @@ import { useGuide } from './contexts/GuideContext';
 import { useProjectContext } from './contexts/ProjectDataContext';
 
 // Lazy load heavy modules
+const DiscoveryModule = lazy(() => import('./components/discovery/DiscoveryModule').then(m => ({ default: m.DiscoveryModule })));
 const VisualSectorMapTool = lazy(() => import('./components/visual-sector-map/VisualSectorMapTool').then(m => ({ default: m.VisualSectorMapTool })));
 const PivotModule = lazy(() => import('./components/pivot/PivotModule').then(m => ({ default: m.PivotModule })));
 
@@ -41,9 +42,10 @@ function App({ projectId }: AppProps = {}) {
 
   const modules = Object.keys(questionsData);
   const currentModuleData = questionsData[currentModule];
+  const isDiscoveryModule = currentModuleData?.type === 'discovery';
   const isSectorMapModule = currentModuleData?.type === 'sectorMap';
   const isPivotModule = currentModuleData?.type === 'pivot';
-  const isStandardModule = !isSectorMapModule && !isPivotModule;
+  const isStandardModule = !isDiscoveryModule && !isSectorMapModule && !isPivotModule;
 
   const handleModuleComplete = () => {
     // For standard modules (problem, customer segments, solution), show review page
@@ -96,6 +98,10 @@ function App({ projectId }: AppProps = {}) {
                 onConfirm={handleConfirmReview}
                 onBack={handleBackFromReview}
               />
+            ) : isDiscoveryModule ? (
+              <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
+                <DiscoveryModule projectId={projectId} onBack={() => setCurrentModule(modules[0])} />
+              </Suspense>
             ) : isSectorMapModule ? (
               <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
                 <VisualSectorMapTool />
