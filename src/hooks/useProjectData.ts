@@ -132,26 +132,32 @@ export function useProjectData(projectId: string | undefined) {
         for (const [moduleName, moduleProgress] of Object.entries(currentProgress)) {
           const lastModuleProgress = lastSaved[moduleName];
 
-          // 1. Check for Answer Changes
-          for (const answer of moduleProgress.answers) {
-            const lastAnswer = lastModuleProgress?.answers.find(
-              a => a.questionIndex === answer.questionIndex
-            );
+          // Only save standard modules to project_modules table
+          // Discovery, Sector Map, and Pivot use their own specialized tables
+          const isStandardModule = ['problem', 'customerSegments', 'solution'].includes(moduleName);
 
-            // If answer is new or different from last saved version
-            if (!lastAnswer || lastAnswer.answer !== answer.answer) {
-              await supabase
-                .from('project_modules')
-                .upsert({
-                  project_id: projectId,
-                  module_name: moduleName as 'problem' | 'customerSegments' | 'solution',
-                  question_index: answer.questionIndex,
-                  answer: answer.answer,
-                  updated_by: user.id,
-                }, {
-                  onConflict: 'project_id,module_name,question_index',
-                });
-              hasUpdates = true;
+          // 1. Check for Answer Changes (only for standard modules)
+          if (isStandardModule) {
+            for (const answer of moduleProgress.answers) {
+              const lastAnswer = lastModuleProgress?.answers.find(
+                a => a.questionIndex === answer.questionIndex
+              );
+
+              // If answer is new or different from last saved version
+              if (!lastAnswer || lastAnswer.answer !== answer.answer) {
+                await supabase
+                  .from('project_modules')
+                  .upsert({
+                    project_id: projectId,
+                    module_name: moduleName as 'problem' | 'customerSegments' | 'solution',
+                    question_index: answer.questionIndex,
+                    answer: answer.answer,
+                    updated_by: user.id,
+                  }, {
+                    onConflict: 'project_id,module_name,question_index',
+                  });
+                hasUpdates = true;
+              }
             }
           }
 
