@@ -18,7 +18,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Navigate to login page
-    await page.goto('/');
+    await page.goto('/auth');
 
     // Verify we're on login page
     await expect(page.locator('input[type="email"]')).toBeVisible();
@@ -30,20 +30,20 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/dashboard/);
 
     // Verify dashboard content is visible
-    await expect(page.locator('text=/dashboard|welcome/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/dashboard|welcome|project/i')).toBeVisible({ timeout: 10000 });
   });
 
   test('should show error with invalid credentials @local @preview', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/auth');
 
     // Try to login with invalid credentials
     await page.fill('input[type="email"]', 'invalid@example.com');
     await page.fill('input[type="password"]', 'wrongpassword');
     await page.click('button[type="submit"]');
 
-    // Should remain on login page
+    // Should remain on auth page
     await page.waitForTimeout(2000);
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/auth/);
 
     // Should show error message (Supabase Auth UI shows error)
     // Note: Exact error message depends on Supabase Auth UI configuration
@@ -54,7 +54,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Login first
-    await page.goto('/');
+    await page.goto('/auth');
     await login(page, user.email, user.password);
 
     // Verify logged in
@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
     await logout(page);
 
     // Verify logged out - should be on login page
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/auth/);
     await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 
@@ -72,7 +72,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Login
-    await page.goto('/');
+    await page.goto('/auth');
     await login(page, user.email, user.password);
 
     // Verify logged in
@@ -83,7 +83,7 @@ test.describe('Authentication', () => {
 
     // Should still be logged in
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.locator('text=/dashboard|welcome/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/dashboard|welcome|project/i')).toBeVisible({ timeout: 10000 });
   });
 
   test('should redirect to login when accessing protected route while logged out', async ({ page }) => {
@@ -93,8 +93,8 @@ test.describe('Authentication', () => {
     // Try to access protected route
     await page.goto('/dashboard');
 
-    // Should redirect to login
-    await page.waitForURL('/', { timeout: 10000 });
+    // Should redirect to auth/login page
+    await page.waitForURL(/\/auth/, { timeout: 10000 });
     await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 });

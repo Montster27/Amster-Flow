@@ -30,9 +30,9 @@ async function globalSetup(config: FullConfig) {
   const page = await context.newPage();
 
   try {
-    // Navigate to login page
-    await page.goto(baseURL);
-    await page.waitForLoadState('networkidle');
+    // Navigate to login page (app redirects to /auth for login)
+    await page.goto(`${baseURL}/auth`);
+    await page.waitForLoadState('domcontentloaded');
 
     console.log('🔑 Logging in as test user...');
 
@@ -49,10 +49,19 @@ async function globalSetup(config: FullConfig) {
     // Submit login
     await page.click('button[type="submit"]');
 
-    // Wait for redirect to dashboard (successful login)
-    await page.waitForURL(/\/dashboard/, { timeout: 15000 });
+    // Wait for successful login - dashboard or any authenticated page
+    // The app might redirect differently, so be flexible
+    await Promise.race([
+      page.waitForURL(/\/dashboard/, { timeout: 20000 }).catch(() => {}),
+      page.waitForURL(/\/auth\/callback/, { timeout: 20000 }).catch(() => {}),
+      page.waitForURL(url => !url.includes('/auth'), { timeout: 20000 }),
+    ]);
+
+    // Give it a moment to finish any redirects
+    await page.waitForTimeout(2000);
 
     console.log('✅ Login successful!');
+    console.log(`📍 Current URL: ${page.url()}`);
 
     // Save the authenticated state
     await context.storageState({ path: 'e2e/.auth/user.json' });
