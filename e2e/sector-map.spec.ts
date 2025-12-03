@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { ensureLoggedIn } from './fixtures/auth';
 import { generateActor, navigateToSectorMap, waitForSave } from './fixtures/test-data';
 
 /**
@@ -9,13 +8,13 @@ import { generateActor, navigateToSectorMap, waitForSave } from './fixtures/test
  * - Add competitors
  * - Add decision makers
  * - View and manage relationships
+ *
+ * NOTE: These tests use the saved authenticated session from global-setup
+ * No need to login manually - all tests start already authenticated
  */
 
 test.describe('Visual Sector Map', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure user is logged in before each test
-    await ensureLoggedIn(page);
-  });
+  // No beforeEach needed - tests use saved authentication from global-setup
 
   test('should navigate to Sector Map', async ({ page }) => {
     await navigateToSectorMap(page);

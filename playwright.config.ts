@@ -71,6 +71,9 @@ const isCI = !!process.env.CI;
 export default defineConfig({
   testDir: './e2e',
 
+  // Global setup: Login once before all tests and save session
+  globalSetup: resolve(__dirname, 'e2e/global-setup.ts'),
+
   // Adjust timeout based on environment (production may be slower)
   timeout: isProduction ? 90 * 1000 : 60 * 1000,
 
@@ -116,18 +119,28 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Use the saved authenticated session for all tests
+        storageState: 'e2e/.auth/user.json',
+      },
     },
 
     // Run on multiple browsers in production for better coverage
     ...(isProduction ? [
       {
         name: 'firefox',
-        use: { ...devices['Desktop Firefox'] },
+        use: {
+          ...devices['Desktop Firefox'],
+          storageState: 'e2e/.auth/user.json',
+        },
       },
       {
         name: 'webkit',
-        use: { ...devices['Desktop Safari'] },
+        use: {
+          ...devices['Desktop Safari'],
+          storageState: 'e2e/.auth/user.json',
+        },
       },
     ] : []),
   ],
