@@ -27,6 +27,13 @@ yarn-error.log*
 .env*.local
 .claude/settings.local.json
 
+# E2E test environment files (keep example, ignore actual configs)
+.env.test
+.env.test.local
+.env.test.preview
+.env.test.production
+!.env.test.example
+
 # vercel
 .vercel
 

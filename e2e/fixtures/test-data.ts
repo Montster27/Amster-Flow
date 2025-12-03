@@ -1,22 +1,32 @@
 import { Page } from '@playwright/test';
+import { getTestDataPrefix, shouldCreateTestData, isProduction } from './environment';
+import { cleanupTestData as cleanupHelper } from '../helpers/cleanup';
 
 /**
  * Test data generation helpers
  * Provides utilities for creating test data in E2E tests
+ * Environment-aware: Prevents data creation in production
  */
 
 /**
- * Generate a unique timestamp-based ID
+ * Generate a unique timestamp-based ID with environment prefix
  */
 export function generateUniqueId(): string {
-  return `test-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const prefix = getTestDataPrefix();
+  return `${prefix}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
- * Generate a unique project name
+ * Generate a unique project name with environment awareness
+ * Production: Throws error to prevent accidental data creation
  */
 export function generateProjectName(): string {
-  return `Test Project ${Date.now()}`;
+  if (!shouldCreateTestData()) {
+    throw new Error('Test data creation not allowed in production environment');
+  }
+
+  const prefix = getTestDataPrefix();
+  return `${prefix} Test Project`;
 }
 
 /**
@@ -30,10 +40,14 @@ export interface TestAssumption {
 }
 
 export function generateAssumption(overrides?: Partial<TestAssumption>): TestAssumption {
-  const id = generateUniqueId();
+  if (!shouldCreateTestData()) {
+    throw new Error('Test data creation not allowed in production environment');
+  }
+
+  const prefix = getTestDataPrefix();
   return {
-    title: `Test Assumption ${id}`,
-    description: `This is a test assumption created at ${new Date().toISOString()}`,
+    title: `${prefix} Assumption`,
+    description: `Test assumption created at ${new Date().toISOString()}`,
     category: 'customer',
     risk: 'high',
     ...overrides,
@@ -50,9 +64,13 @@ export interface TestInterview {
 }
 
 export function generateInterview(overrides?: Partial<TestInterview>): TestInterview {
-  const id = generateUniqueId();
+  if (!shouldCreateTestData()) {
+    throw new Error('Test data creation not allowed in production environment');
+  }
+
+  const prefix = getTestDataPrefix();
   return {
-    participantName: `Test Participant ${id}`,
+    participantName: `${prefix} Participant`,
     date: new Date().toISOString().split('T')[0],
     notes: `Test interview notes created at ${new Date().toISOString()}`,
     ...overrides,
@@ -69,9 +87,13 @@ export interface TestActor {
 }
 
 export function generateActor(overrides?: Partial<TestActor>): TestActor {
-  const id = generateUniqueId();
+  if (!shouldCreateTestData()) {
+    throw new Error('Test data creation not allowed in production environment');
+  }
+
+  const prefix = getTestDataPrefix();
   return {
-    name: `Test Actor ${id}`,
+    name: `${prefix} Actor`,
     type: 'customer',
     description: `Test actor description`,
     ...overrides,
@@ -97,7 +119,7 @@ export async function waitForSave(page: Page, timeout = 5000) {
  */
 export async function navigateToDiscovery(page: Page) {
   await page.goto('/dashboard');
-  await page.click('text=/discovery/i, a[href*="discovery"]');
+  await page.getByRole('link', { name: /discovery/i }).click();
   await page.waitForURL(/discovery/);
 }
 
@@ -106,7 +128,7 @@ export async function navigateToDiscovery(page: Page) {
  */
 export async function navigateToSectorMap(page: Page) {
   await page.goto('/dashboard');
-  await page.click('text=/sector.*map/i, a[href*="sector"]');
+  await page.getByRole('link', { name: /sector.*map/i }).click();
   await page.waitForURL(/sector/);
 }
 
@@ -115,24 +137,14 @@ export async function navigateToSectorMap(page: Page) {
  */
 export async function navigateToPivot(page: Page) {
   await page.goto('/dashboard');
-  await page.click('text=/pivot/i, a[href*="pivot"]');
+  await page.getByRole('link', { name: /pivot/i }).click();
   await page.waitForURL(/pivot/);
 }
 
 /**
  * Clean up test data (call in afterEach)
- * Note: This requires database access - implement based on your cleanup strategy
+ * Environment-aware: Production only clears browser storage
  */
 export async function cleanupTestData(page: Page) {
-  // Option 1: Delete via UI (slower but safer)
-  // Navigate to settings and delete test project
-
-  // Option 2: Direct database cleanup (faster but requires setup)
-  // Use Supabase client to delete test data
-
-  // For now, just clear browser state
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  await cleanupHelper(page);
 }

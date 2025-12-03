@@ -112,8 +112,21 @@ export async function ensureLoggedIn(page: Page) {
  */
 export async function clearAuth(page: Page) {
   await page.context().clearCookies();
+  // Navigate to app first to ensure localStorage is accessible
+  // Catch errors if page hasn't loaded yet (about:blank)
+  try {
+    await page.goto('/');
+  } catch {
+    // Ignore navigation errors
+  }
+
+  // Now safe to clear storage
   await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      // Ignore storage access errors
+    }
   });
 }

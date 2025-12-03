@@ -2,6 +2,8 @@
 
 Comprehensive end-to-end tests for ArmsterFlow using Playwright.
 
+Tests can run against **local**, **preview (Vercel)**, or **production** environments with environment-aware safety controls.
+
 ## Overview
 
 This test suite covers critical user workflows:
@@ -9,6 +11,19 @@ This test suite covers critical user workflows:
 - **Discovery Module** (`discovery.spec.ts`) - Assumption creation, validation, interviews
 - **Visual Sector Map** (`sector-map.spec.ts`) - Target customer, competitors, decision makers
 - **Pivot Analysis** (`pivot.spec.ts`) - Pre-mortem, progress metrics, pivot/proceed decision
+
+## Quick Start
+
+```bash
+# Run tests locally (default)
+npm run test:e2e
+
+# Run tests against preview environment
+npm run test:e2e:preview
+
+# Run smoke tests against production
+npm run test:e2e:production
+```
 
 ## Prerequisites
 
@@ -29,50 +44,125 @@ npx playwright install chromium
 
 ### 3. Configure Environment Variables
 
-Copy `.env.test` and fill in your values:
+The test suite uses environment-specific configuration files:
+
+- `.env.test.local` - Local development (gitignored)
+- `.env.test.preview` - Preview/staging environment (gitignored)
+- `.env.test.production` - Production environment (gitignored)
+- `.env.test.example` - Template (committed to git)
+
+#### Local Environment Setup
+
+Create `.env.test.local`:
 
 ```bash
-# Supabase Configuration (same as production)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# Test User Credentials
-TEST_USER_EMAIL=test@example.com
-TEST_USER_PASSWORD=your-test-user-password
+VITE_SUPABASE_URL=https://localhost:54321
+VITE_SUPABASE_ANON_KEY=your-local-anon-key
+TEST_USER_EMAIL=test@armsterflow.local
+TEST_USER_PASSWORD=Test123!@#
+PLAYWRIGHT_BASE_URL=https://127.0.0.1:3001
 ```
 
-⚠️ **Important**: Never commit `.env.test` with real credentials to version control!
+**Local Supabase with HTTPS**:
+- Ensure `supabase/config.toml` has TLS enabled (`api.tls.enabled=true`)
+- Set `cert_path`/`key_path` to your local certs
+- Set `site_url` / `additional_redirect_urls` to `https://localhost:3000`
+
+#### Preview Environment Setup
+
+Create `.env.test.preview`:
+
+```bash
+VITE_SUPABASE_URL=https://your-preview-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-preview-anon-key
+TEST_USER_EMAIL=test@preview.example.com
+TEST_USER_PASSWORD=SecurePassword123!
+PLAYWRIGHT_BASE_URL=https://your-preview-deployment.vercel.app
+```
+
+**Recommended**: Use a separate Supabase project for preview testing.
+
+#### Production Environment Setup
+
+Create `.env.test.production`:
+
+```bash
+VITE_SUPABASE_URL=https://your-production-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-production-anon-key
+TEST_USER_EMAIL=test@production.example.com
+TEST_USER_PASSWORD=SecureProductionPassword123!
+PLAYWRIGHT_BASE_URL=https://armsterflow.com
+```
+
+**IMPORTANT**: Production tests run in READ-ONLY mode. No test data will be created.
+
+⚠️ **Security**: Never commit `.env.test.*` files (except `.env.test.example`) to version control!
 
 ## Running Tests
 
-### Run all E2E tests
+### Local Environment (Default)
+
 ```bash
+# Run all tests locally
 npm run test:e2e
-```
 
-### Run tests in UI mode (interactive)
-```bash
+# Run tests in UI mode (interactive)
 npm run test:e2e:ui
-```
 
-### Run tests in debug mode
-```bash
+# Run tests in debug mode
 npm run test:e2e:debug
-```
 
-### Run specific test file
-```bash
-npx playwright test e2e/auth.spec.ts
-```
-
-### Run specific test
-```bash
-npx playwright test -g "should login with valid credentials"
-```
-
-### View test report
-```bash
+# View test report
 npm run test:e2e:report
+```
+
+### Preview Environment
+
+```bash
+# Run all tests against preview
+npm run test:e2e:preview
+
+# Run with UI mode
+npm run test:e2e:preview:ui
+
+# Run in headed mode (see browser)
+npm run test:e2e:preview:headed
+```
+
+### Production Environment
+
+```bash
+# Run smoke tests only (recommended)
+npm run test:e2e:production
+
+# Run all tests (use with caution)
+npm run test:e2e:production:full
+
+# Run smoke tests in headed mode
+npm run test:e2e:production:headed
+```
+
+### All Environments
+
+```bash
+# Run tests in all environments sequentially
+npm run test:e2e:all
+```
+
+### Running Specific Tests
+
+```bash
+# Run specific test file
+npx playwright test e2e/auth.spec.ts
+
+# Run specific test by name
+npx playwright test -g "should login with valid credentials"
+
+# Run only tests with specific tag
+npm run test:e2e -- --grep @smoke
+
+# Run all except specific tag
+npm run test:e2e -- --grep-invert @destructive
 ```
 
 ## Test Structure
@@ -94,6 +184,16 @@ npm run test:e2e:report
 - `navigateToSectorMap(page)` - Navigate to Sector Map
 - `navigateToPivot(page)` - Navigate to Pivot
 - `waitForSave(page)` - Wait for data to save
+- `cleanupTestData(page)` - Environment-aware cleanup
+
+**`environment.ts`** - Environment detection utilities:
+- `getTestEnvironment()` - Get current environment ('local' | 'preview' | 'production')
+- `isLocal()` - Check if running locally
+- `isPreview()` - Check if running in preview
+- `isProduction()` - Check if running in production
+- `shouldCreateTestData()` - Check if data creation is allowed
+- `getTestDataPrefix()` - Get environment-specific data prefix
+- `getEnvironmentConfig()` - Get full environment configuration
 
 ### Test Files
 
@@ -110,24 +210,137 @@ test.describe('Feature Name', () => {
 });
 ```
 
+## Test Tags
+
+Tests use tags to control which environments they run in:
+
+### Available Tags
+
+- `@smoke` - Critical path tests, safe for production
+- `@critical` - Must-pass tests for deployments
+- `@local` - Only run in local environment
+- `@preview` - Safe to run in preview environment
+- `@production` - Safe to run in production (read-only)
+- `@destructive` - Creates test data (never runs in production)
+
+### Tagging Tests
+
+```typescript
+// Runs in all environments
+test('should login with valid credentials @smoke @critical', async ({ page }) => {
+  // Test implementation
+});
+
+// Only runs locally and in preview
+test('should create new project @local @preview @destructive', async ({ page }) => {
+  // This test creates data, so it won't run in production
+});
+
+// Production-safe read-only test
+test('should display user profile @smoke @production', async ({ page }) => {
+  // Only reads data, safe for production
+});
+```
+
+### Environment-Aware Test Logic
+
+```typescript
+import { isProduction, shouldCreateTestData } from './fixtures/environment';
+
+test('conditional test logic', async ({ page }) => {
+  if (isProduction()) {
+    // Read-only operations in production
+    await page.goto('/dashboard');
+    await expect(page.locator('text=Welcome')).toBeVisible();
+  } else {
+    // Full CRUD operations in local/preview
+    const projectName = generateProjectName();
+    await createProject(page, projectName);
+  }
+});
+
+test('skip data creation in production', async ({ page }) => {
+  // This will automatically throw error in production
+  if (!shouldCreateTestData()) {
+    test.skip();
+  }
+
+  const assumption = generateAssumption();
+  await createAssumption(page, assumption);
+});
+```
+
 ## CI/CD Integration
 
 ### GitHub Actions
 
-Tests run automatically on pull requests to `main` branch.
+Tests can run automatically on pull requests and deployments.
 
 **Workflow**: `.github/workflows/e2e-tests.yml`
 
 **Required Secrets** (set in GitHub repository settings):
-- `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` - Supabase anon key
-- `TEST_USER_EMAIL` - Test user email
-- `TEST_USER_PASSWORD` - Test user password
+
+**Preview Environment:**
+- `TEST_SUPABASE_URL_PREVIEW` - Preview Supabase project URL
+- `TEST_SUPABASE_ANON_KEY_PREVIEW` - Preview anon key
+- `TEST_USER_EMAIL_PREVIEW` - Preview test user email
+- `TEST_USER_PASSWORD_PREVIEW` - Preview test user password
+
+**Production Environment:**
+- `TEST_SUPABASE_URL_PROD` - Production Supabase project URL
+- `TEST_SUPABASE_ANON_KEY_PROD` - Production anon key
+- `TEST_USER_EMAIL_PROD` - Production test user email
+- `TEST_USER_PASSWORD_PROD` - Production test user password
 
 **To add secrets**:
 1. Go to repository Settings > Secrets and variables > Actions
 2. Click "New repository secret"
 3. Add each secret with its value
+
+### Example Workflow
+
+```yaml
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run E2E tests (Preview)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL_PREVIEW }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY_PREVIEW }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL_PREVIEW }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_PREVIEW }}
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel.outputs.preview-url }}
+        run: npm run test:e2e:preview
+
+  test-production-smoke:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run Smoke Tests (Production)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL_PROD }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY_PROD }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL_PROD }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD_PROD }}
+        run: npm run test:e2e:production
+```
 
 ## Debugging Failed Tests
 
@@ -162,63 +375,121 @@ This opens Playwright Inspector where you can:
 
 ## Best Practices
 
-### 1. Test Isolation
-- Each test should be independent
-- Use `beforeEach` to set up fresh state
-- Don't rely on test execution order
+### Multi-Environment Testing
 
-### 2. Selector Strategy
-Priority order:
-1. **Data attributes**: `[data-testid="element"]`
-2. **Role + text**: `button:has-text("Save")`
-3. **Text content**: `text="Welcome"`
-4. **CSS classes**: `.assumption-card` (last resort)
+1. **Tag all tests appropriately**
+   - Use `@smoke` for critical paths safe in all environments
+   - Use `@destructive` for tests that create/modify data
+   - Use `@local @preview` for tests that shouldn't run in production
 
-### 3. Waiting Strategy
-- Use `waitForSelector` with explicit timeout
-- Use `expect().toBeVisible()` for assertions
-- Use `waitForSave()` helper after form submissions
-- Avoid `waitForTimeout` except for debugging
+2. **Use environment helpers**
+   - Always use `generateProjectName()`, `generateAssumption()`, etc. for test data
+   - Use `shouldCreateTestData()` to check if data creation is allowed
+   - Use `isProduction()` to conditionally skip or modify test behavior
 
-### 4. Error Handling
-```typescript
-await page.click('button').catch(() => {
-  console.log('Optional action failed, continuing...');
-});
-```
+3. **Clean up after tests**
+   - Always call `cleanupTestData(page)` in `afterEach` hooks
+   - Environment-aware cleanup prevents accidental data deletion in production
 
-### 5. Page Objects (Future Enhancement)
-Consider creating page object classes for complex pages:
-```typescript
-class DiscoveryPage {
-  constructor(private page: Page) {}
+4. **Separate Supabase projects**
+   - Use dedicated Supabase projects for local, preview, and production
+   - Prevents test data from mixing with real user data
+   - Allows isolated schema changes and testing
 
-  async createAssumption(data: AssumptionData) {
-    // Encapsulated logic
-  }
-}
-```
+5. **Never hard-code credentials**
+   - Always use environment variables from `.env.test.{environment}`
+   - Never commit credentials to git
+   - Rotate test credentials periodically
+
+### Test Development
+
+1. **Test Isolation**
+   - Each test should be independent
+   - Use `beforeEach` to set up fresh state
+   - Don't rely on test execution order
+
+2. **Selector Strategy**
+   Priority order:
+   1. **Data attributes**: `[data-testid="element"]`
+   2. **Role + text**: `button:has-text("Save")`
+   3. **Text content**: `text="Welcome"`
+   4. **CSS classes**: `.assumption-card` (last resort)
+
+3. **Waiting Strategy**
+   - Use `waitForSelector` with explicit timeout
+   - Use `expect().toBeVisible()` for assertions
+   - Use `waitForSave()` helper after form submissions
+   - Avoid `waitForTimeout` except for debugging
+
+4. **Error Handling**
+   ```typescript
+   await page.click('button').catch(() => {
+     console.log('Optional action failed, continuing...');
+   });
+   ```
+
+5. **Page Objects** (Future Enhancement)
+   Consider creating page object classes for complex pages:
+   ```typescript
+   class DiscoveryPage {
+     constructor(private page: Page) {}
+
+     async createAssumption(data: AssumptionData) {
+       // Encapsulated logic
+     }
+   }
+   ```
 
 ## Troubleshooting
 
-### "Test user credentials not found"
-- Ensure `.env.test` exists and contains `TEST_USER_EMAIL` and `TEST_USER_PASSWORD`
-- Check that values are not empty
+### Environment Configuration Issues
 
-### "Timeout waiting for selector"
+**"Missing required environment variables"**
+- Ensure `.env.test.{environment}` file exists for the target environment
+- Verify all required variables are set: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`
+- Check file is in the correct location (project root)
+
+**"Test data creation not allowed in production environment"**
+- This is expected behavior for production safety
+- Either skip the test in production or use conditional logic with `isProduction()`
+- Use `@local @preview` tags to prevent test from running in production
+
+**CORS errors during authentication**
+- Ensure `VITE_SUPABASE_URL` and `PLAYWRIGHT_BASE_URL` use matching origins
+- For HTTPS: both should use `https://`, not mixing http/https
+- For local: both should use `localhost` or both use `127.0.0.1`, not mixed
+- Check Supabase `site_url` matches your app's URL
+
+### Test Execution Issues
+
+**"Test user credentials not found"**
+- Ensure environment-specific `.env.test.{environment}` exists
+- Check that `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` are not empty
+- Verify test user exists in the target Supabase instance
+
+**Test user login fails**
+- Verify user exists in Supabase Auth Users table
+- Check `email_confirmed_at` is set (not NULL)
+- Ensure password is correct in `.env.test.{environment}`
+- Try logging in manually via the UI to verify credentials
+
+**"Timeout waiting for selector"**
+- Production tests have longer timeouts (90s vs 60s)
 - Increase timeout: `await page.waitForSelector('...', { timeout: 30000 })`
 - Check if selector is correct using Playwright Inspector
 - Verify the element actually exists in the UI
 
-### "Element not visible"
+**"Element not visible"**
 - Element might be outside viewport: `await page.locator('...').scrollIntoViewIfNeeded()`
 - Element might be behind modal: Close modals first
 - Element might not be rendered yet: Add `waitForSelector`
 
-### "Tests pass locally but fail in CI"
-- Check CI environment variables are set
+**"Tests pass locally but fail in CI/preview/production"**
+- Check environment variables are correctly set for that environment
+- Different environments may have different data or state
+- Network latency varies by environment - increase timeouts if needed
 - CI runs in headless mode - timing differences may occur
-- Increase timeouts for CI: `timeout: process.env.CI ? 60000 : 30000`
+- Production may have different data than local/preview
 
 ## Maintenance
 
