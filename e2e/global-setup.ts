@@ -30,8 +30,8 @@ async function globalSetup(config: FullConfig) {
   const page = await context.newPage();
 
   try {
-    // Navigate to login page (app redirects to /auth for login)
-    await page.goto(`${baseURL}/auth`);
+    // Navigate to login page
+    await page.goto(`${baseURL}/login`);
     await page.waitForLoadState('domcontentloaded');
 
     console.log('🔑 Logging in as test user...');
@@ -53,8 +53,7 @@ async function globalSetup(config: FullConfig) {
     // The app might redirect differently, so be flexible
     await Promise.race([
       page.waitForURL(/\/dashboard/, { timeout: 20000 }).catch(() => {}),
-      page.waitForURL(/\/auth\/callback/, { timeout: 20000 }).catch(() => {}),
-      page.waitForURL(url => !url.includes('/auth'), { timeout: 20000 }),
+      page.waitForURL(url => !url.includes('/login'), { timeout: 20000 }),
     ]);
 
     // Give it a moment to finish any redirects
