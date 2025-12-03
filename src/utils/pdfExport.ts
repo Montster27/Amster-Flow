@@ -29,24 +29,12 @@ export async function exportPdfFromElement(elementId: string, filename: string) 
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
   const imgWidth = pageWidth;
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
-  let heightLeft = imgHeight;
-  let position = 0;
-
-  // Add first page
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
-
-  // Add remaining pages if content overflows
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight; // Negative offset to show next section
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-  }
+  // Single-page export: fit all content width-wise, let height extend naturally
+  // PDF viewers will allow scrolling for long content
+  pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
   pdf.save(filename);
 }
