@@ -21,7 +21,8 @@ Pivot Kit helps entrepreneurs and startup teams systematically validate their bu
 - **Database**: Supabase (PostgreSQL with Row Level Security)
 - **Authentication**: Supabase Auth
 - **Error Tracking**: Sentry (optional)
-- **Testing**: Vitest + React Testing Library
+- **Testing**: Vitest + React Testing Library (unit), Playwright (E2E)
+- **PDF Export**: jsPDF + html2canvas
 - **UI Components**: Custom components with Tailwind
 
 ## ⚡ Quick Start
@@ -80,10 +81,13 @@ Open [http://localhost:3000](http://localhost:3000)
 | `npm run dev` | Start Vite dev server with HMR |
 | `npm run build` | TypeScript check + production build |
 | `npm run preview` | Preview production build locally |
-| `npm test` | Run tests in watch mode |
-| `npm run test:ui` | Interactive test UI |
-| `npm run test:coverage` | Generate coverage report |
-| `npm run test:run` | Run tests once (CI mode) |
+| `npm test` | Run unit tests in watch mode |
+| `npm run test:ui` | Interactive unit test UI |
+| `npm run test:coverage` | Generate unit test coverage report |
+| `npm run test:run` | Run unit tests once (CI mode) |
+| `npm run test:e2e` | Run E2E tests (local environment) |
+| `npm run test:e2e:preview` | Run E2E tests (preview deployment) |
+| `npm run test:e2e:prod` | Run E2E tests (production) |
 
 ## 🏗️ Project Structure
 
@@ -109,7 +113,9 @@ PivotKit/
 
 ## 🧪 Testing
 
-We use Vitest + React Testing Library for testing:
+### Unit Tests
+
+We use Vitest + React Testing Library for unit testing:
 
 ```bash
 # Run tests in watch mode
@@ -126,6 +132,29 @@ npm run test:coverage
 ```
 
 **Current Coverage**: 30%+ (authentication flows, core hooks)
+
+### End-to-End (E2E) Tests
+
+We use Playwright for comprehensive E2E testing across all environments:
+
+```bash
+# Run E2E tests locally
+npm run test:e2e
+
+# Run E2E tests on preview deployment
+npm run test:e2e:preview
+
+# Run E2E tests on production
+npm run test:e2e:prod
+```
+
+**Test Coverage**: 26 tests covering:
+- Authentication flows (5 tests)
+- Dashboard functionality (7 tests)
+- Navigation and routing (7 tests)
+- UI elements and accessibility (7 tests)
+
+For detailed E2E testing documentation, see [e2e/README.md](e2e/README.md)
 
 ## 🔒 Security
 
@@ -166,12 +195,13 @@ npm run test:coverage
 - Assumption tracking and validation
 - Pattern detection across interviews
 - Synthesis mode for finding insights
+- **PDF export** for comprehensive discovery reports
 
 ### Visual Sector Map
 - 5-step wizard for ecosystem mapping
 - Actor identification and relationship mapping
 - Pain points and opportunity annotations
-- Export to image/PDF
+- **PDF export** for sector map insights and analysis
 
 ### Pivot or Proceed
 - Easy and Detailed decision modes

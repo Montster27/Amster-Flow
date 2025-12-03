@@ -14,11 +14,12 @@ export async function exportPdfFromElement(elementId: string, filename: string) 
   // Give the browser a moment to paint hidden/off-screen content
   await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
+  // html2canvas options - scale improves PDF quality
   const canvas = await html2canvas(node, {
-    scale: 2,
+    scale: 2, // Higher scale = better quality
     useCORS: true,
     backgroundColor: '#ffffff',
-  });
+  } as any); // Type assertion needed due to outdated @types/html2canvas
 
   const imgData = canvas.toDataURL('image/png');
   const pdf = new jsPDF({
@@ -32,16 +33,19 @@ export async function exportPdfFromElement(elementId: string, filename: string) 
   const imgWidth = pageWidth;
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
+  let heightLeft = imgHeight;
   let position = 0;
-  let remainingHeight = imgHeight;
 
-  while (remainingHeight > 0) {
+  // Add first page
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  // Add remaining pages if content overflows
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight; // Negative offset to show next section
+    pdf.addPage();
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    remainingHeight -= pageHeight;
-    if (remainingHeight > 0) {
-      pdf.addPage();
-      position = 0;
-    }
+    heightLeft -= pageHeight;
   }
 
   pdf.save(filename);
