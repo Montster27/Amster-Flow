@@ -12,7 +12,7 @@ test.describe('Authentication', () => {
     await clearAuth(page);
   });
 
-  test('should login with valid credentials', async ({ page }) => {
+  test('should login with valid credentials @smoke @critical', async ({ page }) => {
     const user = getTestUser();
 
     // Navigate to login page
@@ -31,7 +31,7 @@ test.describe('Authentication', () => {
     await expect(page.locator('text=/dashboard|welcome/i')).toBeVisible({ timeout: 10000 });
   });
 
-  test('should show error with invalid credentials', async ({ page }) => {
+  test('should show error with invalid credentials @local @preview', async ({ page }) => {
     await page.goto('/');
 
     // Try to login with invalid credentials
