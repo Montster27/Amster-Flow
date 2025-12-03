@@ -12,6 +12,10 @@ import { EnhancedInterviews } from './EnhancedInterviews';
 import { DiscoveryDashboard } from './DiscoveryDashboard';
 import { seedPetFinderData, hasDiscoveryData } from '../../utils/seedPetFinderData';
 import type { Assumption, AssumptionStatus } from '../../types/discovery';
+import { ReportLayout } from '../reports/ReportLayout';
+import { ReportSection } from '../reports/ReportSection';
+import { MetricGrid } from '../reports/MetricGrid';
+import { exportPdfFromElement } from '../../utils/pdfExport';
 
 interface DiscoveryModuleProps {
   projectId?: string;
@@ -38,6 +42,16 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
 
   const { assumptions, interviews, addAssumption, deleteAssumption, linkAssumptionToActor, linkAssumptionToConnection } = useDiscovery();
   const { user } = useAuth();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const statusCounts = assumptions.reduce<Record<string, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topRiskAssumptions = [...assumptions]
+    .sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0))
+    .slice(0, 5);
 
   // Handle navigation context from Visual Sector Map (via URL parameters)
   useEffect(() => {
@@ -150,6 +164,18 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      setIsExporting(true);
+      await exportPdfFromElement('discovery-report-print', 'discovery-report.pdf');
+    } catch (error) {
+      console.error('Error exporting Discovery report', error);
+      alert('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleEditAssumption = (assumption: Assumption) => {
     setSelectedAssumption(assumption);
   };
@@ -214,13 +240,15 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
                   Assumptions-driven customer discovery with LBMC integration
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  New
-                </span>
-                <span className="text-sm text-gray-500">
-                  Enhanced discovery system
-                </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isExporting}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isExporting ? 'Exporting...' : 'Download PDF'}
+                </button>
+                <span className="text-sm text-gray-500">PDF export is print-optimized</span>
               </div>
             </div>
 
@@ -525,6 +553,112 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
         assumption={selectedAssumption}
         onClose={() => setSelectedAssumption(null)}
       />
+
+      {/* Hidden print-friendly report for PDF export */}
+      <div id="discovery-report-print" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <ReportLayout
+          title="Discovery Report"
+          subtitle="Assumptions, risks, and validation progress"
+          footerNote="Discovery summary · PivotKit"
+        >
+          <ReportSection title="Snapshot">
+            <MetricGrid
+              metrics={[
+                { label: 'Total assumptions', value: assumptions.length || 0 },
+                { label: 'Validated', value: statusCounts.validated || 0, tone: 'success' },
+                { label: 'Testing', value: statusCounts.testing || 0, tone: 'warning' },
+                { label: 'Invalidated', value: statusCounts.invalidated || 0, tone: 'danger' },
+                { label: 'Untested', value: statusCounts.untested || 0 },
+                { label: 'Interviews linked', value: interviews.length || 0 },
+              ]}
+            />
+          </ReportSection>
+
+          <ReportSection
+            title="Top Risks"
+            description="Highest risk assumptions ranked by risk score"
+          >
+            {topRiskAssumptions.length === 0 ? (
+              <p style={{ fontSize: 12, color: '#6b7280' }}>No assumptions yet.</p>
+            ) : (
+              <ul style={{ padding: 0, margin: 0, listStyle: 'none' }}>
+                {topRiskAssumptions.map((assumption, idx) => (
+                  <li
+                    key={assumption.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: 8,
+                      marginBottom: 8,
+                      background: '#f9fafb',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, color: '#111827' }}>
+                        {idx + 1}. {assumption.canvasArea?.replace(/([A-Z])/g, ' $1').trim() || 'Assumption'}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#991b1b', fontWeight: 700 }}>
+                        Risk {assumption.riskScore ?? 0}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#374151', lineHeight: 1.4 }}>
+                      {assumption.description}
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280' }}>
+                      Priority: {assumption.priority} · Status: {assumption.status}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ReportSection>
+
+          <ReportSection
+            title="Assumptions Appendix"
+            description="Full list with status and priority"
+          >
+            {assumptions.length === 0 ? (
+              <p style={{ fontSize: 12, color: '#6b7280' }}>No assumptions yet.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    {['Description', 'Canvas Area', 'Status', 'Priority', 'Risk'].map((heading) => (
+                      <th
+                        key={heading}
+                        style={{
+                          textAlign: 'left',
+                          borderBottom: '1px solid #e5e7eb',
+                          padding: '6px 4px',
+                          color: '#374151',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {assumptions.map((assumption) => (
+                    <tr key={assumption.id} style={{ pageBreakInside: 'avoid' }}>
+                      <td style={{ padding: '6px 4px', color: '#111827', lineHeight: 1.4 }}>
+                        {assumption.description}
+                      </td>
+                      <td style={{ padding: '6px 4px', color: '#4b5563' }}>
+                        {assumption.canvasArea?.replace(/([A-Z])/g, ' $1').trim() || '-'}
+                      </td>
+                      <td style={{ padding: '6px 4px', color: '#4b5563' }}>{assumption.status}</td>
+                      <td style={{ padding: '6px 4px', color: '#4b5563' }}>{assumption.priority}</td>
+                      <td style={{ padding: '6px 4px', color: '#991b1b' }}>{assumption.riskScore ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </ReportSection>
+        </ReportLayout>
+      </div>
     </div>
   );
 }

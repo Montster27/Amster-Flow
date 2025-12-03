@@ -8,7 +8,8 @@ const useHttps = fs.existsSync('./localhost+2-key.pem') && fs.existsSync('./loca
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    port: 3001,
+    host: '0.0.0.0',
     https: useHttps ? {
       key: fs.readFileSync('./localhost+2-key.pem'),
       cert: fs.readFileSync('./localhost+2.pem'),

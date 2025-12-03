@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
 import {
   LayerType,
@@ -5,12 +6,17 @@ import {
   LAYER_DESCRIPTIONS,
 } from '../../types/visualSectorMap';
 import { VisualCanvas } from './VisualCanvas';
+import { exportPdfFromElement } from '../../utils/pdfExport';
+import { ReportLayout } from '../reports/ReportLayout';
+import { ReportSection } from '../reports/ReportSection';
+import { MetricGrid } from '../reports/MetricGrid';
 
 interface InsightsSummaryProps {
   onBack: () => void;
 }
 
 export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
+  const [isExporting, setIsExporting] = useState(false);
   const {
     scope,
     actors,
@@ -18,7 +24,6 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
     annotations,
     activeLayers,
     toggleLayer,
-    exportData,
   } = useVisualSectorMap();
 
   const layers: LayerType[] = ['value', 'information', 'regulation'];
@@ -39,14 +44,16 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
     .sort((a, b) => b.connections - a.connections)
     .slice(0, 3);
 
-  const handleExportJSON = () => {
-    const data = exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sector-map-${scope.sector.toLowerCase().replace(/\s+/g, '-')}.json`;
-    a.click();
+  const handleDownloadPdf = async () => {
+    try {
+      setIsExporting(true);
+      await exportPdfFromElement('sector-map-report-print', 'sector-map-report.pdf');
+    } catch (error) {
+      console.error('Error exporting Sector Map PDF', error);
+      alert('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -200,25 +207,15 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Export Options:</h3>
             <div className="space-y-2">
               <button
-                onClick={handleExportJSON}
-                className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg"
+                onClick={handleDownloadPdf}
+                disabled={isExporting}
+                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                📄 Export as JSON
+                {isExporting ? 'Exporting PDF...' : 'Download PDF'}
               </button>
-              <button
-                className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-300 rounded-lg text-sm font-medium cursor-not-allowed text-gray-500"
-                disabled
-                title="Coming soon"
-              >
-                🖼️ Export as Image (Soon)
-              </button>
-              <button
-                className="w-full px-4 py-3 bg-gray-200 border-2 border-gray-300 rounded-lg text-sm font-medium cursor-not-allowed text-gray-500"
-                disabled
-                title="Coming soon"
-              >
-                📑 Export as PDF (Soon)
-              </button>
+              <p className="text-xs text-gray-500 text-center">
+                PDF includes scope, insights, key stats, and a snapshot-ready layout.
+              </p>
             </div>
           </div>
         </div>
@@ -241,6 +238,115 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
           showConnections={true}
           readOnly={true}
         />
+      </div>
+
+      {/* Hidden print-friendly report for PDF export */}
+      <div id="sector-map-report-print" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <ReportLayout
+          title="Sector Map Report"
+          subtitle={scope?.question || 'Sector mapping insights'}
+          footerNote="Sector map summary · PivotKit"
+        >
+          <ReportSection title="Snapshot">
+            <MetricGrid
+              metrics={[
+                { label: 'Actors', value: actors.length },
+                { label: 'Connections', value: connections.length },
+                { label: 'Pain points', value: painPoints.length, tone: 'danger' },
+                { label: 'Opportunities', value: opportunities.length, tone: 'success' },
+                { label: 'Needs interview', value: needsInterview.length, tone: 'warning' },
+              ]}
+            />
+          </ReportSection>
+
+          <ReportSection title="Top Actors" description="Most connected actors">
+            {topActors.length === 0 ? (
+              <p style={{ fontSize: 12, color: '#6b7280' }}>No actors yet.</p>
+            ) : (
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                {topActors.map(({ actor, connections: count }) => (
+                  <li
+                    key={actor.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: 8,
+                      marginBottom: 8,
+                      background: '#f9fafb',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong style={{ color: '#111827' }}>{actor.name}</strong>
+                      <span style={{ fontSize: 12, color: '#4b5563' }}>{count} connections</span>
+                    </div>
+                    {actor.description && (
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#374151' }}>
+                        {actor.description}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ReportSection>
+
+          <ReportSection title="Key Insights">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecdd3', borderRadius: 8, padding: 8 }}>
+                <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#991b1b', fontSize: 12 }}>Pain Points</p>
+                {painPoints.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>None captured.</p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 16, color: '#991b1b', fontSize: 12 }}>
+                    {painPoints.slice(0, 5).map((ann) => (
+                      <li key={ann.id}>{ann.content}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div style={{ background: '#ecfdf3', border: '1px solid #bbf7d0', borderRadius: 8, padding: 8 }}>
+                <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#166534', fontSize: 12 }}>Opportunities</p>
+                {opportunities.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>None captured.</p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 16, color: '#166534', fontSize: 12 }}>
+                    {opportunities.slice(0, 5).map((ann) => (
+                      <li key={ann.id}>{ann.content}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </ReportSection>
+
+          <ReportSection
+            title="Validation Needs"
+            description="Items marked as needing interviews"
+          >
+            {needsInterview.length === 0 ? (
+              <p style={{ fontSize: 12, color: '#6b7280' }}>No pending interviews.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 16, color: '#92400e', fontSize: 12 }}>
+                {needsInterview.slice(0, 10).map((ann) => (
+                  <li key={ann.id}>{ann.content}</li>
+                ))}
+              </ul>
+            )}
+          </ReportSection>
+
+          <ReportSection
+            title="Layers"
+            description="Visibility of value/information/regulation layers"
+          >
+            <ul style={{ margin: 0, paddingLeft: 16, color: '#374151', fontSize: 12 }}>
+              {layers.map((layer) => (
+                <li key={layer}>
+                  {LAYER_LABELS[layer]} — {activeLayers.includes(layer) ? 'On' : 'Off'}
+                </li>
+              ))}
+            </ul>
+          </ReportSection>
+        </ReportLayout>
       </div>
     </div>
   );
