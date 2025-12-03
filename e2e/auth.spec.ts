@@ -7,6 +7,8 @@ import { login, logout, clearAuth, getTestUser } from './fixtures/auth';
  */
 
 test.describe('Authentication', () => {
+  // Note: These tests need to clear auth to test login flow
+  // Other tests use the saved authentication from global-setup
   test.beforeEach(async ({ page }) => {
     // Clear auth state before each test
     await clearAuth(page);

@@ -108,25 +108,32 @@ export async function ensureLoggedIn(page: Page) {
 
 /**
  * Clear all browser storage (cookies, localStorage, sessionStorage)
- * Useful for ensuring clean state between tests
+ * Useful for ensuring clean state between authentication tests
+ *
+ * NOTE: Most tests don't need this - they use the saved authenticated session
+ * from global-setup. Only auth tests need to clear state.
  */
 export async function clearAuth(page: Page) {
+  // Clear cookies first
   await page.context().clearCookies();
-  // Navigate to app first to ensure localStorage is accessible
-  // Catch errors if page hasn't loaded yet (about:blank)
+
+  // Navigate to app to ensure we're on a valid page
+  // Use waitUntil: 'domcontentloaded' for faster navigation
   try {
-    await page.goto('/');
-  } catch {
-    // Ignore navigation errors
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+  } catch (error) {
+    console.warn('Navigation failed during clearAuth, continuing anyway');
   }
 
-  // Now safe to clear storage
+  // Clear storage - wrap in try-catch for safety
   await page.evaluate(() => {
     try {
       localStorage.clear();
       sessionStorage.clear();
-    } catch {
-      // Ignore storage access errors
+    } catch (e) {
+      // Silently ignore - might be in a context where storage isn't available
     }
+  }).catch(() => {
+    // Ignore evaluate errors
   });
 }

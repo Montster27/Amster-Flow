@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { ensureLoggedIn } from './fixtures/auth';
 import { navigateToPivot, waitForSave } from './fixtures/test-data';
 
 /**
@@ -10,13 +9,13 @@ import { navigateToPivot, waitForSave } from './fixtures/test-data';
  * - Review Progress Summary
  * - Answer Reflection questions
  * - Make pivot/proceed decision
+ *
+ * NOTE: These tests use the saved authenticated session from global-setup
+ * No need to login manually - all tests start already authenticated
  */
 
 test.describe('Pivot Analysis', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure user is logged in before each test
-    await ensureLoggedIn(page);
-  });
+  // No beforeEach needed - tests use saved authentication from global-setup
 
   test('should navigate to Pivot module', async ({ page }) => {
     await navigateToPivot(page);
