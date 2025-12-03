@@ -18,7 +18,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Navigate to login page
-    await page.goto('/auth');
+    await page.goto('/login');
 
     // Verify we're on login page
     await expect(page.locator('input[type="email"]')).toBeVisible();
@@ -34,16 +34,16 @@ test.describe('Authentication', () => {
   });
 
   test('should show error with invalid credentials @local @preview', async ({ page }) => {
-    await page.goto('/auth');
+    await page.goto('/login');
 
     // Try to login with invalid credentials
     await page.fill('input[type="email"]', 'invalid@example.com');
     await page.fill('input[type="password"]', 'wrongpassword');
     await page.click('button[type="submit"]');
 
-    // Should remain on auth page
+    // Should remain on login page
     await page.waitForTimeout(2000);
-    await expect(page).toHaveURL(/\/auth/);
+    await expect(page).toHaveURL(/\/login/);
 
     // Should show error message (Supabase Auth UI shows error)
     // Note: Exact error message depends on Supabase Auth UI configuration
@@ -54,7 +54,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Login first
-    await page.goto('/auth');
+    await page.goto('/login');
     await login(page, user.email, user.password);
 
     // Verify logged in
@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
     await logout(page);
 
     // Verify logged out - should be on login page
-    await expect(page).toHaveURL(/\/auth/);
+    await expect(page).toHaveURL(/\/login/);
     await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 
@@ -72,7 +72,7 @@ test.describe('Authentication', () => {
     const user = getTestUser();
 
     // Login
-    await page.goto('/auth');
+    await page.goto('/login');
     await login(page, user.email, user.password);
 
     // Verify logged in
@@ -93,8 +93,8 @@ test.describe('Authentication', () => {
     // Try to access protected route
     await page.goto('/dashboard');
 
-    // Should redirect to auth/login page
-    await page.waitForURL(/\/auth/, { timeout: 10000 });
+    // Should redirect to login page
+    await page.waitForURL(/\/login/, { timeout: 10000 });
     await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 });
