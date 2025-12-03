@@ -80,8 +80,8 @@ export async function logout(page: Page) {
   // Look for logout button (adjust selector based on your UI)
   await page.click('button:has-text("Log out"), button:has-text("Logout"), button:has-text("Sign out")');
 
-  // Wait for redirect to landing/login page
-  await page.waitForURL('/', { timeout: 10000 });
+  // Wait for redirect to login page
+  await page.waitForURL('/login', { timeout: 10000 });
 
   // Verify we're logged out
   await expect(page.locator('input[type="email"]')).toBeVisible();

@@ -29,8 +29,8 @@ test.describe('Authentication', () => {
     // Verify successful login - should be on dashboard
     await expect(page).toHaveURL(/\/dashboard/);
 
-    // Verify dashboard content is visible
-    await expect(page.locator('text=/dashboard|welcome|project/i')).toBeVisible({ timeout: 10000 });
+    // Verify dashboard content is visible - use first() to avoid strict mode violation
+    await expect(page.locator('text=/project/i').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show error with invalid credentials @local @preview', async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe('Authentication', () => {
 
     // Should still be logged in
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.locator('text=/dashboard|welcome|project/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/project/i').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should redirect to login when accessing protected route while logged out', async ({ page }) => {
