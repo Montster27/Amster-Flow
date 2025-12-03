@@ -117,10 +117,10 @@ export async function clearAuth(page: Page) {
   // Clear cookies first
   await page.context().clearCookies();
 
-  // Navigate to app to ensure we're on a valid page
+  // Navigate to auth page to ensure we're on a valid page
   // Use waitUntil: 'domcontentloaded' for faster navigation
   try {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/auth', { waitUntil: 'domcontentloaded' });
   } catch (error) {
     console.warn('Navigation failed during clearAuth, continuing anyway');
   }
