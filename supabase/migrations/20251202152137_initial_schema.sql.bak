@@ -1,0 +1,2920 @@
+Initialising login role...
+Dumping schemas from remote database...
+
+
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."audit_organization_members"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  BEGIN
+    IF TG_OP = 'INSERT' THEN
+      -- Log member addition
+      PERFORM log_member_event(
+        'member.added',
+        auth.uid(),
+        NEW.user_id,
+        NEW.organization_id,
+        jsonb_build_object('role', NEW.role)
+      );
+    ELSIF TG_OP = 'UPDATE' AND OLD.role != NEW.role THEN
+      -- Log role change
+      PERFORM log_member_event(
+        'member.role_changed',
+        auth.uid(),
+        NEW.user_id,
+        NEW.organization_id,
+        jsonb_build_object(
+          'old_role', OLD.role,
+          'new_role', NEW.role
+        )
+      );
+    ELSIF TG_OP = 'DELETE' THEN
+      -- Log member removal
+      PERFORM log_member_event(
+        'member.removed',
+        auth.uid(),
+        OLD.user_id,
+        OLD.organization_id,
+        jsonb_build_object('role', OLD.role)
+      );
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."audit_organization_members"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."auto_join_new_users_to_project"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_target_org_id UUID;
+  v_user_org_id UUID;
+  v_user_org_name TEXT;
+BEGIN
+  -- 1. Create user's OWN organization first
+  v_user_org_name := COALESCE(
+    split_part(NEW.email, '@', 1) || '''s Team',
+    'My Team'
+  );
+
+  -- Check if user already has an organization they created
+  SELECT id INTO v_user_org_id
+  FROM organizations
+  WHERE created_by = NEW.id
+  LIMIT 1;
+
+  -- If not, create one
+  IF v_user_org_id IS NULL THEN
+    INSERT INTO organizations (name, created_by)
+    VALUES (v_user_org_name, NEW.id)
+    RETURNING id INTO v_user_org_id;
+
+    -- Add user as owner of their own org
+    INSERT INTO organization_members (organization_id, user_id, role)
+    VALUES (v_user_org_id, NEW.id, 'owner')
+    ON CONFLICT (organization_id, user_id) DO NOTHING;
+
+    RAISE NOTICE 'Created organization "%" for user %', v_user_org_name, NEW.email;
+  END IF;
+
+  -- 2. Find and join "Walking on the Sun" project as viewer
+  SELECT p.organization_id INTO v_target_org_id
+  FROM projects p
+  WHERE p.name ILIKE '%walking%sun%'
+  LIMIT 1;
+
+  -- Add user as viewer to Walking on the Sun org (if it exists)
+  IF v_target_org_id IS NOT NULL THEN
+    INSERT INTO organization_members (organization_id, user_id, role)
+    VALUES (v_target_org_id, NEW.id, 'viewer')
+    ON CONFLICT (organization_id, user_id) DO NOTHING;
+
+    RAISE NOTICE 'Auto-added user % as viewer to Walking on the Sun project', NEW.email;
+  ELSE
+    RAISE NOTICE 'Walking on the Sun project not found - skipping auto-join for user %', NEW.email;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."auto_join_new_users_to_project"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."calculate_risk_score"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- Only calculate if both confidence and importance are set
+  IF NEW.confidence IS NOT NULL AND NEW.importance IS NOT NULL THEN
+    NEW.risk_score := (6 - NEW.confidence) * NEW.importance;
+
+    -- Auto-set priority based on risk score
+    IF NEW.risk_score >= 15 THEN
+      NEW.priority := 'high';    -- Risk score 15-25 (very risky)
+    ELSIF NEW.risk_score >= 8 THEN
+      NEW.priority := 'medium';  -- Risk score 8-14 (moderate risk)
+    ELSE
+      NEW.priority := 'low';     -- Risk score 1-7 (low risk)
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."calculate_risk_score"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_deleted_projects"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- Note: Projects table does not support soft-delete (no is_deleted column)
+  -- Projects are permanently deleted immediately via CASCADE
+  -- This function is a placeholder for future soft-delete implementation
+  RETURN 0;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_deleted_projects"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_inactive_user_data"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_deleted_count INTEGER := 0;
+  v_inactive_user_ids UUID[];
+BEGIN
+  -- Find users who haven't logged in for over 1 year
+  -- (based on last audit log entry)
+  SELECT ARRAY_AGG(DISTINCT user_id) INTO v_inactive_user_ids
+  FROM (
+    SELECT user_id, MAX(created_at) as last_activity
+    FROM audit_log
+    WHERE user_id IS NOT NULL
+    GROUP BY user_id
+    HAVING MAX(created_at) < NOW() - INTERVAL '365 days'
+  ) inactive_users;
+
+  IF v_inactive_user_ids IS NULL OR array_length(v_inactive_user_ids, 1) IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  -- Clean up user preferences for inactive users
+  DELETE FROM user_interview_preferences WHERE user_id = ANY(v_inactive_user_ids);
+  DELETE FROM user_dismissed_templates WHERE user_id = ANY(v_inactive_user_ids);
+
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+  RETURN v_deleted_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_inactive_user_data"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_old_anonymous_logs"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_deleted_count INTEGER := 0;
+BEGIN
+  -- Delete anonymized logs (where user_email contains 'deleted-user') older than 1 year
+  DELETE FROM audit_log
+  WHERE created_at < NOW() - INTERVAL '365 days'
+  AND user_email LIKE '%deleted-user%';
+
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+  RETURN v_deleted_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_old_anonymous_logs"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_old_audit_logs"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  DECLARE
+    v_deleted_count INTEGER;
+  BEGIN
+    DELETE FROM audit_log
+    WHERE created_at < NOW() - INTERVAL '90 days'
+    AND event_type NOT IN ('member.role_changed', 'organization.deleted'); -- Keep critical events longer
+
+    GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+    RETURN v_deleted_count;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."cleanup_old_audit_logs"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_user_account"("p_user_id" "uuid" DEFAULT NULL::"uuid", "p_confirmation_email" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_user_id UUID;
+  v_user_email TEXT;
+  v_deleted_count INTEGER := 0;
+  v_result JSONB;
+BEGIN
+  -- Use provided user_id or default to current user
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  -- Get user email
+  SELECT email INTO v_user_email
+  FROM profiles
+  WHERE id = v_user_id;
+
+  -- Only allow users to delete their own account (unless admin)
+  IF v_user_id != auth.uid() AND NOT is_admin() THEN
+    RAISE EXCEPTION 'Unauthorized: You can only delete your own account';
+  END IF;
+
+  -- Verify email confirmation if provided
+  IF p_confirmation_email IS NOT NULL AND p_confirmation_email != v_user_email THEN
+    RAISE EXCEPTION 'Email confirmation does not match';
+  END IF;
+
+  -- Check if user is the sole owner of any organizations
+  IF EXISTS (
+    SELECT 1
+    FROM organization_members om1
+    WHERE om1.user_id = v_user_id
+    AND om1.role = 'owner'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM organization_members om2
+      WHERE om2.organization_id = om1.organization_id
+      AND om2.user_id != v_user_id
+      AND om2.role = 'owner'
+    )
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete account: You are the sole owner of one or more organizations. Please transfer ownership or delete the organizations first.';
+  END IF;
+
+  -- Log the deletion request before deleting
+  PERFORM log_auth_event(
+    'auth.account_deletion',
+    v_user_id,
+    v_user_email,
+    TRUE,
+    NULL,
+    jsonb_build_object('deletion_requested_at', NOW())
+  );
+
+  -- Delete user data in reverse dependency order
+
+  -- Delete interview assumption tags
+  DELETE FROM interview_assumption_tags
+  WHERE interview_id IN (
+    SELECT id FROM project_interviews_enhanced
+    WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id)
+  );
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+  -- Delete interview synthesis
+  DELETE FROM interview_synthesis
+  WHERE interview_id IN (
+    SELECT id FROM project_interviews_enhanced
+    WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id)
+  );
+
+  -- Delete interviews
+  DELETE FROM project_interviews_enhanced
+  WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+
+  -- Delete assumptions
+  DELETE FROM project_assumptions
+  WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+
+  -- Delete iterations
+  DELETE FROM project_iterations
+  WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+
+  -- Delete other project-related data
+  DELETE FROM project_competitors WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_decision_makers WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_first_target WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_module_completion WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_modules WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_pivot_decisions WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+  DELETE FROM project_visual_sector_map WHERE project_id IN (SELECT id FROM projects WHERE created_by = v_user_id);
+
+  -- Delete projects created by user
+  DELETE FROM projects WHERE created_by = v_user_id;
+
+  -- Delete user preferences
+  DELETE FROM user_interview_preferences WHERE user_id = v_user_id;
+  DELETE FROM user_dismissed_templates WHERE user_id = v_user_id;
+
+  -- Remove user from organizations (but don't delete the orgs)
+  DELETE FROM organization_members WHERE user_id = v_user_id;
+
+  -- Anonymize audit logs (keep for compliance but remove PII)
+  UPDATE audit_log
+  SET user_email = 'deleted-user@amsterflow.local',
+      metadata = metadata || jsonb_build_object('user_deleted', true)
+  WHERE user_id = v_user_id;
+
+  -- Delete profile
+  DELETE FROM profiles WHERE id = v_user_id;
+
+  -- Note: auth.users deletion must be done via Supabase Admin API
+  -- We don't have permission to delete from auth schema directly
+
+  v_result := jsonb_build_object(
+    'success', true,
+    'user_id', v_user_id,
+    'email', v_user_email,
+    'deleted_at', NOW(),
+    'message', 'Account data deleted successfully. Your authentication record will be removed within 24 hours.'
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_user_account"("p_user_id" "uuid", "p_confirmation_email" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."export_user_data"("p_user_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_user_id UUID;
+  v_result JSONB;
+  v_profile JSONB;
+  v_organizations JSONB;
+  v_projects JSONB;
+  v_assumptions JSONB;
+  v_interviews JSONB;
+  v_iterations JSONB;
+  v_audit_logs JSONB;
+BEGIN
+  -- Use provided user_id or default to current user
+  v_user_id := COALESCE(p_user_id, auth.uid());
+
+  -- Only allow users to export their own data (unless admin)
+  IF v_user_id != auth.uid() AND NOT is_admin() THEN
+    RAISE EXCEPTION 'Unauthorized: You can only export your own data';
+  END IF;
+
+  -- Get profile data
+  SELECT jsonb_build_object(
+    'id', id,
+    'email', email,
+    'full_name', full_name,
+    'affiliation', affiliation,
+    'created_at', created_at,
+    'updated_at', updated_at
+  ) INTO v_profile
+  FROM profiles
+  WHERE id = v_user_id;
+
+  -- Get organizations (member of)
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'organization_id', om.organization_id,
+    'organization_name', o.name,
+    'role', om.role,
+    'joined_at', om.joined_at
+  )), '[]'::jsonb) INTO v_organizations
+  FROM organization_members om
+  JOIN organizations o ON o.id = om.organization_id
+  WHERE om.user_id = v_user_id;
+
+  -- Get projects (that user has access to)
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id', p.id,
+    'name', p.name,
+    'description', p.description,
+    'organization_id', p.organization_id,
+    'created_at', p.created_at,
+    'updated_at', p.updated_at
+  )), '[]'::jsonb) INTO v_projects
+  FROM projects p
+  WHERE p.created_by = v_user_id
+  OR p.organization_id IN (
+    SELECT organization_id FROM organization_members WHERE user_id = v_user_id
+  );
+
+  -- Get assumptions from user's projects
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'project_id', pa.project_id,
+    'type', pa.type,
+    'description', pa.description,
+    'status', pa.status,
+    'confidence', pa.confidence,
+    'evidence', pa.evidence,
+    'created_at', pa.created_at,
+    'updated_at', pa.updated_at
+  )), '[]'::jsonb) INTO v_assumptions
+  FROM project_assumptions pa
+  WHERE pa.project_id IN (
+    SELECT id FROM projects WHERE created_by = v_user_id
+    OR organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = v_user_id)
+  );
+
+  -- Get interviews from user's projects
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'project_id', pi.project_id,
+    'interview_date', pi.interview_date,
+    'segment_name', pi.segment_name,
+    'interviewee_type', pi.interviewee_type,
+    'context', pi.context,
+    'main_pain_points', pi.main_pain_points,
+    'current_alternatives', pi.current_alternatives,
+    'memorable_quotes', pi.memorable_quotes,
+    'surprising_feedback', pi.surprising_feedback,
+    'student_reflection', pi.student_reflection,
+    'status', pi.status,
+    'created_at', pi.created_at
+  )), '[]'::jsonb) INTO v_interviews
+  FROM project_interviews_enhanced pi
+  WHERE pi.project_id IN (
+    SELECT id FROM projects WHERE created_by = v_user_id
+    OR organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = v_user_id)
+  );
+
+  -- Get iterations from user's projects
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'project_id', pit.project_id,
+    'version', pit.version,
+    'date', pit.date,
+    'changes', pit.changes,
+    'reasoning', pit.reasoning,
+    'assumptions_affected', pit.assumptions_affected,
+    'created_at', pit.created_at
+  )), '[]'::jsonb) INTO v_iterations
+  FROM project_iterations pit
+  WHERE pit.project_id IN (
+    SELECT id FROM projects WHERE created_by = v_user_id
+    OR organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = v_user_id)
+  );
+
+  -- Get audit logs (user's own activities)
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'event_type', al.event_type,
+    'created_at', al.created_at,
+    'success', al.success,
+    'metadata', al.metadata
+  )), '[]'::jsonb) INTO v_audit_logs
+  FROM (
+    SELECT event_type, created_at, success, metadata
+    FROM audit_log
+    WHERE user_id = v_user_id
+    ORDER BY created_at DESC
+    LIMIT 100
+  ) al;
+
+  -- Build final result
+  v_result := jsonb_build_object(
+    'export_date', NOW(),
+    'user_id', v_user_id,
+    'profile', v_profile,
+    'organizations', v_organizations,
+    'projects', v_projects,
+    'assumptions', v_assumptions,
+    'interviews', v_interviews,
+    'iterations', v_iterations,
+    'audit_logs', v_audit_logs
+  );
+
+  -- Log the export in audit trail
+  PERFORM log_auth_event(
+    'auth.data_export',
+    v_user_id,
+    (SELECT email FROM profiles WHERE id = v_user_id),
+    TRUE,
+    NULL,
+    jsonb_build_object('export_size_kb', octet_length(v_result::text) / 1024)
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."export_user_data"("p_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_by_email"("user_email" "text") RETURNS TABLE("id" "uuid", "email" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  BEGIN
+    RETURN QUERY
+    SELECT
+      au.id,
+      au.email::TEXT
+    FROM auth.users au
+    WHERE au.email = user_email
+    LIMIT 1;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."get_user_by_email"("user_email" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user_subscription"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+  BEGIN
+    INSERT INTO public.newsletter_subscribers (email, status)
+    VALUES (NEW.email, 'subscribed')
+    ON CONFLICT (email) DO NOTHING;
+    RETURN NEW;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."handle_new_user_subscription"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."invite_user_to_organization"("p_organization_id" "uuid", "p_user_email" "text", "p_role" "text") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_user_id UUID;
+  v_profile_exists BOOLEAN;
+  v_member_exists BOOLEAN;
+  v_result JSON;
+BEGIN
+  -- Check if user exists in auth.users
+  SELECT id INTO v_user_id
+  FROM auth.users
+  WHERE email = p_user_email
+  LIMIT 1;
+
+  IF v_user_id IS NULL THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'No user found with this email. They need to sign up first.'
+    );
+  END IF;
+
+  -- Check if profile exists
+  SELECT EXISTS(
+    SELECT 1 FROM profiles WHERE id = v_user_id
+  ) INTO v_profile_exists;
+
+  -- Create profile if it doesn't exist
+  IF NOT v_profile_exists THEN
+    INSERT INTO profiles (id, email)
+    VALUES (v_user_id, p_user_email)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  -- Check if already a member
+  SELECT EXISTS(
+    SELECT 1 FROM organization_members
+    WHERE organization_id = p_organization_id
+    AND user_id = v_user_id
+  ) INTO v_member_exists;
+
+  IF v_member_exists THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'This user is already a member of this organization.'
+    );
+  END IF;
+
+  -- Add user to organization
+  INSERT INTO organization_members (organization_id, user_id, role)
+  VALUES (p_organization_id, v_user_id, p_role);
+
+  -- Return success with user info
+  RETURN json_build_object(
+    'success', true,
+    'user_id', v_user_id,
+    'email', p_user_email
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."invite_user_to_organization"("p_organization_id" "uuid", "p_user_email" "text", "p_role" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND is_admin = true
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_organization_creator"("org_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM organizations
+    WHERE id = org_id
+    AND created_by = auth.uid()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_organization_creator"("org_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_organization_member"("org_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM organization_members
+    WHERE organization_id = org_id
+    AND user_id = auth.uid()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_organization_member"("org_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_organization_owner"("org_id" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM organization_members
+    WHERE organization_id = org_id
+    AND user_id = auth.uid()
+    AND role = 'owner'
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_organization_owner"("org_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."log_auth_event"("p_event_type" "text", "p_user_id" "uuid", "p_user_email" "text", "p_success" boolean DEFAULT true, "p_error_message" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  DECLARE
+    v_log_id UUID;
+  BEGIN
+    INSERT INTO audit_log (
+      event_type,
+      user_id,
+      user_email,
+      success,
+      error_message,
+      metadata
+    ) VALUES (
+      p_event_type,
+      p_user_id,
+      p_user_email,
+      p_success,
+      p_error_message,
+      p_metadata
+    )
+    RETURNING id INTO v_log_id;
+
+    RETURN v_log_id;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."log_auth_event"("p_event_type" "text", "p_user_id" "uuid", "p_user_email" "text", "p_success" boolean, "p_error_message" "text", "p_metadata" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."log_member_event"("p_event_type" "text", "p_user_id" "uuid", "p_target_user_id" "uuid", "p_organization_id" "uuid", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  DECLARE
+    v_log_id UUID;
+    v_user_email TEXT;
+  BEGIN
+    -- Get user email
+    SELECT email INTO v_user_email
+    FROM auth.users
+    WHERE id = p_user_id;
+
+    INSERT INTO audit_log (
+      event_type,
+      user_id,
+      user_email,
+      target_user_id,
+      target_organization_id,
+      metadata
+    ) VALUES (
+      p_event_type,
+      p_user_id,
+      v_user_email,
+      p_target_user_id,
+      p_organization_id,
+      p_metadata
+    )
+    RETURNING id INTO v_log_id;
+
+    RETURN v_log_id;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."log_member_event"("p_event_type" "text", "p_user_id" "uuid", "p_target_user_id" "uuid", "p_organization_id" "uuid", "p_metadata" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."prevent_old_interview_inserts"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+  BEGIN
+    RAISE EXCEPTION 'project_interviews table is deprecated. Use project_interviews_enhanced instead.';
+    RETURN NULL;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."prevent_old_interview_inserts"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."run_data_retention_cleanup"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_projects_deleted INTEGER;
+  v_audit_logs_deleted INTEGER;
+  v_old_audit_logs_deleted INTEGER;
+  v_user_data_deleted INTEGER;
+  v_result JSONB;
+BEGIN
+  -- Run all cleanup functions
+  SELECT cleanup_deleted_projects() INTO v_projects_deleted;
+  SELECT cleanup_old_audit_logs() INTO v_audit_logs_deleted;
+  SELECT cleanup_old_anonymous_logs() INTO v_old_audit_logs_deleted;
+  SELECT cleanup_inactive_user_data() INTO v_user_data_deleted;
+
+  -- Build result summary
+  v_result := jsonb_build_object(
+    'timestamp', NOW(),
+    'projects_deleted', v_projects_deleted,
+    'audit_logs_cleaned', v_audit_logs_deleted,
+    'old_anonymous_logs_cleaned', v_old_audit_logs_deleted,
+    'inactive_user_data_cleaned', v_user_data_deleted,
+    'total_records_cleaned',
+      v_projects_deleted + v_audit_logs_deleted + v_old_audit_logs_deleted + v_user_data_deleted
+  );
+
+  -- Log the cleanup in audit trail (for transparency)
+  IF (v_projects_deleted + v_audit_logs_deleted + v_old_audit_logs_deleted + v_user_data_deleted) > 0 THEN
+    INSERT INTO audit_log (
+      event_type,
+      user_id,
+      user_email,
+      metadata,
+      success
+    ) VALUES (
+      'system.data_retention_cleanup',
+      NULL,
+      'system@amsterflow.local',
+      v_result,
+      TRUE
+    );
+  END IF;
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."run_data_retention_cleanup"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_assumption_interview_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- When a new assumption tag is added
+  IF (TG_OP = 'INSERT') THEN
+    UPDATE project_assumptions
+    SET
+      interview_count = COALESCE(interview_count, 0) + 1,
+      last_tested_date = (
+        SELECT MAX(interview_date)
+        FROM project_interviews_enhanced
+        WHERE id = NEW.interview_id
+      )
+    WHERE id = NEW.assumption_id;
+
+  -- When an assumption tag is deleted
+  ELSIF (TG_OP = 'DELETE') THEN
+    UPDATE project_assumptions
+    SET
+      interview_count = GREATEST(COALESCE(interview_count, 0) - 1, 0),
+      last_tested_date = (
+        SELECT MAX(pie.interview_date)
+        FROM interview_assumption_tags iat
+        JOIN project_interviews_enhanced pie ON iat.interview_id = pie.id
+        WHERE iat.assumption_id = OLD.assumption_id
+        AND iat.id != OLD.id
+      )
+    WHERE id = OLD.assumption_id;
+  END IF;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_assumption_interview_count"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_pivot_decisions_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_pivot_decisions_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+  BEGIN
+      NEW.updated_at = NOW();
+      RETURN NEW;
+  END;
+  $$;
+
+
+ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."user_can_access_project"("project_uuid" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM projects p
+    JOIN organization_members om ON om.organization_id = p.organization_id
+    WHERE p.id = project_uuid
+    AND om.user_id = auth.uid()
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."user_can_access_project"("project_uuid" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."user_can_edit_project"("project_uuid" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN (
+    -- Admins can edit everything
+    is_admin()
+    OR
+    -- Editors and owners can edit
+    EXISTS (
+      SELECT 1 FROM projects p
+      INNER JOIN organization_members om ON p.organization_id = om.organization_id
+      WHERE p.id = project_uuid
+      AND om.user_id = auth.uid()
+      AND om.role IN ('owner', 'editor')
+    )
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."user_can_edit_project"("project_uuid" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."user_can_edit_project_check"("project_uuid" "uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN user_can_edit_project(project_uuid);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."user_can_edit_project_check"("project_uuid" "uuid") OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."audit_log" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "event_type" "text" NOT NULL,
+    "user_id" "uuid",
+    "user_email" "text",
+    "target_user_id" "uuid",
+    "target_organization_id" "uuid",
+    "target_project_id" "uuid",
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb",
+    "ip_address" "inet",
+    "user_agent" "text",
+    "success" boolean DEFAULT true NOT NULL,
+    "error_message" "text",
+    CONSTRAINT "audit_log_event_type_check" CHECK (("event_type" = ANY (ARRAY['auth.signup'::"text", 'auth.login'::"text", 'auth.logout'::"text", 'auth.password_reset'::"text", 'auth.email_change'::"text", 'auth.data_export'::"text", 'auth.account_deletion'::"text", 'member.added'::"text", 'member.removed'::"text", 'member.role_changed'::"text", 'project.created'::"text", 'project.deleted'::"text", 'organization.created'::"text", 'organization.deleted'::"text"])))
+);
+
+
+ALTER TABLE "public"."audit_log" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."interview_assumption_tags" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "interview_id" "uuid" NOT NULL,
+    "assumption_id" "uuid" NOT NULL,
+    "validation_effect" "text" NOT NULL,
+    "confidence_change" integer NOT NULL,
+    "supporting_quote" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "interview_assumption_tags_confidence_change_check" CHECK ((("confidence_change" >= '-2'::integer) AND ("confidence_change" <= 2))),
+    CONSTRAINT "interview_assumption_tags_validation_effect_check" CHECK (("validation_effect" = ANY (ARRAY['supports'::"text", 'contradicts'::"text", 'neutral'::"text"])))
+);
+
+
+ALTER TABLE "public"."interview_assumption_tags" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."interview_synthesis" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "interview_ids" "uuid"[] NOT NULL,
+    "date_range_start" timestamp with time zone NOT NULL,
+    "date_range_end" timestamp with time zone NOT NULL,
+    "most_mentioned_pain_point" "text",
+    "most_invalidated_assumption" "uuid",
+    "most_discussed_segments" "text"[],
+    "assumption_summaries" "jsonb",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."interview_synthesis" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."newsletter_subscribers" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "email" "text" NOT NULL,
+    "status" "text" DEFAULT 'subscribed'::"text" NOT NULL,
+    "unsubscribe_token" "uuid" DEFAULT "extensions"."uuid_generate_v4"(),
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "newsletter_subscribers_status_check" CHECK (("status" = ANY (ARRAY['subscribed'::"text", 'unsubscribed'::"text"])))
+);
+
+
+ALTER TABLE "public"."newsletter_subscribers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."organization_members" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "role" "text" NOT NULL,
+    "joined_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "organization_members_role_check" CHECK (("role" = ANY (ARRAY['owner'::"text", 'editor'::"text", 'viewer'::"text"])))
+);
+
+
+ALTER TABLE "public"."organization_members" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."organizations" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" "text" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."organizations" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."organizations"."created_by" IS 'User who created this organization. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."profiles" (
+    "id" "uuid" NOT NULL,
+    "email" "text" NOT NULL,
+    "full_name" "text",
+    "avatar_url" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "is_admin" boolean DEFAULT false NOT NULL,
+    "affiliation" "text"
+);
+
+
+ALTER TABLE "public"."profiles" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."profiles"."is_admin" IS 'Whether this user has admin privileges to view all users and projects';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."affiliation" IS 'User affiliation/organization (e.g., Auxilium, MIT Sandbox, Explorer, Masa, Brown University, or 
+  custom value)';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_assumptions" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "type" "text" NOT NULL,
+    "description" "text" NOT NULL,
+    "status" "text" NOT NULL,
+    "confidence" integer,
+    "evidence" "text"[],
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "canvas_area" "text",
+    "importance" integer,
+    "priority" "text",
+    "risk_score" numeric,
+    "interview_count" integer DEFAULT 0,
+    "last_tested_date" timestamp with time zone,
+    "linked_actor_ids" "text"[] DEFAULT '{}'::"text"[],
+    "linked_connection_ids" "text"[] DEFAULT '{}'::"text"[],
+    CONSTRAINT "project_assumptions_canvas_area_check" CHECK (("canvas_area" = ANY (ARRAY['problem'::"text", 'existingAlternatives'::"text", 'customerSegments'::"text", 'earlyAdopters'::"text", 'solution'::"text", 'uniqueValueProposition'::"text", 'channels'::"text", 'revenueStreams'::"text", 'costStructure'::"text", 'keyMetrics'::"text", 'unfairAdvantage'::"text"]))),
+    CONSTRAINT "project_assumptions_confidence_check" CHECK ((("confidence" >= 1) AND ("confidence" <= 5))),
+    CONSTRAINT "project_assumptions_importance_check" CHECK ((("importance" >= 1) AND ("importance" <= 5))),
+    CONSTRAINT "project_assumptions_priority_check" CHECK (("priority" = ANY (ARRAY['high'::"text", 'medium'::"text", 'low'::"text"]))),
+    CONSTRAINT "project_assumptions_status_check" CHECK (("status" = ANY (ARRAY['untested'::"text", 'testing'::"text", 'validated'::"text", 'invalidated'::"text"]))),
+    CONSTRAINT "project_assumptions_type_check" CHECK (("type" = ANY (ARRAY['customer'::"text", 'problem'::"text", 'solution'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_assumptions" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."project_assumptions"."created_by" IS 'User who created this assumption. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_competitors" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "suppliers" "text"[],
+    "customers" "text"[],
+    "supplier_companies" "text",
+    "industry_customers" "text",
+    "technical_regulatory_change" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."project_competitors" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."project_competitors"."created_by" IS 'User who created this competitor. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_decision_makers" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "role" "text" NOT NULL,
+    "influence" "text",
+    "description" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "project_decision_makers_influence_check" CHECK (("influence" = ANY (ARRAY['decision-maker'::"text", 'influencer'::"text", 'payer'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_decision_makers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_first_target" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "customer_type" "text",
+    "description" "text",
+    "company_size" "text",
+    "location" "text",
+    "who_will_use" "text",
+    "who_has_budget" "text",
+    "other_influencers" "text",
+    "updated_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "project_first_target_customer_type_check" CHECK (("customer_type" = ANY (ARRAY['business'::"text", 'consumer'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_first_target" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_interviews" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "date" timestamp with time zone NOT NULL,
+    "customer_segment" "text" NOT NULL,
+    "interviewee" "text",
+    "interviewee_type" "text",
+    "format" "text",
+    "duration" integer,
+    "notes" "text" NOT NULL,
+    "key_insights" "text"[],
+    "surprises" "text",
+    "next_action" "text",
+    "follow_up_needed" boolean DEFAULT false,
+    "assumptions_addressed" "uuid"[],
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "project_interviews_format_check" CHECK (("format" = ANY (ARRAY['in-person'::"text", 'phone'::"text", 'video'::"text", 'survey'::"text"]))),
+    CONSTRAINT "project_interviews_interviewee_type_check" CHECK (("interviewee_type" = ANY (ARRAY['potential-buyer'::"text", 'competitor'::"text", 'substitute'::"text", 'knowledgeable'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_interviews" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."project_interviews"."created_by" IS 'User who created this interview. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_interviews_enhanced" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "interviewee_type" "text" NOT NULL,
+    "segment_name" "text" NOT NULL,
+    "interview_date" timestamp with time zone NOT NULL,
+    "context" "text" NOT NULL,
+    "status" "text" DEFAULT 'draft'::"text" NOT NULL,
+    "main_pain_points" "text" NOT NULL,
+    "problem_importance" integer NOT NULL,
+    "problem_importance_quote" "text",
+    "current_alternatives" "text" NOT NULL,
+    "memorable_quotes" "text"[] DEFAULT ARRAY[]::"text"[],
+    "surprising_feedback" "text",
+    "student_reflection" "text",
+    "mentor_feedback" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "assumption_tags" "jsonb" DEFAULT '[]'::"jsonb",
+    CONSTRAINT "project_interviews_enhanced_interviewee_type_check" CHECK (("interviewee_type" = ANY (ARRAY['customer'::"text", 'partner'::"text", 'regulator'::"text", 'expert'::"text", 'other'::"text"]))),
+    CONSTRAINT "project_interviews_enhanced_problem_importance_check" CHECK ((("problem_importance" >= 1) AND ("problem_importance" <= 5))),
+    CONSTRAINT "project_interviews_enhanced_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'completed'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_interviews_enhanced" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_iterations" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "version" integer NOT NULL,
+    "date" timestamp with time zone NOT NULL,
+    "changes" "text" NOT NULL,
+    "reasoning" "text" NOT NULL,
+    "patterns_observed" "text",
+    "riskiest_assumption" "text",
+    "next_experiment" "text",
+    "assumptions_affected" "uuid"[],
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."project_iterations" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."project_iterations"."created_by" IS 'User who created this iteration. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_module_completion" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "module_name" "text" NOT NULL,
+    "completed" boolean DEFAULT false NOT NULL,
+    "completed_at" timestamp with time zone DEFAULT "now"(),
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."project_module_completion" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_modules" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "module_name" "text" NOT NULL,
+    "question_index" integer NOT NULL,
+    "answer" "text" NOT NULL,
+    "updated_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "project_modules_module_name_check" CHECK (("module_name" = ANY (ARRAY['problem'::"text", 'customerSegments'::"text", 'solution'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_modules" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."project_modules"."updated_by" IS 'User who last updated this module. NULL if user was deleted.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_pivot_decisions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "mode" "text" NOT NULL,
+    "iteration_id" "uuid",
+    "decision" "text",
+    "pre_mortem_insights" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "contradictory_evidence" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "reframing_responses" "jsonb" DEFAULT '{"temporalQuestion": "", "inheritanceQuestion": "", "contradictionQuestion": ""}'::"jsonb" NOT NULL,
+    "product_market_fit" "jsonb",
+    "retention_metrics" "jsonb",
+    "unit_economics" "jsonb",
+    "jobs_to_be_done" "jsonb",
+    "pain_points" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "customer_quotes" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "hypothesis_tested" "jsonb",
+    "decision_rationale" "text" DEFAULT ''::"text" NOT NULL,
+    "next_actions" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "confidence_assessment" "jsonb",
+    "pivot_readiness" "jsonb",
+    "recommended_pivot_type" "text",
+    "lessons_learned" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "biases_identified" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "confidence_level" integer DEFAULT 50,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "completed_at" timestamp with time zone,
+    "time_spent_minutes" integer DEFAULT 0,
+    "external_advisors_consulted" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    CONSTRAINT "project_pivot_decisions_confidence_level_check" CHECK ((("confidence_level" >= 0) AND ("confidence_level" <= 100))),
+    CONSTRAINT "project_pivot_decisions_decision_check" CHECK (("decision" = ANY (ARRAY['proceed'::"text", 'patch'::"text", 'pivot'::"text"]))),
+    CONSTRAINT "project_pivot_decisions_mode_check" CHECK (("mode" = ANY (ARRAY['easy'::"text", 'detailed'::"text"])))
+);
+
+
+ALTER TABLE "public"."project_pivot_decisions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."project_pivot_decisions" IS 'Stores pivot, patch, or proceed decisions with cognitive debiasing and evidence tracking';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."mode" IS 'Easy (guided reflection) or Detailed (evidence-based analysis)';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."decision" IS 'Proceed, Patch, or Pivot decision';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."pre_mortem_insights" IS 'Three potential failure causes identified before reviewing data (reduces optimism bias)';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."contradictory_evidence" IS 'Evidence that contradicts current strategy (combats confirmation bias)';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."reframing_responses" IS 'Responses to bias-combating questions (inheritance, contradiction, temporal)';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."product_market_fit" IS 'Sean Ellis PMF score, sample size, and trend';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."retention_metrics" IS 'Day 1, 7, 30 retention rates and flattening indicator';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."unit_economics" IS 'LTV, CAC, ratio, and payback period';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."jobs_to_be_done" IS 'Functional, emotional, and social jobs from customer research';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."confidence_assessment" IS 'Confidence levels (0-100) for problem, customer, solution, business';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."pivot_readiness" IS 'PIVOT checklist: Proof, Insight, Viability, Organization, Timing';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."recommended_pivot_type" IS 'One of 10 pivot types (zoom-in, zoom-out, customer-segment, etc.)';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."biases_identified" IS 'Cognitive biases identified during decision process';
+
+
+
+COMMENT ON COLUMN "public"."project_pivot_decisions"."confidence_level" IS 'Overall confidence in decision (0-100)';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."project_visual_sector_map" (
+    "project_id" "uuid" NOT NULL,
+    "data" "jsonb" DEFAULT '{"scope": {"sector": "", "question": ""}, "actors": [], "annotations": [], "connections": [], "activeLayers": ["value", "information", "regulation"]}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "updated_by" "uuid"
+);
+
+
+ALTER TABLE "public"."project_visual_sector_map" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."project_visual_sector_map" IS 'Stores visual sector map data (actors, connections, annotations) as JSON for each project';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."projects" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "deleted_at" timestamp with time zone,
+    "is_template" boolean DEFAULT false
+);
+
+
+ALTER TABLE "public"."projects" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."projects"."created_by" IS 'User who created this project. NULL if user was deleted.';
+
+
+
+COMMENT ON COLUMN "public"."projects"."deleted_at" IS 'Timestamp when project was soft-deleted. NULL means project is active.';
+
+
+
+COMMENT ON COLUMN "public"."projects"."is_template" IS 'When true, project is visible to all authenticated users as an example/template. Used for demo projects like Pet Finder.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_dismissed_templates" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "dismissed_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."user_dismissed_templates" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_interview_preferences" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "project_id" "uuid" NOT NULL,
+    "use_enhanced_system" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."user_interview_preferences" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."audit_log"
+    ADD CONSTRAINT "audit_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."interview_assumption_tags"
+    ADD CONSTRAINT "interview_assumption_tags_interview_id_assumption_id_key" UNIQUE ("interview_id", "assumption_id");
+
+
+
+ALTER TABLE ONLY "public"."interview_assumption_tags"
+    ADD CONSTRAINT "interview_assumption_tags_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."interview_synthesis"
+    ADD CONSTRAINT "interview_synthesis_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."newsletter_subscribers"
+    ADD CONSTRAINT "newsletter_subscribers_email_key" UNIQUE ("email");
+
+
+
+ALTER TABLE ONLY "public"."newsletter_subscribers"
+    ADD CONSTRAINT "newsletter_subscribers_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_organization_id_user_id_key" UNIQUE ("organization_id", "user_id");
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organizations"
+    ADD CONSTRAINT "organizations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_email_key" UNIQUE ("email");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_assumptions"
+    ADD CONSTRAINT "project_assumptions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_competitors"
+    ADD CONSTRAINT "project_competitors_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_decision_makers"
+    ADD CONSTRAINT "project_decision_makers_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_first_target"
+    ADD CONSTRAINT "project_first_target_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_first_target"
+    ADD CONSTRAINT "project_first_target_project_id_key" UNIQUE ("project_id");
+
+
+
+ALTER TABLE ONLY "public"."project_interviews_enhanced"
+    ADD CONSTRAINT "project_interviews_enhanced_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_interviews"
+    ADD CONSTRAINT "project_interviews_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_iterations"
+    ADD CONSTRAINT "project_iterations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_module_completion"
+    ADD CONSTRAINT "project_module_completion_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_module_completion"
+    ADD CONSTRAINT "project_module_completion_project_id_module_name_key" UNIQUE ("project_id", "module_name");
+
+
+
+ALTER TABLE ONLY "public"."project_modules"
+    ADD CONSTRAINT "project_modules_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_modules"
+    ADD CONSTRAINT "project_modules_project_id_module_name_question_index_key" UNIQUE ("project_id", "module_name", "question_index");
+
+
+
+ALTER TABLE ONLY "public"."project_pivot_decisions"
+    ADD CONSTRAINT "project_pivot_decisions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."project_visual_sector_map"
+    ADD CONSTRAINT "project_visual_sector_map_pkey" PRIMARY KEY ("project_id");
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_dismissed_templates"
+    ADD CONSTRAINT "user_dismissed_templates_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_dismissed_templates"
+    ADD CONSTRAINT "user_dismissed_templates_user_id_project_id_key" UNIQUE ("user_id", "project_id");
+
+
+
+ALTER TABLE ONLY "public"."user_interview_preferences"
+    ADD CONSTRAINT "user_interview_preferences_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_interview_preferences"
+    ADD CONSTRAINT "user_interview_preferences_user_id_project_id_key" UNIQUE ("user_id", "project_id");
+
+
+
+CREATE INDEX "idx_assumption_tags_assumption_id" ON "public"."interview_assumption_tags" USING "btree" ("assumption_id");
+
+
+
+CREATE INDEX "idx_assumption_tags_interview_id" ON "public"."interview_assumption_tags" USING "btree" ("interview_id");
+
+
+
+CREATE INDEX "idx_assumption_tags_validation" ON "public"."interview_assumption_tags" USING "btree" ("validation_effect");
+
+
+
+CREATE INDEX "idx_assumptions_canvas_area" ON "public"."project_assumptions" USING "btree" ("canvas_area") WHERE ("canvas_area" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_assumptions_linked_actors" ON "public"."project_assumptions" USING "gin" ("linked_actor_ids");
+
+
+
+CREATE INDEX "idx_assumptions_linked_connections" ON "public"."project_assumptions" USING "gin" ("linked_connection_ids");
+
+
+
+CREATE INDEX "idx_assumptions_priority" ON "public"."project_assumptions" USING "btree" ("priority") WHERE ("priority" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_assumptions_project_id" ON "public"."project_assumptions" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_assumptions_risk_score" ON "public"."project_assumptions" USING "btree" ("risk_score" DESC) WHERE ("risk_score" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_assumptions_status" ON "public"."project_assumptions" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_audit_log_created_at" ON "public"."audit_log" USING "btree" ("created_at" DESC);
+
+
+
+CREATE INDEX "idx_audit_log_event_type" ON "public"."audit_log" USING "btree" ("event_type");
+
+
+
+CREATE INDEX "idx_audit_log_organization" ON "public"."audit_log" USING "btree" ("target_organization_id") WHERE ("target_organization_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_audit_log_success" ON "public"."audit_log" USING "btree" ("success") WHERE ("success" = false);
+
+
+
+CREATE INDEX "idx_audit_log_user_id" ON "public"."audit_log" USING "btree" ("user_id") WHERE ("user_id" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_competitors_project_id" ON "public"."project_competitors" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_decision_makers_project_id" ON "public"."project_decision_makers" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_enhanced_interviews_date" ON "public"."project_interviews_enhanced" USING "btree" ("interview_date");
+
+
+
+CREATE INDEX "idx_enhanced_interviews_project_id" ON "public"."project_interviews_enhanced" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_enhanced_interviews_status" ON "public"."project_interviews_enhanced" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_enhanced_interviews_type" ON "public"."project_interviews_enhanced" USING "btree" ("interviewee_type");
+
+
+
+CREATE INDEX "idx_first_target_project_id" ON "public"."project_first_target" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_interviews_date" ON "public"."project_interviews" USING "btree" ("date");
+
+
+
+CREATE INDEX "idx_interviews_enhanced_assumption_tags" ON "public"."project_interviews_enhanced" USING "gin" ("assumption_tags");
+
+
+
+CREATE INDEX "idx_interviews_project_id" ON "public"."project_interviews" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_iterations_project_id" ON "public"."project_iterations" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_iterations_version" ON "public"."project_iterations" USING "btree" ("version");
+
+
+
+CREATE INDEX "idx_newsletter_email" ON "public"."newsletter_subscribers" USING "btree" ("email");
+
+
+
+CREATE INDEX "idx_newsletter_token" ON "public"."newsletter_subscribers" USING "btree" ("unsubscribe_token");
+
+
+
+CREATE INDEX "idx_org_members_org_id" ON "public"."organization_members" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "idx_org_members_role" ON "public"."organization_members" USING "btree" ("role");
+
+
+
+CREATE INDEX "idx_org_members_user_id" ON "public"."organization_members" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_organizations_created_by" ON "public"."organizations" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_pivot_decisions_created_at" ON "public"."project_pivot_decisions" USING "btree" ("created_at");
+
+
+
+CREATE INDEX "idx_pivot_decisions_decision" ON "public"."project_pivot_decisions" USING "btree" ("decision");
+
+
+
+CREATE INDEX "idx_pivot_decisions_iteration_id" ON "public"."project_pivot_decisions" USING "btree" ("iteration_id");
+
+
+
+CREATE INDEX "idx_pivot_decisions_project_id" ON "public"."project_pivot_decisions" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_profiles_affiliation" ON "public"."profiles" USING "btree" ("affiliation");
+
+
+
+CREATE INDEX "idx_profiles_email" ON "public"."profiles" USING "btree" ("email");
+
+
+
+CREATE INDEX "idx_profiles_is_admin" ON "public"."profiles" USING "btree" ("is_admin") WHERE ("is_admin" = true);
+
+
+
+CREATE INDEX "idx_project_module_completion_project_id" ON "public"."project_module_completion" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_project_modules_module_name" ON "public"."project_modules" USING "btree" ("module_name");
+
+
+
+CREATE INDEX "idx_project_modules_project_id" ON "public"."project_modules" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_project_visual_sector_map_project_id" ON "public"."project_visual_sector_map" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_projects_created_by" ON "public"."projects" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_projects_deleted_at" ON "public"."projects" USING "btree" ("deleted_at") WHERE ("deleted_at" IS NULL);
+
+
+
+CREATE INDEX "idx_projects_is_template" ON "public"."projects" USING "btree" ("is_template") WHERE ("is_template" = true);
+
+
+
+CREATE INDEX "idx_projects_org_id" ON "public"."projects" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "idx_synthesis_project_id" ON "public"."interview_synthesis" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_user_dismissed_templates_project_id" ON "public"."user_dismissed_templates" USING "btree" ("project_id");
+
+
+
+CREATE INDEX "idx_user_dismissed_templates_user_id" ON "public"."user_dismissed_templates" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_user_preferences_user_project" ON "public"."user_interview_preferences" USING "btree" ("user_id", "project_id");
+
+
+
+CREATE OR REPLACE TRIGGER "audit_organization_members_trigger" AFTER INSERT OR DELETE OR UPDATE ON "public"."organization_members" FOR EACH ROW EXECUTE FUNCTION "public"."audit_organization_members"();
+
+
+
+CREATE OR REPLACE TRIGGER "auto_join_new_users_trigger" AFTER INSERT ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."auto_join_new_users_to_project"();
+
+
+
+CREATE OR REPLACE TRIGGER "on_auth_user_created_newsletter" AFTER INSERT ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user_subscription"();
+
+
+
+CREATE OR REPLACE TRIGGER "prevent_interview_inserts" BEFORE INSERT ON "public"."project_interviews" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_old_interview_inserts"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_calculate_risk_score" BEFORE INSERT OR UPDATE OF "confidence", "importance" ON "public"."project_assumptions" FOR EACH ROW EXECUTE FUNCTION "public"."calculate_risk_score"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_update_interview_count" AFTER INSERT OR DELETE ON "public"."interview_assumption_tags" FOR EACH ROW EXECUTE FUNCTION "public"."update_assumption_interview_count"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_update_pivot_decisions_updated_at" BEFORE UPDATE ON "public"."project_pivot_decisions" FOR EACH ROW EXECUTE FUNCTION "public"."update_pivot_decisions_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_enhanced_interviews_updated_at" BEFORE UPDATE ON "public"."project_interviews_enhanced" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_newsletter_subscribers_updated_at" BEFORE UPDATE ON "public"."newsletter_subscribers" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_organizations_updated_at" BEFORE UPDATE ON "public"."organizations" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_profiles_updated_at" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_assumptions_updated_at" BEFORE UPDATE ON "public"."project_assumptions" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_competitors_updated_at" BEFORE UPDATE ON "public"."project_competitors" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_first_target_updated_at" BEFORE UPDATE ON "public"."project_first_target" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_interviews_updated_at" BEFORE UPDATE ON "public"."project_interviews" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_module_completion_updated_at" BEFORE UPDATE ON "public"."project_module_completion" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_modules_updated_at" BEFORE UPDATE ON "public"."project_modules" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_project_visual_sector_map_updated_at" BEFORE UPDATE ON "public"."project_visual_sector_map" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_projects_updated_at" BEFORE UPDATE ON "public"."projects" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_user_preferences_updated_at" BEFORE UPDATE ON "public"."user_interview_preferences" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+ALTER TABLE ONLY "public"."audit_log"
+    ADD CONSTRAINT "audit_log_target_organization_id_fkey" FOREIGN KEY ("target_organization_id") REFERENCES "public"."organizations"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."audit_log"
+    ADD CONSTRAINT "audit_log_target_project_id_fkey" FOREIGN KEY ("target_project_id") REFERENCES "public"."projects"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."audit_log"
+    ADD CONSTRAINT "audit_log_target_user_id_fkey" FOREIGN KEY ("target_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."audit_log"
+    ADD CONSTRAINT "audit_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."interview_assumption_tags"
+    ADD CONSTRAINT "interview_assumption_tags_assumption_id_fkey" FOREIGN KEY ("assumption_id") REFERENCES "public"."project_assumptions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."interview_assumption_tags"
+    ADD CONSTRAINT "interview_assumption_tags_interview_id_fkey" FOREIGN KEY ("interview_id") REFERENCES "public"."project_interviews_enhanced"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."interview_synthesis"
+    ADD CONSTRAINT "interview_synthesis_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."interview_synthesis"
+    ADD CONSTRAINT "interview_synthesis_most_invalidated_assumption_fkey" FOREIGN KEY ("most_invalidated_assumption") REFERENCES "public"."project_assumptions"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."interview_synthesis"
+    ADD CONSTRAINT "interview_synthesis_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."organizations"
+    ADD CONSTRAINT "organizations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_assumptions"
+    ADD CONSTRAINT "project_assumptions_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_assumptions"
+    ADD CONSTRAINT "project_assumptions_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_competitors"
+    ADD CONSTRAINT "project_competitors_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_competitors"
+    ADD CONSTRAINT "project_competitors_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_decision_makers"
+    ADD CONSTRAINT "project_decision_makers_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_decision_makers"
+    ADD CONSTRAINT "project_decision_makers_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_first_target"
+    ADD CONSTRAINT "project_first_target_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_first_target"
+    ADD CONSTRAINT "project_first_target_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_interviews"
+    ADD CONSTRAINT "project_interviews_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_interviews_enhanced"
+    ADD CONSTRAINT "project_interviews_enhanced_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_interviews_enhanced"
+    ADD CONSTRAINT "project_interviews_enhanced_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_interviews"
+    ADD CONSTRAINT "project_interviews_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_iterations"
+    ADD CONSTRAINT "project_iterations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_iterations"
+    ADD CONSTRAINT "project_iterations_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_module_completion"
+    ADD CONSTRAINT "project_module_completion_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_modules"
+    ADD CONSTRAINT "project_modules_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_modules"
+    ADD CONSTRAINT "project_modules_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_pivot_decisions"
+    ADD CONSTRAINT "project_pivot_decisions_iteration_id_fkey" FOREIGN KEY ("iteration_id") REFERENCES "public"."project_iterations"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."project_pivot_decisions"
+    ADD CONSTRAINT "project_pivot_decisions_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_visual_sector_map"
+    ADD CONSTRAINT "project_visual_sector_map_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."project_visual_sector_map"
+    ADD CONSTRAINT "project_visual_sector_map_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_dismissed_templates"
+    ADD CONSTRAINT "user_dismissed_templates_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_dismissed_templates"
+    ADD CONSTRAINT "user_dismissed_templates_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_interview_preferences"
+    ADD CONSTRAINT "user_interview_preferences_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_interview_preferences"
+    ADD CONSTRAINT "user_interview_preferences_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "Admins can view all audit logs" ON "public"."audit_log" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all enhanced interviews" ON "public"."project_interviews_enhanced" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all module completion" ON "public"."project_module_completion" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all organization members" ON "public"."organization_members" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all organizations" ON "public"."organizations" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all pivot decisions" ON "public"."project_pivot_decisions" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."is_admin" = true)))));
+
+
+
+CREATE POLICY "Admins can view all profiles" ON "public"."profiles" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project assumptions" ON "public"."project_assumptions" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project competitors" ON "public"."project_competitors" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project decision makers" ON "public"."project_decision_makers" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project first targets" ON "public"."project_first_target" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project interviews" ON "public"."project_interviews" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project iterations" ON "public"."project_iterations" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Admins can view all project modules" ON "public"."project_modules" FOR SELECT USING ("public"."is_admin"());
+
+
+
+CREATE POLICY "Allow authenticated users to view subscribers" ON "public"."newsletter_subscribers" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Allow public subscription" ON "public"."newsletter_subscribers" FOR INSERT WITH CHECK (true);
+
+
+
+CREATE POLICY "Editors can delete assumptions" ON "public"."project_assumptions" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can delete enhanced interviews" ON "public"."project_interviews_enhanced" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can delete first target" ON "public"."project_first_target" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can delete module completion" ON "public"."project_module_completion" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can delete project modules" ON "public"."project_modules" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can insert assumptions" ON "public"."project_assumptions" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can insert enhanced interviews" ON "public"."project_interviews_enhanced" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can insert first target" ON "public"."project_first_target" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can insert module completion" ON "public"."project_module_completion" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can insert project modules" ON "public"."project_modules" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can manage assumption tags" ON "public"."interview_assumption_tags" USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."project_interviews_enhanced" "pie"
+  WHERE (("pie"."id" = "interview_assumption_tags"."interview_id") AND "public"."user_can_edit_project"("pie"."project_id"))))));
+
+
+
+CREATE POLICY "Editors can manage synthesis" ON "public"."interview_synthesis" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project assumptions" ON "public"."project_assumptions" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project competitors" ON "public"."project_competitors" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project decision makers" ON "public"."project_decision_makers" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project first target" ON "public"."project_first_target" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project interviews" ON "public"."project_interviews" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project iterations" ON "public"."project_iterations" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can modify project modules" ON "public"."project_modules" USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can update assumptions" ON "public"."project_assumptions" FOR UPDATE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can update enhanced interviews" ON "public"."project_interviews_enhanced" FOR UPDATE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can update first target" ON "public"."project_first_target" FOR UPDATE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can update module completion" ON "public"."project_module_completion" FOR UPDATE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Editors can update project modules" ON "public"."project_modules" FOR UPDATE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can create projects" ON "public"."projects" FOR INSERT WITH CHECK (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "projects"."organization_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = ANY (ARRAY['owner'::"text", 'editor'::"text"])))))));
+
+
+
+CREATE POLICY "Only editors and owners can delete project modules" ON "public"."project_modules" FOR DELETE USING ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can insert project modules" ON "public"."project_modules" FOR INSERT WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage assumptions" ON "public"."project_assumptions" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage competitors" ON "public"."project_competitors" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage decision makers" ON "public"."project_decision_makers" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage first target" ON "public"."project_first_target" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage interviews" ON "public"."project_interviews" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage iterations" ON "public"."project_iterations" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can manage module completion" ON "public"."project_module_completion" USING ("public"."user_can_edit_project_check"("project_id")) WITH CHECK ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can update project modules" ON "public"."project_modules" FOR UPDATE USING ("public"."user_can_edit_project_check"("project_id"));
+
+
+
+CREATE POLICY "Only editors and owners can update projects" ON "public"."projects" FOR UPDATE USING (("public"."is_admin"() OR (("is_template" = false) AND (EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "projects"."organization_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = ANY (ARRAY['owner'::"text", 'editor'::"text"]))))))));
+
+
+
+CREATE POLICY "Only owners can delete projects" ON "public"."projects" FOR DELETE USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "projects"."organization_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = 'owner'::"text"))))));
+
+
+
+CREATE POLICY "Organization members can view assumption tags" ON "public"."interview_assumption_tags" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM (("public"."project_interviews_enhanced" "pie"
+     JOIN "public"."projects" "p" ON (("pie"."project_id" = "p"."id")))
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("pie"."id" = "interview_assumption_tags"."interview_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view assumptions" ON "public"."project_assumptions" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_assumptions"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view competitors" ON "public"."project_competitors" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_competitors"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view decision makers" ON "public"."project_decision_makers" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_decision_makers"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view each other's profiles" ON "public"."profiles" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM ("public"."organization_members" "om1"
+     JOIN "public"."organization_members" "om2" ON (("om1"."organization_id" = "om2"."organization_id")))
+  WHERE (("om1"."user_id" = "auth"."uid"()) AND ("om2"."user_id" = "profiles"."id")))));
+
+
+
+CREATE POLICY "Organization members can view enhanced interviews" ON "public"."project_interviews_enhanced" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_interviews_enhanced"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view first target" ON "public"."project_first_target" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_first_target"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view interviews" ON "public"."project_interviews" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_interviews"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view iterations" ON "public"."project_iterations" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_iterations"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view module completion" ON "public"."project_module_completion" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_module_completion"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view project modules" ON "public"."project_modules" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_modules"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view projects" ON "public"."projects" FOR SELECT USING (("public"."is_admin"() OR ("is_template" = true) OR (EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "projects"."organization_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization members can view synthesis" ON "public"."interview_synthesis" FOR SELECT USING (("public"."is_admin"() OR (EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "interview_synthesis"."project_id") AND ("om"."user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Organization owners can view organization audit logs" ON "public"."audit_log" FOR SELECT USING (("target_organization_id" IN ( SELECT "organization_members"."organization_id"
+   FROM "public"."organization_members"
+  WHERE (("organization_members"."user_id" = "auth"."uid"()) AND ("organization_members"."role" = 'owner'::"text")))));
+
+
+
+CREATE POLICY "Owners can add members" ON "public"."organization_members" FOR INSERT WITH CHECK (("public"."is_organization_creator"("organization_id") OR "public"."is_organization_owner"("organization_id")));
+
+
+
+CREATE POLICY "Owners can delete organizations" ON "public"."organizations" FOR DELETE USING ((("created_by" = "auth"."uid"()) OR "public"."is_organization_owner"("id")));
+
+
+
+CREATE POLICY "Owners can remove members or users can leave" ON "public"."organization_members" FOR DELETE USING (("public"."is_organization_creator"("organization_id") OR "public"."is_organization_owner"("organization_id") OR ("user_id" = "auth"."uid"())));
+
+
+
+CREATE POLICY "Owners can update members" ON "public"."organization_members" FOR UPDATE USING (("public"."is_organization_creator"("organization_id") OR "public"."is_organization_owner"("organization_id")));
+
+
+
+CREATE POLICY "Owners can update organizations" ON "public"."organizations" FOR UPDATE USING ((("created_by" = "auth"."uid"()) OR "public"."is_organization_owner"("id")));
+
+
+
+CREATE POLICY "Users can create organizations" ON "public"."organizations" FOR INSERT WITH CHECK (("created_by" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Users can create pivot decisions for their organization's proje" ON "public"."project_pivot_decisions" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_pivot_decisions"."project_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = ANY (ARRAY['owner'::"text", 'editor'::"text"]))))));
+
+
+
+CREATE POLICY "Users can delete pivot decisions for their organization's proje" ON "public"."project_pivot_decisions" FOR DELETE USING ((EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_pivot_decisions"."project_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = 'owner'::"text")))));
+
+
+
+CREATE POLICY "Users can delete visual sector maps for accessible projects" ON "public"."project_visual_sector_map" FOR DELETE USING ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Users can dismiss templates" ON "public"."user_dismissed_templates" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can insert own profile" ON "public"."profiles" FOR INSERT WITH CHECK (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can insert visual sector maps for accessible projects" ON "public"."project_visual_sector_map" FOR INSERT WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Users can manage own preferences" ON "public"."user_interview_preferences" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can un-dismiss templates" ON "public"."user_dismissed_templates" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can update own profile" ON "public"."profiles" FOR UPDATE USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can update pivot decisions for their organization's proje" ON "public"."project_pivot_decisions" FOR UPDATE USING ((EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_pivot_decisions"."project_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = ANY (ARRAY['owner'::"text", 'editor'::"text"])))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_pivot_decisions"."project_id") AND ("om"."user_id" = "auth"."uid"()) AND ("om"."role" = ANY (ARRAY['owner'::"text", 'editor'::"text"]))))));
+
+
+
+CREATE POLICY "Users can update visual sector maps for accessible projects" ON "public"."project_visual_sector_map" FOR UPDATE USING ("public"."user_can_edit_project"("project_id")) WITH CHECK ("public"."user_can_edit_project"("project_id"));
+
+
+
+CREATE POLICY "Users can view org members" ON "public"."organization_members" FOR SELECT USING (("public"."is_organization_creator"("organization_id") OR "public"."is_organization_member"("organization_id")));
+
+
+
+CREATE POLICY "Users can view own preferences" ON "public"."user_interview_preferences" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can view own profile" ON "public"."profiles" FOR SELECT USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can view pivot decisions for their organization's project" ON "public"."project_pivot_decisions" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM ("public"."projects" "p"
+     JOIN "public"."organization_members" "om" ON (("p"."organization_id" = "om"."organization_id")))
+  WHERE (("p"."id" = "project_pivot_decisions"."project_id") AND ("om"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Users can view their organizations" ON "public"."organizations" FOR SELECT USING ((("created_by" = "auth"."uid"()) OR "public"."is_organization_member"("id")));
+
+
+
+CREATE POLICY "Users can view their own audit logs" ON "public"."audit_log" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can view their own dismissed templates" ON "public"."user_dismissed_templates" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can view visual sector maps for accessible projects" ON "public"."project_visual_sector_map" FOR SELECT USING ("public"."user_can_access_project"("project_id"));
+
+
+
+ALTER TABLE "public"."audit_log" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."interview_assumption_tags" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."interview_synthesis" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."newsletter_subscribers" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."organization_members" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."organizations" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_assumptions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_competitors" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_decision_makers" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_first_target" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_interviews" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_interviews_enhanced" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_iterations" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_module_completion" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_modules" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_pivot_decisions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."project_visual_sector_map" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."projects" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_dismissed_templates" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_interview_preferences" ENABLE ROW LEVEL SECURITY;
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."audit_organization_members"() TO "anon";
+GRANT ALL ON FUNCTION "public"."audit_organization_members"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."audit_organization_members"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."auto_join_new_users_to_project"() TO "anon";
+GRANT ALL ON FUNCTION "public"."auto_join_new_users_to_project"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."auto_join_new_users_to_project"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."calculate_risk_score"() TO "anon";
+GRANT ALL ON FUNCTION "public"."calculate_risk_score"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."calculate_risk_score"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_deleted_projects"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_deleted_projects"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_deleted_projects"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_inactive_user_data"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_inactive_user_data"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_inactive_user_data"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_old_anonymous_logs"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_old_anonymous_logs"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_old_anonymous_logs"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"() TO "anon";
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cleanup_old_audit_logs"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."delete_user_account"("p_user_id" "uuid", "p_confirmation_email" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_user_account"("p_user_id" "uuid", "p_confirmation_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_user_account"("p_user_id" "uuid", "p_confirmation_email" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."export_user_data"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."export_user_data"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."export_user_data"("p_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_user_by_email"("user_email" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_user_by_email"("user_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_user_by_email"("user_email" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_new_user_subscription"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_new_user_subscription"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_new_user_subscription"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."invite_user_to_organization"("p_organization_id" "uuid", "p_user_email" "text", "p_role" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."invite_user_to_organization"("p_organization_id" "uuid", "p_user_email" "text", "p_role" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."invite_user_to_organization"("p_organization_id" "uuid", "p_user_email" "text", "p_role" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_organization_creator"("org_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_organization_creator"("org_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_organization_creator"("org_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_organization_member"("org_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_organization_member"("org_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_organization_member"("org_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_organization_owner"("org_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_organization_owner"("org_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_organization_owner"("org_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."log_auth_event"("p_event_type" "text", "p_user_id" "uuid", "p_user_email" "text", "p_success" boolean, "p_error_message" "text", "p_metadata" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."log_auth_event"("p_event_type" "text", "p_user_id" "uuid", "p_user_email" "text", "p_success" boolean, "p_error_message" "text", "p_metadata" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."log_auth_event"("p_event_type" "text", "p_user_id" "uuid", "p_user_email" "text", "p_success" boolean, "p_error_message" "text", "p_metadata" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."log_member_event"("p_event_type" "text", "p_user_id" "uuid", "p_target_user_id" "uuid", "p_organization_id" "uuid", "p_metadata" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."log_member_event"("p_event_type" "text", "p_user_id" "uuid", "p_target_user_id" "uuid", "p_organization_id" "uuid", "p_metadata" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."log_member_event"("p_event_type" "text", "p_user_id" "uuid", "p_target_user_id" "uuid", "p_organization_id" "uuid", "p_metadata" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."prevent_old_interview_inserts"() TO "anon";
+GRANT ALL ON FUNCTION "public"."prevent_old_interview_inserts"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."prevent_old_interview_inserts"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."run_data_retention_cleanup"() TO "anon";
+GRANT ALL ON FUNCTION "public"."run_data_retention_cleanup"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."run_data_retention_cleanup"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_assumption_interview_count"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_assumption_interview_count"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_assumption_interview_count"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_pivot_decisions_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_pivot_decisions_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_pivot_decisions_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."user_can_access_project"("project_uuid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."user_can_access_project"("project_uuid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."user_can_access_project"("project_uuid" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."user_can_edit_project"("project_uuid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."user_can_edit_project"("project_uuid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."user_can_edit_project"("project_uuid" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."user_can_edit_project_check"("project_uuid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."user_can_edit_project_check"("project_uuid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."user_can_edit_project_check"("project_uuid" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."audit_log" TO "anon";
+GRANT ALL ON TABLE "public"."audit_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."audit_log" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."interview_assumption_tags" TO "anon";
+GRANT ALL ON TABLE "public"."interview_assumption_tags" TO "authenticated";
+GRANT ALL ON TABLE "public"."interview_assumption_tags" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."interview_synthesis" TO "anon";
+GRANT ALL ON TABLE "public"."interview_synthesis" TO "authenticated";
+GRANT ALL ON TABLE "public"."interview_synthesis" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."newsletter_subscribers" TO "anon";
+GRANT ALL ON TABLE "public"."newsletter_subscribers" TO "authenticated";
+GRANT ALL ON TABLE "public"."newsletter_subscribers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."organization_members" TO "anon";
+GRANT ALL ON TABLE "public"."organization_members" TO "authenticated";
+GRANT ALL ON TABLE "public"."organization_members" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."organizations" TO "anon";
+GRANT ALL ON TABLE "public"."organizations" TO "authenticated";
+GRANT ALL ON TABLE "public"."organizations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."profiles" TO "anon";
+GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."profiles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_assumptions" TO "anon";
+GRANT ALL ON TABLE "public"."project_assumptions" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_assumptions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_competitors" TO "anon";
+GRANT ALL ON TABLE "public"."project_competitors" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_competitors" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_decision_makers" TO "anon";
+GRANT ALL ON TABLE "public"."project_decision_makers" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_decision_makers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_first_target" TO "anon";
+GRANT ALL ON TABLE "public"."project_first_target" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_first_target" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_interviews" TO "anon";
+GRANT ALL ON TABLE "public"."project_interviews" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_interviews" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_interviews_enhanced" TO "anon";
+GRANT ALL ON TABLE "public"."project_interviews_enhanced" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_interviews_enhanced" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_iterations" TO "anon";
+GRANT ALL ON TABLE "public"."project_iterations" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_iterations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_module_completion" TO "anon";
+GRANT ALL ON TABLE "public"."project_module_completion" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_module_completion" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_modules" TO "anon";
+GRANT ALL ON TABLE "public"."project_modules" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_modules" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_pivot_decisions" TO "anon";
+GRANT ALL ON TABLE "public"."project_pivot_decisions" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_pivot_decisions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."project_visual_sector_map" TO "anon";
+GRANT ALL ON TABLE "public"."project_visual_sector_map" TO "authenticated";
+GRANT ALL ON TABLE "public"."project_visual_sector_map" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."projects" TO "anon";
+GRANT ALL ON TABLE "public"."projects" TO "authenticated";
+GRANT ALL ON TABLE "public"."projects" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_dismissed_templates" TO "anon";
+GRANT ALL ON TABLE "public"."user_dismissed_templates" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_dismissed_templates" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_interview_preferences" TO "anon";
+GRANT ALL ON TABLE "public"."user_interview_preferences" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_interview_preferences" TO "service_role";
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
+
+
+
+
+
