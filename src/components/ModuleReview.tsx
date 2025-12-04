@@ -56,7 +56,7 @@ export const ModuleReview = ({
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Review Your Answers</h1>
         <h2 className="text-xl text-gray-600 mb-4">{moduleTitle}</h2>
         <p className="text-gray-600">
-          Review and edit your answers before moving on. Click on any answer to make changes.
+          As you conduct your customer discovery look back at this and edit to bring it in line with what you see.
         </p>
       </div>
 
