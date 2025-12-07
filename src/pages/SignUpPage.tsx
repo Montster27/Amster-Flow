@@ -196,8 +196,10 @@ export function SignUpPage() {
                 value={affiliation}
                 onChange={(e) => setAffiliation(e.target.value)}
                 required
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  !affiliation ? 'border-gray-300 text-gray-400' : 'border-gray-300 text-gray-900'
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                  !affiliation
+                    ? 'border-red-300 text-gray-400 bg-red-50 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 text-gray-900 focus:ring-blue-500'
                 }`}
               >
                 <option value="" disabled>Select your affiliation</option>
@@ -207,6 +209,9 @@ export function SignUpPage() {
                   </option>
                 ))}
               </select>
+              {!affiliation && (
+                <p className="text-xs text-red-600 mt-1">Required field - please select your affiliation</p>
+              )}
             </div>
 
             {/* Custom Affiliation Input (shown when "Other" is selected) */}
@@ -267,7 +272,14 @@ export function SignUpPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                !email ||
+                !password ||
+                !affiliation ||
+                (affiliation === 'Other' && !customAffiliation) ||
+                !acceptedTerms
+              }
               className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Creating account...' : 'Sign Up'}
