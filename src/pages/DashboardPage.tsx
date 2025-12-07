@@ -604,7 +604,7 @@ export function DashboardPage() {
                 >
                   {/* Template Badge */}
                   <div className="absolute top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
-                    TEMPLATE
+                    SAMPLE
                   </div>
 
                   {/* Dismiss button */}
