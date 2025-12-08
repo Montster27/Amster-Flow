@@ -39,8 +39,10 @@
 ## 📝 Your Credentials
 
 ```bash
-Project URL: https://wguogmiihujnandrxro.supabase.co
-Publishable Key: sb_publishable_yjo8HmpDsMZdrmCrAehx3A_gp4998rt
+# Get these from your Supabase project dashboard:
+# Project Settings > API
+Project URL: <YOUR_SUPABASE_URL>
+Publishable Key: <YOUR_SUPABASE_ANON_KEY>
 ```
 
 ## 🔐 Security Notes

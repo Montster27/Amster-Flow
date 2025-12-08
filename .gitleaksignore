@@ -1,0 +1,10 @@
+# Gitleaks ignore file
+# Documentation files with example/placeholder values (not real secrets)
+
+# Email setup documentation contains curl examples with placeholder auth headers
+EMAIL_SETUP_INSTRUCTIONS.md:curl-auth-header
+QUICK_START_EMAILS.md:curl-auth-header
+
+# These files contain template examples like YOUR_ANON_KEY, not actual secrets
+EMAIL_SETUP_INSTRUCTIONS.md
+QUICK_START_EMAILS.md
