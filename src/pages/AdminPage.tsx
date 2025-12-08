@@ -301,7 +301,7 @@ export function AdminPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Admin Tools - Only visible to admins */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Newsletter Management */}
           <div className="p-4 bg-blue-50 border-2 border-blue-400 rounded-lg">
             <p className="text-sm font-medium text-blue-800 mb-2">
@@ -315,6 +315,22 @@ export function AdminPage() {
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
             >
               📧 Open Newsletter Admin
+            </button>
+          </div>
+
+          {/* Analytics & Reports */}
+          <div className="p-4 bg-green-50 border-2 border-green-400 rounded-lg">
+            <p className="text-sm font-medium text-green-800 mb-2">
+              Analytics & Reports
+            </p>
+            <p className="text-xs text-green-700 mb-3">
+              View comprehensive analytics on Discovery and Sector Map usage across all organizations and users.
+            </p>
+            <button
+              onClick={() => navigate('/admin/reports')}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium"
+            >
+              Open Reports Dashboard
             </button>
           </div>
 

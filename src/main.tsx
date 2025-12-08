@@ -22,6 +22,7 @@ import { AdminPage } from './pages/AdminPage'
 import { AdminUserDetail } from './pages/AdminUserDetail'
 import { AdminProjectDetail } from './pages/AdminProjectDetail'
 import { AdminNewsletter } from './pages/AdminNewsletter'
+import { AdminReports } from './pages/AdminReports'
 import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
@@ -110,6 +111,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <AdminNewsletter />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/reports"
+                    element={
+                      <ProtectedRoute>
+                        <AdminReports />
                       </ProtectedRoute>
                     }
                   />
