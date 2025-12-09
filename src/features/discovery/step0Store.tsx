@@ -21,13 +21,13 @@ export type Benefit = {
 export type Customer = {
   id: number;
   text: string;
+  problems: string[];
+  benefits: string[];
 };
 
 type Step0State = {
   part: number;
   customers: Customer[];
-  problem: string;
-  benefitSummary: string;
   segments: Segment[];
   focusedSegmentId: number | null;
   focusJustification: string;
@@ -39,8 +39,12 @@ type Step0Actions = {
   addCustomer: (text: string) => void;
   updateCustomer: (id: number, text: string) => void;
   removeCustomer: (id: number) => void;
-  setProblem: (value: string) => void;
-  setBenefitSummary: (value: string) => void;
+  addCustomerProblem: (customerId: number, problem: string) => void;
+  updateCustomerProblem: (customerId: number, index: number, problem: string) => void;
+  removeCustomerProblem: (customerId: number, index: number) => void;
+  addCustomerBenefit: (customerId: number, benefit: string) => void;
+  updateCustomerBenefit: (customerId: number, index: number, benefit: string) => void;
+  removeCustomerBenefit: (customerId: number, index: number) => void;
   addSegment: (name: string) => void;
   updateSegment: (id: number, field: keyof Omit<Segment, 'id'>, value: number) => void;
   setFocusedSegmentId: (id: number | null) => void;
@@ -53,8 +57,6 @@ type Step0Actions = {
 const initialState: Step0State = {
   part: 1,
   customers: [],
-  problem: '',
-  benefitSummary: '',
   segments: [],
   focusedSegmentId: null,
   focusJustification: '',
@@ -73,7 +75,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
   const addCustomer = useCallback((text: string) => {
     setState((prev) => ({
       ...prev,
-      customers: [...prev.customers, { id: Date.now(), text }],
+      customers: [...prev.customers, { id: Date.now(), text, problems: [], benefits: [] }],
     }));
   }, []);
 
@@ -91,12 +93,62 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setProblem = useCallback((problem: string) => {
-    setState((prev) => ({ ...prev, problem }));
+  const addCustomerProblem = useCallback((customerId: number, problem: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId ? { ...c, problems: [...c.problems, problem] } : c
+      ),
+    }));
   }, []);
 
-  const setBenefitSummary = useCallback((benefitSummary: string) => {
-    setState((prev) => ({ ...prev, benefitSummary }));
+  const updateCustomerProblem = useCallback((customerId: number, index: number, problem: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId
+          ? { ...c, problems: c.problems.map((p, i) => (i === index ? problem : p)) }
+          : c
+      ),
+    }));
+  }, []);
+
+  const removeCustomerProblem = useCallback((customerId: number, index: number) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId ? { ...c, problems: c.problems.filter((_, i) => i !== index) } : c
+      ),
+    }));
+  }, []);
+
+  const addCustomerBenefit = useCallback((customerId: number, benefit: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId ? { ...c, benefits: [...c.benefits, benefit] } : c
+      ),
+    }));
+  }, []);
+
+  const updateCustomerBenefit = useCallback((customerId: number, index: number, benefit: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId
+          ? { ...c, benefits: c.benefits.map((b, i) => (i === index ? benefit : b)) }
+          : c
+      ),
+    }));
+  }, []);
+
+  const removeCustomerBenefit = useCallback((customerId: number, index: number) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId ? { ...c, benefits: c.benefits.filter((_, i) => i !== index) } : c
+      ),
+    }));
   }, []);
 
   const addSegment = useCallback((name: string) => {
@@ -161,8 +213,12 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       addCustomer,
       updateCustomer,
       removeCustomer,
-      setProblem,
-      setBenefitSummary,
+      addCustomerProblem,
+      updateCustomerProblem,
+      removeCustomerProblem,
+      addCustomerBenefit,
+      updateCustomerBenefit,
+      removeCustomerBenefit,
       addSegment,
       updateSegment,
       setFocusedSegmentId,
@@ -171,7 +227,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       updateBenefit,
       reset,
     }),
-    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addSegment, reset, setBenefitSummary, setFocusJustification, setFocusedSegmentId, setPart, setProblem, updateBenefit, updateSegment]
+    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;
