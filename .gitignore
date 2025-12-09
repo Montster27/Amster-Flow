@@ -31,6 +31,7 @@ yarn-error.log*
 
 # E2E test environment files (keep example, ignore actual configs)
 .env.test
+.claude/settings.local.json
 .env.test.local
 .env.test.preview
 .env.test.production
