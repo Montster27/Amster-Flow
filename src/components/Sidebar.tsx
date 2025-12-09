@@ -32,6 +32,16 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
       </div>
 
       <nav className="flex-1 space-y-2 overflow-y-auto">
+        {/* Step 0: First Look - Top level entry */}
+        {projectId && (
+          <button
+            onClick={() => navigate(`/project/${projectId}/discovery/step-0`)}
+            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+          >
+            <span className="font-medium">Step 0: First Look</span>
+          </button>
+        )}
+
         {modules.map((module) => {
           const isCompleted = progress[module]?.completed;
           const isActive = currentModule === module;
