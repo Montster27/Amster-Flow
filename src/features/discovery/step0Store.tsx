@@ -18,9 +18,14 @@ export type Benefit = {
   importanceToFocused?: number;
 };
 
+export type Customer = {
+  id: number;
+  text: string;
+};
+
 type Step0State = {
   part: number;
-  customer: string;
+  customers: Customer[];
   problem: string;
   benefitSummary: string;
   segments: Segment[];
@@ -31,7 +36,9 @@ type Step0State = {
 
 type Step0Actions = {
   setPart: (part: number) => void;
-  setCustomer: (value: string) => void;
+  addCustomer: (text: string) => void;
+  updateCustomer: (id: number, text: string) => void;
+  removeCustomer: (id: number) => void;
   setProblem: (value: string) => void;
   setBenefitSummary: (value: string) => void;
   addSegment: (name: string) => void;
@@ -45,7 +52,7 @@ type Step0Actions = {
 
 const initialState: Step0State = {
   part: 1,
-  customer: '',
+  customers: [],
   problem: '',
   benefitSummary: '',
   segments: [],
@@ -63,8 +70,25 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, part }));
   }, []);
 
-  const setCustomer = useCallback((customer: string) => {
-    setState((prev) => ({ ...prev, customer }));
+  const addCustomer = useCallback((text: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: [...prev.customers, { id: Date.now(), text }],
+    }));
+  }, []);
+
+  const updateCustomer = useCallback((id: number, text: string) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) => (c.id === id ? { ...c, text } : c)),
+    }));
+  }, []);
+
+  const removeCustomer = useCallback((id: number) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.filter((c) => c.id !== id),
+    }));
   }, []);
 
   const setProblem = useCallback((problem: string) => {
@@ -134,7 +158,9 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       setPart,
-      setCustomer,
+      addCustomer,
+      updateCustomer,
+      removeCustomer,
       setProblem,
       setBenefitSummary,
       addSegment,
@@ -145,7 +171,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       updateBenefit,
       reset,
     }),
-    [state, addBenefit, addSegment, reset, setBenefitSummary, setCustomer, setFocusJustification, setFocusedSegmentId, setPart, setProblem, updateBenefit, updateSegment]
+    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addSegment, reset, setBenefitSummary, setFocusJustification, setFocusedSegmentId, setPart, setProblem, updateBenefit, updateSegment]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;
