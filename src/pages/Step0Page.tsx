@@ -15,20 +15,12 @@ export function Step0Page() {
             <h1 className="text-2xl font-bold text-gray-900">The First Look</h1>
             <p className="text-sm text-gray-600">Pick one customer, one problem, and tighten your first assumptions.</p>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate(`/project/${projectId}/discovery`)}
-              className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              ← Back to Discovery
-            </button>
-            <button
-              onClick={() => navigate(`/project/${projectId}`)}
-              className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Project Home
-            </button>
-          </div>
+          <button
+            onClick={() => navigate(`/project/${projectId}`)}
+            className="inline-flex items-center px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            ← Back to Dashboard
+          </button>
         </div>
       </div>
 
