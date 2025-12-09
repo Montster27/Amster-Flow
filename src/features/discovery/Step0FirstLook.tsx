@@ -9,10 +9,12 @@ export function Step0FirstLook() {
     addCustomer,
     updateCustomer,
     removeCustomer,
-    problem,
-    setProblem,
-    benefitSummary,
-    setBenefitSummary,
+    addCustomerProblem,
+    updateCustomerProblem,
+    removeCustomerProblem,
+    addCustomerBenefit,
+    updateCustomerBenefit,
+    removeCustomerBenefit,
     segments,
     addSegment,
     updateSegment,
@@ -24,17 +26,6 @@ export function Step0FirstLook() {
     addBenefit,
     updateBenefit,
   } = useStep0Store();
-
-  const customerText = customers.length > 0
-    ? customers.map((c) => c.text).join(', ')
-    : '';
-
-  const composedSentence =
-    customerText || problem || benefitSummary
-      ? `We help ${customerText || '[customer]'} who struggle with ${
-          problem || '[problem]'
-        } by ${benefitSummary || '[benefit]'}.`
-      : '';
 
   const totalScore = (s: Segment) => s.pain + s.access + s.willingness;
 
@@ -92,64 +83,105 @@ export function Step0FirstLook() {
 
         {part === 1 && (
           <section className="space-y-3 rounded-lg border bg-white p-4">
-            <h2 className="text-lg font-semibold">0.1 · One Sentence, Your Customers</h2>
+            <h2 className="text-lg font-semibold">0.1 · Your Customers, Problems & Benefits</h2>
             <p className="text-sm text-slate-600">
-              Start with your target customers, one problem, and one outcome. You can always change this later.
+              Define your target customers along with their problems and the benefits you provide. You can always change this later.
             </p>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Target customers</label>
-                <div className="space-y-2">
-                  {customers.map((c) => (
-                    <div key={c.id} className="flex gap-2">
+
+            <div className="space-y-4">
+              {customers.map((c) => (
+                <div key={c.id} className="rounded-lg border bg-slate-50 p-4 space-y-3">
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <label className="mb-1 block text-sm font-medium">Target Customer</label>
                       <input
-                        className="flex-1 rounded border px-2 py-1 text-sm"
+                        className="w-full rounded border px-2 py-1 text-sm bg-white"
                         value={c.text}
                         onChange={(e) => updateCustomer(c.id, e.target.value)}
                         placeholder="e.g., HR managers at 100–500 person companies"
                       />
-                      <button
-                        type="button"
-                        onClick={() => removeCustomer(c.id)}
-                        className="rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        ×
-                      </button>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addCustomer('')}
-                    className="w-full rounded border border-dashed px-2 py-1 text-sm text-slate-500 hover:bg-slate-50"
-                  >
-                    + Add customer
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => removeCustomer(c.id)}
+                      className="mt-6 rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50 bg-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Problems</label>
+                      <div className="space-y-2">
+                        {c.problems.map((problem, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <input
+                              className="flex-1 rounded border px-2 py-1 text-sm"
+                              value={problem}
+                              onChange={(e) => updateCustomerProblem(c.id, idx, e.target.value)}
+                              placeholder="What is painful for them?"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeCustomerProblem(c.id, idx)}
+                              className="rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addCustomerProblem(c.id, '')}
+                          className="w-full rounded border border-dashed px-2 py-1 text-sm text-slate-500 hover:bg-white"
+                        >
+                          + Add problem
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Benefits</label>
+                      <div className="space-y-2">
+                        {c.benefits.map((benefit, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <input
+                              className="flex-1 rounded border px-2 py-1 text-sm"
+                              value={benefit}
+                              onChange={(e) => updateCustomerBenefit(c.id, idx, e.target.value)}
+                              placeholder="What changes for them?"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeCustomerBenefit(c.id, idx)}
+                              className="rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addCustomerBenefit(c.id, '')}
+                          className="w-full rounded border border-dashed px-2 py-1 text-sm text-slate-500 hover:bg-white"
+                        >
+                          + Add benefit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Problem</label>
-                <textarea
-                  className="w-full rounded border px-2 py-1 text-sm"
-                  rows={2}
-                  value={problem}
-                  onChange={(e) => setProblem(e.target.value)}
-                  placeholder="What is the most painful thing they deal with?"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Benefit / outcome</label>
-                <textarea
-                  className="w-full rounded border px-2 py-1 text-sm"
-                  rows={2}
-                  value={benefitSummary}
-                  onChange={(e) => setBenefitSummary(e.target.value)}
-                  placeholder="What changes for them because of you?"
-                />
-              </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => addCustomer('')}
+                className="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500 hover:bg-slate-50"
+              >
+                + Add target customer
+              </button>
             </div>
-            {composedSentence && (
-              <div className="mt-2 rounded border bg-slate-50 px-3 py-2 text-sm italic">{composedSentence}</div>
-            )}
           </section>
         )}
 
@@ -405,8 +437,17 @@ export function Step0FirstLook() {
             <div>{focusedSegment?.name || 'Not chosen yet'}</div>
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-500">One-sentence idea</div>
-            <div className="mt-1 text-xs italic">{composedSentence || 'Fill out 0.1 to see this.'}</div>
+            <div className="text-xs font-medium text-slate-500">Target customers</div>
+            {customers.length > 0 ? (
+              <ul className="mt-1 list-inside list-disc text-xs">
+                {customers.slice(0, 3).map((c) => (
+                  <li key={c.id}>{c.text || '(unnamed)'}</li>
+                ))}
+                {customers.length > 3 && <li>+{customers.length - 3} more</li>}
+              </ul>
+            ) : (
+              <div className="mt-1 text-xs italic">Add customers in 0.1</div>
+            )}
           </div>
           <div>
             <div className="text-xs font-medium text-slate-500">Critical assumptions</div>
