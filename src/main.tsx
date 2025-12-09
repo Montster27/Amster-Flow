@@ -16,6 +16,7 @@ import { TermsOfServicePage } from './pages/TermsOfServicePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
+import { Step0Page } from './pages/Step0Page'
 import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
@@ -69,6 +70,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <DiscoveryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId/discovery/step-0"
+                    element={
+                      <ProtectedRoute>
+                        <Step0Page />
                       </ProtectedRoute>
                     }
                   />
