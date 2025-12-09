@@ -87,7 +87,7 @@ function App({ projectId }: AppProps = {}) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar modules={modules} onModuleClick={handleModuleClick} />
+      <Sidebar modules={modules} onModuleClick={handleModuleClick} projectId={projectId} />
 
       <main className="flex-1 overflow-y-auto">
             {showReview && isStandardModule ? (
