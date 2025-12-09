@@ -5,8 +5,10 @@ export function Step0FirstLook() {
   const {
     part,
     setPart,
-    customer,
-    setCustomer,
+    customers,
+    addCustomer,
+    updateCustomer,
+    removeCustomer,
     problem,
     setProblem,
     benefitSummary,
@@ -23,9 +25,13 @@ export function Step0FirstLook() {
     updateBenefit,
   } = useStep0Store();
 
+  const customerText = customers.length > 0
+    ? customers.map((c) => c.text).join(', ')
+    : '';
+
   const composedSentence =
-    customer || problem || benefitSummary
-      ? `We help ${customer || '[customer]'} who struggle with ${
+    customerText || problem || benefitSummary
+      ? `We help ${customerText || '[customer]'} who struggle with ${
           problem || '[problem]'
         } by ${benefitSummary || '[benefit]'}.`
       : '';
@@ -86,19 +92,39 @@ export function Step0FirstLook() {
 
         {part === 1 && (
           <section className="space-y-3 rounded-lg border bg-white p-4">
-            <h2 className="text-lg font-semibold">0.1 · One Sentence, One Customer</h2>
+            <h2 className="text-lg font-semibold">0.1 · One Sentence, Your Customers</h2>
             <p className="text-sm text-slate-600">
-              Start with one specific customer, one problem, and one outcome. You can always change this later.
+              Start with your target customers, one problem, and one outcome. You can always change this later.
             </p>
             <div className="grid gap-3 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-sm font-medium">Target customer</label>
-                <input
-                  className="w-full rounded border px-2 py-1 text-sm"
-                  value={customer}
-                  onChange={(e) => setCustomer(e.target.value)}
-                  placeholder="e.g., HR managers at 100–500 person companies"
-                />
+                <label className="mb-1 block text-sm font-medium">Target customers</label>
+                <div className="space-y-2">
+                  {customers.map((c) => (
+                    <div key={c.id} className="flex gap-2">
+                      <input
+                        className="flex-1 rounded border px-2 py-1 text-sm"
+                        value={c.text}
+                        onChange={(e) => updateCustomer(c.id, e.target.value)}
+                        placeholder="e.g., HR managers at 100–500 person companies"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeCustomer(c.id)}
+                        className="rounded border px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addCustomer('')}
+                    className="w-full rounded border border-dashed px-2 py-1 text-sm text-slate-500 hover:bg-slate-50"
+                  >
+                    + Add customer
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Problem</label>
