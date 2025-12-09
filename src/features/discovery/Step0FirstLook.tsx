@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Benefit, Segment, useStep0Store } from './step0Store';
 
 export function Step0FirstLook() {
