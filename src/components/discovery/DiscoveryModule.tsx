@@ -20,6 +20,7 @@ import { exportPdfFromElement } from '../../utils/pdfExport';
 interface DiscoveryModuleProps {
   projectId?: string;
   onBack?: () => void;
+  onGoToStep0?: () => void;
 }
 
 /**
@@ -31,7 +32,7 @@ interface DiscoveryModuleProps {
  * - Assumption-to-interview linking
  * - Enhanced synthesis and iteration tracking
  */
-export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
+export function DiscoveryModule({ projectId, onBack, onGoToStep0 }: DiscoveryModuleProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'assumptions' | 'matrix' | 'board' | 'interviews' | 'dashboard'>('assumptions');
   const [showGenerator, setShowGenerator] = useState(false);
@@ -211,6 +212,14 @@ export function DiscoveryModule({ projectId, onBack }: DiscoveryModuleProps) {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                {onGoToStep0 && (
+                  <button
+                    onClick={onGoToStep0}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                  >
+                    Step 0: First Look
+                  </button>
+                )}
                 <button
                   onClick={handleDownloadPdf}
                   disabled={isExporting}

@@ -43,7 +43,13 @@ function DiscoveryPageInner() {
     );
   }
 
-  return <DiscoveryModule projectId={projectId} onBack={() => navigate(`/project/${projectId}`)} />;
+  return (
+    <DiscoveryModule
+      projectId={projectId}
+      onBack={() => navigate(`/project/${projectId}`)}
+      onGoToStep0={() => navigate(`/project/${projectId}/discovery/step-0`)}
+    />
+  );
 }
 
 export function DiscoveryPage() {
