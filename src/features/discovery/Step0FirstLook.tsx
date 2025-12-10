@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Segment, useStep0Store } from './step0Store';
+import { ConfidenceLevel, Segment, useStep0Store } from './step0Store';
 
 export function Step0FirstLook() {
   const {
@@ -35,7 +35,16 @@ export function Step0FirstLook() {
     }
   }, [part, syncSegmentsFromCustomers]);
 
-  const totalScore = (s: Segment) => s.pain + s.access + s.willingness;
+  const getConfidenceBonus = (level: ConfidenceLevel): number => {
+    switch (level) {
+      case 'interviewed-30': return 10;
+      case 'several-told-me': return 5;
+      case 'seems-logical': return -5;
+      default: return 0;
+    }
+  };
+
+  const totalScore = (s: Segment) => s.pain + s.access + s.willingness + getConfidenceBonus(s.confidenceLevel);
 
   const topSegments = useMemo(
     () =>
@@ -423,6 +432,64 @@ export function Step0FirstLook() {
                           Focus on this group first
                         </span>
                       </label>
+                    </div>
+
+                    {/* Confidence Level */}
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                        How confident are you about this group?
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateSegment(s.id, 'confidenceLevel', 'interviewed-30')}
+                          className={`px-3 py-2.5 rounded-lg text-xs font-medium border-2 transition-all text-left ${
+                            s.confidenceLevel === 'interviewed-30'
+                              ? 'border-green-500 bg-green-50 text-green-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-green-300 hover:bg-green-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Interviewed 30+ people</span>
+                            <span className={`font-bold ${s.confidenceLevel === 'interviewed-30' ? 'text-green-600' : 'text-green-500'}`}>+10</span>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSegment(s.id, 'confidenceLevel', 'several-told-me')}
+                          className={`px-3 py-2.5 rounded-lg text-xs font-medium border-2 transition-all text-left ${
+                            s.confidenceLevel === 'several-told-me'
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Several people told me</span>
+                            <span className={`font-bold ${s.confidenceLevel === 'several-told-me' ? 'text-blue-600' : 'text-blue-500'}`}>+5</span>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSegment(s.id, 'confidenceLevel', 'seems-logical')}
+                          className={`px-3 py-2.5 rounded-lg text-xs font-medium border-2 transition-all text-left ${
+                            s.confidenceLevel === 'seems-logical'
+                              ? 'border-amber-500 bg-amber-50 text-amber-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:bg-amber-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Seems logical to me</span>
+                            <span className={`font-bold ${s.confidenceLevel === 'seems-logical' ? 'text-amber-600' : 'text-amber-500'}`}>-5</span>
+                          </div>
+                        </button>
+                      </div>
+                      {s.confidenceLevel && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          Confidence bonus: <span className={`font-bold ${getConfidenceBonus(s.confidenceLevel) > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                            {getConfidenceBonus(s.confidenceLevel) > 0 ? '+' : ''}{getConfidenceBonus(s.confidenceLevel)}
+                          </span> applied to total score
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

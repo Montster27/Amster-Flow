@@ -1,5 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 
+export type ConfidenceLevel = 'interviewed-30' | 'several-told-me' | 'seems-logical' | '';
+
 export type Segment = {
   id: number;
   name: string;
@@ -8,6 +10,7 @@ export type Segment = {
   pain: number;
   access: number;
   willingness: number;
+  confidenceLevel: ConfidenceLevel; // Affects score weighting
 };
 
 export type Benefit = {
@@ -49,7 +52,7 @@ type Step0Actions = {
   removeCustomerBenefit: (customerId: number, index: number) => void;
   addSegment: (name: string) => void;
   syncSegmentsFromCustomers: () => void;
-  updateSegment: (id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number) => void;
+  updateSegment: (id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number | ConfidenceLevel) => void;
   setFocusedSegmentId: (id: number | null) => void;
   setFocusJustification: (value: string) => void;
   addBenefit: (text: string) => void;
@@ -159,7 +162,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       ...prev,
       segments: [
         ...prev.segments,
-        { id: Date.now(), name, problems: [], pain: 3, access: 3, willingness: 3 },
+        { id: Date.now(), name, problems: [], pain: 3, access: 3, willingness: 3, confidenceLevel: '' },
       ],
     }));
   }, []);
@@ -180,6 +183,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
           pain: 3,
           access: 3,
           willingness: 3,
+          confidenceLevel: '' as ConfidenceLevel,
         }));
 
       // Also update existing segments with latest problems from their customers
@@ -200,7 +204,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const updateSegment = useCallback((id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number) => {
+  const updateSegment = useCallback((id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number | ConfidenceLevel) => {
     setState((prev) => ({
       ...prev,
       segments: prev.segments.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
