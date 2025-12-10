@@ -3,6 +3,8 @@ import { createContext, ReactNode, useCallback, useContext, useMemo, useState } 
 export type Segment = {
   id: number;
   name: string;
+  customerId?: number; // Links to customer from Part 1
+  problems: string[]; // Copied from customer for reference
   pain: number;
   access: number;
   willingness: number;
@@ -46,7 +48,8 @@ type Step0Actions = {
   updateCustomerBenefit: (customerId: number, index: number, benefit: string) => void;
   removeCustomerBenefit: (customerId: number, index: number) => void;
   addSegment: (name: string) => void;
-  updateSegment: (id: number, field: keyof Omit<Segment, 'id'>, value: number) => void;
+  syncSegmentsFromCustomers: () => void;
+  updateSegment: (id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number) => void;
   setFocusedSegmentId: (id: number | null) => void;
   setFocusJustification: (value: string) => void;
   addBenefit: (text: string) => void;
@@ -156,12 +159,48 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       ...prev,
       segments: [
         ...prev.segments,
-        { id: Date.now(), name, pain: 3, access: 3, willingness: 3 },
+        { id: Date.now(), name, problems: [], pain: 3, access: 3, willingness: 3 },
       ],
     }));
   }, []);
 
-  const updateSegment = useCallback((id: number, field: keyof Omit<Segment, 'id'>, value: number) => {
+  const syncSegmentsFromCustomers = useCallback(() => {
+    setState((prev) => {
+      // Get existing segment customerIds to avoid duplicates
+      const existingCustomerIds = new Set(prev.segments.map((s) => s.customerId).filter(Boolean));
+
+      // Create segments from customers that don't already have one
+      const newSegments = prev.customers
+        .filter((c) => c.text && !existingCustomerIds.has(c.id))
+        .map((c) => ({
+          id: Date.now() + c.id, // Ensure unique ID
+          name: c.text,
+          customerId: c.id,
+          problems: [...c.problems],
+          pain: 3,
+          access: 3,
+          willingness: 3,
+        }));
+
+      // Also update existing segments with latest problems from their customers
+      const updatedSegments = prev.segments.map((s) => {
+        if (s.customerId) {
+          const customer = prev.customers.find((c) => c.id === s.customerId);
+          if (customer) {
+            return { ...s, name: customer.text, problems: [...customer.problems] };
+          }
+        }
+        return s;
+      });
+
+      return {
+        ...prev,
+        segments: [...updatedSegments, ...newSegments],
+      };
+    });
+  }, []);
+
+  const updateSegment = useCallback((id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number) => {
     setState((prev) => ({
       ...prev,
       segments: prev.segments.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
@@ -220,6 +259,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       updateCustomerBenefit,
       removeCustomerBenefit,
       addSegment,
+      syncSegmentsFromCustomers,
       updateSegment,
       setFocusedSegmentId,
       setFocusJustification,
@@ -227,7 +267,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       updateBenefit,
       reset,
     }),
-    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment]
+    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;
