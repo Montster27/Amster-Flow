@@ -58,6 +58,9 @@ type Step0Actions = {
   addBenefit: (text: string) => void;
   updateBenefit: (id: number, field: keyof Benefit, value: string | boolean | number) => void;
   reset: () => void;
+  // Persistence helpers
+  importData: (data: Step0State) => void;
+  exportData: () => Step0State;
 };
 
 const initialState: Step0State = {
@@ -249,6 +252,12 @@ export function Step0Provider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => setState(initialState), []);
 
+  const importData = useCallback((data: Step0State) => {
+    setState(data);
+  }, []);
+
+  const exportData = useCallback(() => state, [state]);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -270,8 +279,10 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       addBenefit,
       updateBenefit,
       reset,
+      importData,
+      exportData,
     }),
-    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment]
+    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;

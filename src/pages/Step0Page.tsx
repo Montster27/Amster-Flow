@@ -1,6 +1,29 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { Step0Provider } from '../features/discovery/step0Store';
 import { Step0FirstLook } from '../features/discovery/Step0FirstLook';
+import { useStep0Data } from '../hooks/useStep0Data';
+
+function Step0Content({ projectId }: { projectId: string | undefined }) {
+  const { loading, error } = useStep0Data(projectId);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-600">{error}</div>
+      </div>
+    );
+  }
+
+  return <Step0FirstLook />;
+}
 
 export function Step0Page() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -25,7 +48,7 @@ export function Step0Page() {
       </div>
 
       <Step0Provider>
-        <Step0FirstLook />
+        <Step0Content projectId={projectId} />
       </Step0Provider>
     </div>
   );

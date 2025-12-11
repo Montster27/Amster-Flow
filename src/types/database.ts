@@ -878,6 +878,60 @@ export type Database = {
           },
         ]
       }
+      project_step0: {
+        Row: {
+          project_id: string
+          current_part: number
+          customers: Json
+          segments: Json
+          focused_segment_id: number | null
+          focus_justification: string | null
+          benefits: Json
+          created_at: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          project_id: string
+          current_part?: number
+          customers?: Json
+          segments?: Json
+          focused_segment_id?: number | null
+          focus_justification?: string | null
+          benefits?: Json
+          created_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          project_id?: string
+          current_part?: number
+          customers?: Json
+          segments?: Json
+          focused_segment_id?: number | null
+          focus_justification?: string | null
+          benefits?: Json
+          created_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_step0_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_step0_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_visual_sector_map: {
         Row: {
           created_at: string | null
