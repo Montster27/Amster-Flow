@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ConfidenceLevel, Segment, useStep0Store } from './step0Store';
 
 export function Step0FirstLook() {
@@ -34,6 +34,30 @@ export function Step0FirstLook() {
       syncSegmentsFromCustomers();
     }
   }, [part, syncSegmentsFromCustomers]);
+
+  // Auto-focus newly added inputs
+  const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'problem' | 'benefit', index: number} | null>(null);
+
+  useEffect(() => {
+    if (focusTarget) {
+      const inputId = `${focusTarget.type}-${focusTarget.customerId}-${focusTarget.index}`;
+      const element = document.getElementById(inputId);
+      if (element) {
+        element.focus();
+      }
+      setFocusTarget(null);
+    }
+  }, [focusTarget, customers]);
+
+  const handleAddCustomerProblem = (customerId: number, currentLength: number) => {
+    addCustomerProblem(customerId, '');
+    setFocusTarget({ customerId, type: 'problem', index: currentLength });
+  };
+
+  const handleAddCustomerBenefit = (customerId: number, currentLength: number) => {
+    addCustomerBenefit(customerId, '');
+    setFocusTarget({ customerId, type: 'benefit', index: currentLength });
+  };
 
   const getConfidenceBonus = (level: ConfidenceLevel): number => {
     switch (level) {
@@ -177,6 +201,7 @@ export function Step0FirstLook() {
                         {c.problems.map((problem, idx) => (
                           <div key={idx} className="flex gap-2 group">
                             <input
+                              id={`problem-${c.id}-${idx}`}
                               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all placeholder:text-slate-400"
                               value={problem}
                               onChange={(e) => updateCustomerProblem(c.id, idx, e.target.value)}
@@ -196,7 +221,7 @@ export function Step0FirstLook() {
                         ))}
                         <button
                           type="button"
-                          onClick={() => addCustomerProblem(c.id, '')}
+                          onClick={() => handleAddCustomerProblem(c.id, c.problems.length)}
                           className="w-full rounded-lg border border-dashed border-red-200 px-3 py-2 text-sm text-red-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500 transition-colors"
                         >
                           + Add problem
@@ -218,6 +243,7 @@ export function Step0FirstLook() {
                         {c.benefits.map((benefit, idx) => (
                           <div key={idx} className="flex gap-2 group">
                             <input
+                              id={`benefit-${c.id}-${idx}`}
                               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100 transition-all placeholder:text-slate-400"
                               value={benefit}
                               onChange={(e) => updateCustomerBenefit(c.id, idx, e.target.value)}
@@ -237,7 +263,7 @@ export function Step0FirstLook() {
                         ))}
                         <button
                           type="button"
-                          onClick={() => addCustomerBenefit(c.id, '')}
+                          onClick={() => handleAddCustomerBenefit(c.id, c.benefits.length)}
                           className="w-full rounded-lg border border-dashed border-green-200 px-3 py-2 text-sm text-green-500 hover:border-green-300 hover:bg-green-50 hover:text-green-600 transition-colors"
                         >
                           + Add benefit
