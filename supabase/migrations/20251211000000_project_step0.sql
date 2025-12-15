@@ -5,21 +5,24 @@
 CREATE TABLE IF NOT EXISTS project_step0 (
     project_id UUID PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
 
-    -- Current part/step within Step 0 (1-5)
-    current_part INTEGER NOT NULL DEFAULT 1,
+    -- Current part/step within Step 0 (0-4)
+    current_part INTEGER NOT NULL DEFAULT 0,
 
-    -- Part 1: Customers with their problems and benefits
+    -- Part 0: The idea statement
+    idea JSONB NOT NULL DEFAULT '{"building": "", "helps": "", "achieve": ""}'::jsonb,
+
+    -- Part 1: Customers with their problems
     customers JSONB NOT NULL DEFAULT '[]'::jsonb,
 
     -- Part 2: Customer segments with rankings
     segments JSONB NOT NULL DEFAULT '[]'::jsonb,
 
-    -- Part 3: Focused segment selection
+    -- Focused segment selection
     focused_segment_id BIGINT,
     focus_justification TEXT,
 
-    -- Part 4-5: Benefits and assumptions
-    benefits JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- Part 3: Assumptions derived from problems
+    assumptions JSONB NOT NULL DEFAULT '[]'::jsonb,
 
     -- Metadata
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

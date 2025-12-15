@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useStep0Store, type Customer, type Segment, type Benefit } from '../features/discovery/step0Store';
+import { useStep0Store, type Customer, type Segment, type Assumption, type IdeaStatement } from '../features/discovery/step0Store';
 import { captureException } from '../lib/sentry';
 
 /**
@@ -14,11 +14,12 @@ export function useStep0Data(projectId: string | undefined) {
   const { user } = useAuth();
   const {
     part,
+    idea,
     customers,
     segments,
     focusedSegmentId,
     focusJustification,
-    benefits,
+    assumptions,
     importData,
     exportData,
     reset,
@@ -55,11 +56,12 @@ export function useStep0Data(projectId: string | undefined) {
         if (data) {
           importData({
             part: data.current_part,
+            idea: (data.idea || { building: '', helps: '', achieve: '' }) as unknown as IdeaStatement,
             customers: (data.customers || []) as unknown as Customer[],
             segments: (data.segments || []) as unknown as Segment[],
             focusedSegmentId: data.focused_segment_id,
             focusJustification: data.focus_justification || '',
-            benefits: (data.benefits || []) as unknown as Benefit[],
+            assumptions: (data.assumptions || []) as unknown as Assumption[],
           });
         }
 
@@ -97,11 +99,12 @@ export function useStep0Data(projectId: string | undefined) {
           .upsert({
             project_id: projectId,
             current_part: currentData.part,
+            idea: currentData.idea,
             customers: currentData.customers,
             segments: currentData.segments,
             focused_segment_id: currentData.focusedSegmentId,
             focus_justification: currentData.focusJustification,
-            benefits: currentData.benefits,
+            assumptions: currentData.assumptions,
             updated_by: user.id,
           }, {
             onConflict: 'project_id',
@@ -119,7 +122,7 @@ export function useStep0Data(projectId: string | undefined) {
     // Debounce saves by 1 second to avoid too many database writes
     const timeoutId = setTimeout(saveStep0Data, 1000);
     return () => clearTimeout(timeoutId);
-  }, [projectId, user, part, customers, segments, focusedSegmentId, focusJustification, benefits, loading, exportData]);
+  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, focusJustification, assumptions, loading, exportData]);
 
   return { loading, error };
 }
