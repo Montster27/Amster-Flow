@@ -13,50 +13,58 @@ export type Segment = {
   confidenceLevel: ConfidenceLevel; // Affects score weighting
 };
 
-export type Benefit = {
+export type Assumption = {
   id: number;
-  text: string;
-  assumption: string;
+  sourceText: string; // Original problem or benefit text
+  sourceType: 'problem' | 'benefit';
+  assumption: string; // Reframed as testable assumption
   impactIfWrong: 'idea-dies' | 'shrinks' | 'nice-to-have' | '';
-  mattersToFocused: boolean;
-  focusedVersion: string;
-  importanceToFocused?: number;
 };
 
 export type Customer = {
   id: number;
   text: string;
   problems: string[];
-  benefits: string[];
+};
+
+// The user's one-sentence idea
+export type IdeaStatement = {
+  building: string; // "I'm building..."
+  helps: string; // "that helps..."
+  achieve: string; // "do X better/faster/cheaper"
 };
 
 type Step0State = {
   part: number;
+  idea: IdeaStatement;
   customers: Customer[];
   segments: Segment[];
   focusedSegmentId: number | null;
   focusJustification: string;
-  benefits: Benefit[];
+  assumptions: Assumption[];
 };
 
 type Step0Actions = {
   setPart: (part: number) => void;
+  // Idea actions
+  updateIdea: (field: keyof IdeaStatement, value: string) => void;
+  // Customer actions
   addCustomer: (text: string) => void;
   updateCustomer: (id: number, text: string) => void;
   removeCustomer: (id: number) => void;
   addCustomerProblem: (customerId: number, problem: string) => void;
   updateCustomerProblem: (customerId: number, index: number, problem: string) => void;
   removeCustomerProblem: (customerId: number, index: number) => void;
-  addCustomerBenefit: (customerId: number, benefit: string) => void;
-  updateCustomerBenefit: (customerId: number, index: number, benefit: string) => void;
-  removeCustomerBenefit: (customerId: number, index: number) => void;
+  // Segment actions
   addSegment: (name: string) => void;
   syncSegmentsFromCustomers: () => void;
   updateSegment: (id: number, field: keyof Omit<Segment, 'id' | 'name' | 'customerId' | 'problems'>, value: number | ConfidenceLevel) => void;
   setFocusedSegmentId: (id: number | null) => void;
   setFocusJustification: (value: string) => void;
-  addBenefit: (text: string) => void;
-  updateBenefit: (id: number, field: keyof Benefit, value: string | boolean | number) => void;
+  // Assumption actions
+  syncAssumptionsFromCustomers: () => void;
+  updateAssumption: (id: number, field: keyof Omit<Assumption, 'id' | 'sourceText' | 'sourceType'>, value: string) => void;
+  // Lifecycle
   reset: () => void;
   // Persistence helpers
   importData: (data: Step0State) => void;
@@ -64,12 +72,13 @@ type Step0Actions = {
 };
 
 const initialState: Step0State = {
-  part: 1,
+  part: 0, // Start at Part 0 (Your Idea)
+  idea: { building: '', helps: '', achieve: '' },
   customers: [],
   segments: [],
   focusedSegmentId: null,
   focusJustification: '',
-  benefits: [],
+  assumptions: [],
 };
 
 const Step0Context = createContext<(Step0State & Step0Actions) | undefined>(undefined);
@@ -81,10 +90,19 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, part }));
   }, []);
 
+  // Idea actions
+  const updateIdea = useCallback((field: keyof IdeaStatement, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      idea: { ...prev.idea, [field]: value },
+    }));
+  }, []);
+
+  // Customer actions
   const addCustomer = useCallback((text: string) => {
     setState((prev) => ({
       ...prev,
-      customers: [...prev.customers, { id: Date.now(), text, problems: [], benefits: [] }],
+      customers: [...prev.customers, { id: Date.now(), text, problems: [] }],
     }));
   }, []);
 
@@ -131,35 +149,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const addCustomerBenefit = useCallback((customerId: number, benefit: string) => {
-    setState((prev) => ({
-      ...prev,
-      customers: prev.customers.map((c) =>
-        c.id === customerId ? { ...c, benefits: [...c.benefits, benefit] } : c
-      ),
-    }));
-  }, []);
-
-  const updateCustomerBenefit = useCallback((customerId: number, index: number, benefit: string) => {
-    setState((prev) => ({
-      ...prev,
-      customers: prev.customers.map((c) =>
-        c.id === customerId
-          ? { ...c, benefits: c.benefits.map((b, i) => (i === index ? benefit : b)) }
-          : c
-      ),
-    }));
-  }, []);
-
-  const removeCustomerBenefit = useCallback((customerId: number, index: number) => {
-    setState((prev) => ({
-      ...prev,
-      customers: prev.customers.map((c) =>
-        c.id === customerId ? { ...c, benefits: c.benefits.filter((_, i) => i !== index) } : c
-      ),
-    }));
-  }, []);
-
+  // Segment actions
   const addSegment = useCallback((name: string) => {
     setState((prev) => ({
       ...prev,
@@ -172,14 +162,12 @@ export function Step0Provider({ children }: { children: ReactNode }) {
 
   const syncSegmentsFromCustomers = useCallback(() => {
     setState((prev) => {
-      // Get existing segment customerIds to avoid duplicates
       const existingCustomerIds = new Set(prev.segments.map((s) => s.customerId).filter(Boolean));
 
-      // Create segments from customers that don't already have one
       const newSegments = prev.customers
         .filter((c) => c.text && !existingCustomerIds.has(c.id))
         .map((c) => ({
-          id: Date.now() + c.id, // Ensure unique ID
+          id: Date.now() + c.id,
           name: c.text,
           customerId: c.id,
           problems: [...c.problems],
@@ -189,7 +177,6 @@ export function Step0Provider({ children }: { children: ReactNode }) {
           confidenceLevel: '' as ConfidenceLevel,
         }));
 
-      // Also update existing segments with latest problems from their customers
       const updatedSegments = prev.segments.map((s) => {
         if (s.customerId) {
           const customer = prev.customers.find((c) => c.id === s.customerId);
@@ -222,29 +209,42 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, focusJustification: value }));
   }, []);
 
-  const addBenefit = useCallback((text: string) => {
-    setState((prev) => ({
-      ...prev,
-      benefits: [
-        ...prev.benefits,
-        {
-          id: Date.now(),
-          text,
+  // Assumption actions - auto-populate from customer problems
+  const syncAssumptionsFromCustomers = useCallback(() => {
+    setState((prev) => {
+      const existingSources = new Set(prev.assumptions.map((a) => `${a.sourceType}-${a.sourceText}`));
+
+      // Get problems from all customers
+      const allProblems = prev.customers.flatMap((c) =>
+        c.problems.filter((p) => p.trim()).map((problem) => ({
+          text: problem,
+          type: 'problem' as const,
+        }))
+      );
+
+      // Create new assumptions for problems not already tracked
+      const newAssumptions = allProblems
+        .filter((p) => !existingSources.has(`${p.type}-${p.text}`))
+        .map((p, idx) => ({
+          id: Date.now() + idx,
+          sourceText: p.text,
+          sourceType: p.type,
           assumption: '',
-          impactIfWrong: '',
-          mattersToFocused: false,
-          focusedVersion: '',
-          importanceToFocused: 3,
-        },
-      ],
-    }));
+          impactIfWrong: '' as const,
+        }));
+
+      return {
+        ...prev,
+        assumptions: [...prev.assumptions, ...newAssumptions],
+      };
+    });
   }, []);
 
-  const updateBenefit = useCallback(
-    (id: number, field: keyof Benefit, value: string | boolean | number) => {
+  const updateAssumption = useCallback(
+    (id: number, field: keyof Omit<Assumption, 'id' | 'sourceText' | 'sourceType'>, value: string) => {
       setState((prev) => ({
         ...prev,
-        benefits: prev.benefits.map((b) => (b.id === id ? { ...b, [field]: value } : b)),
+        assumptions: prev.assumptions.map((a) => (a.id === id ? { ...a, [field]: value } : a)),
       }));
     },
     []
@@ -262,27 +262,25 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       setPart,
+      updateIdea,
       addCustomer,
       updateCustomer,
       removeCustomer,
       addCustomerProblem,
       updateCustomerProblem,
       removeCustomerProblem,
-      addCustomerBenefit,
-      updateCustomerBenefit,
-      removeCustomerBenefit,
       addSegment,
       syncSegmentsFromCustomers,
       updateSegment,
       setFocusedSegmentId,
       setFocusJustification,
-      addBenefit,
-      updateBenefit,
+      syncAssumptionsFromCustomers,
+      updateAssumption,
       reset,
       importData,
       exportData,
     }),
-    [state, addBenefit, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateBenefit, updateSegment, importData, exportData]
+    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateSegment, syncAssumptionsFromCustomers, updateAssumption, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;
