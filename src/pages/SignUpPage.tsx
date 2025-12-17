@@ -80,28 +80,8 @@ export function SignUpPage() {
         throw new Error('Sign up failed - no user returned');
       }
 
-      // Upsert profile with affiliation (handles both new profiles and updates)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email: authData.user.email!,
-          affiliation: finalAffiliation,
-        }, {
-          onConflict: 'id'
-        });
-
-      if (profileError) {
-        captureException(new Error('Error updating profile with affiliation'), {
-          extra: {
-            error: profileError,
-            userId: authData.user.id,
-            affiliation: finalAffiliation,
-            context: 'SignUpPage profile update'
-          },
-        });
-        // Don't throw - user is created, error logged to Sentry
-      }
+      // Profile is auto-created by database trigger (handle_new_user)
+      // with affiliation from user metadata
 
       // Log successful signup to audit trail
       await logAuthEvent('auth.signup', authData.user.id, email, {

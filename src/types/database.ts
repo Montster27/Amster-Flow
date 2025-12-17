@@ -882,11 +882,12 @@ export type Database = {
         Row: {
           project_id: string
           current_part: number
+          idea: Json
           customers: Json
           segments: Json
           focused_segment_id: number | null
           focus_justification: string | null
-          benefits: Json
+          assumptions: Json
           created_at: string | null
           updated_at: string | null
           updated_by: string | null
@@ -894,11 +895,12 @@ export type Database = {
         Insert: {
           project_id: string
           current_part?: number
+          idea?: Json
           customers?: Json
           segments?: Json
           focused_segment_id?: number | null
           focus_justification?: string | null
-          benefits?: Json
+          assumptions?: Json
           created_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -906,11 +908,12 @@ export type Database = {
         Update: {
           project_id?: string
           current_part?: number
+          idea?: Json
           customers?: Json
           segments?: Json
           focused_segment_id?: number | null
           focus_justification?: string | null
-          benefits?: Json
+          assumptions?: Json
           created_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
