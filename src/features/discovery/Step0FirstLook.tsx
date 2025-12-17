@@ -558,7 +558,7 @@ export function Step0FirstLook() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {sortedSegments.map((s, index) => (
+                  {sortedSegments.map((s) => (
                     <div
                       key={s.id}
                       className={`rounded-lg border-2 overflow-hidden transition-all ${
