@@ -60,3 +60,8 @@ node_modules*/
 /playwright-report/
 /test-results/
 /playwright/.cache/
+
+# Files with secrets (historical)
+QUICK_START_EMAILS.md
+EMAIL_SETUP_INSTRUCTIONS.md
+SETUP_PROGRESS.md
