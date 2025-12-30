@@ -164,7 +164,6 @@ export function Step0FirstLook() {
     assumptions,
     syncAssumptionsFromCustomers,
     updateAssumption,
-    hasGraduated,
     setGraduated,
     getRecommendedBeachhead,
   } = useStep0Store();
@@ -174,8 +173,9 @@ export function Step0FirstLook() {
   const [newSegmentName, setNewSegmentName] = useState('');
   const [showGraduationPanel, setShowGraduationPanel] = useState(false);
 
-  // Get recommended beachhead
-  const recommendedBeachhead = useMemo(() => getRecommendedBeachhead(), [getRecommendedBeachhead]);
+  // Get recommended beachhead (used for display/recommendation purposes)
+  const _recommendedBeachhead = useMemo(() => getRecommendedBeachhead(), [getRecommendedBeachhead]);
+  void _recommendedBeachhead; // Suppress unused warning - available for future use
 
   useEffect(() => {
     if (focusTarget) {
@@ -601,7 +601,7 @@ export function Step0FirstLook() {
                             <div className="flex justify-between text-xs mb-1">
                               <span className="text-slate-500 flex items-center gap-1">
                                 Pain
-                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.pain.description}>ⓘ</span>
+                                <span className="text-slate-400 cursor-help" title="How badly do they need this solved?">ⓘ</span>
                               </span>
                               <span className="font-bold text-red-600">{s.pain}/5</span>
                             </div>
@@ -613,13 +613,13 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'pain', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-500"
                             />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.pain.levels[s.pain as keyof typeof SCORING_GUIDANCE.pain.levels]}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.pain[s.pain as keyof typeof SCORING_GUIDANCE.pain]}</div>
                           </div>
                           <div>
                             <div className="flex justify-between text-xs mb-1">
                               <span className="text-slate-500 flex items-center gap-1">
                                 Access
-                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.access.description}>ⓘ</span>
+                                <span className="text-slate-400 cursor-help" title="How easily can you reach them?">ⓘ</span>
                               </span>
                               <span className="font-bold text-blue-600">{s.access}/5</span>
                             </div>
@@ -631,13 +631,13 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'access', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.access.levels[s.access as keyof typeof SCORING_GUIDANCE.access.levels]}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.access[s.access as keyof typeof SCORING_GUIDANCE.access]}</div>
                           </div>
                           <div>
                             <div className="flex justify-between text-xs mb-1">
                               <span className="text-slate-500 flex items-center gap-1">
                                 Will Pay
-                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.willingness.description}>ⓘ</span>
+                                <span className="text-slate-400 cursor-help" title="How willing are they to pay for a solution?">ⓘ</span>
                               </span>
                               <span className="font-bold text-green-600">{s.willingness}/5</span>
                             </div>
@@ -649,7 +649,7 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'willingness', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-500"
                             />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.willingness.levels[s.willingness as keyof typeof SCORING_GUIDANCE.willingness.levels]}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.willingness[s.willingness as keyof typeof SCORING_GUIDANCE.willingness]}</div>
                           </div>
                         </div>
 
@@ -954,15 +954,16 @@ export function Step0FirstLook() {
           {/* Graduation Panel */}
           {showGraduationPanel ? (
             <GraduationPanel
-              segments={segments}
-              assumptions={assumptions}
-              recommendedBeachhead={recommendedBeachhead}
-              focusedSegmentId={focusedSegmentId}
-              onGraduate={(beachheadId) => {
+              projectId={projectId || ''}
+              ideaStatement={idea}
+              customers={customers.map(c => ({ ...c, id: String(c.id) }))}
+              segments={segments.map(s => ({ ...s, id: String(s.id) }))}
+              assumptions={assumptions.map(a => ({ ...a, id: String(a.id) }))}
+              focusedSegmentId={focusedSegmentId !== null ? String(focusedSegmentId) : undefined}
+              onGraduationComplete={() => {
                 setGraduated(true);
-                navigate(`/project/${projectId}`);
+                setShowGraduationPanel(false);
               }}
-              onCancel={() => setShowGraduationPanel(false)}
             />
           ) : (
             /* Action Button */

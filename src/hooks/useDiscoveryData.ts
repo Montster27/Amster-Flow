@@ -70,6 +70,7 @@ export function useDiscoveryData(projectId: string | undefined) {
 
           // Discovery specific fields (use type assertion to handle missing properties)
           canvasArea: (row as any).canvas_area as CanvasArea,
+          validationStage: (row as any).validation_stage || 1,
           importance: ((row as any).importance || 3) as ConfidenceLevel,
           priority: ((row as any).priority || 'medium') as PriorityLevel,
           riskScore: (row as any).risk_score || undefined,
@@ -153,6 +154,7 @@ export function useDiscoveryData(projectId: string | undefined) {
 
             // Discovery specific fields
             canvas_area: assumption.canvasArea,
+            validation_stage: assumption.validationStage,
             importance: assumption.importance,
             priority: assumption.priority,
             risk_score: assumption.riskScore,

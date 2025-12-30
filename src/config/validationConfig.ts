@@ -127,7 +127,7 @@ export function calculateBeachheadReadiness(segment: {
 } {
   // Pain is weighted 2x because acute pain is most important
   const score = segment.pain * 2 + segment.access + segment.willingness;
-  const maxScore = 5 * 2 + 5 + 5; // 20
+  // maxScore = 5 * 2 + 5 + 5 = 20 (for reference)
 
   const painIsAcute = segment.pain >= 4;
   const canReachNow = segment.access >= 4;

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type {
   Assumption,
-  CanvasArea,
   PriorityLevel,
   ValidationStage,
   StageStatus,
@@ -93,7 +92,7 @@ export function AssumptionFrameworkTable({
     return grouped;
   }, [assumptions]);
 
-  const renderAssumptionRow = (assumption: Assumption, stageStatus: StageStatus) => {
+  const renderAssumptionRow = (assumption: Assumption, _stageStatus: StageStatus) => {
     const stage = assumption.validationStage || getStageForArea(assumption.canvasArea);
     const isPreviousStageIncomplete = stage > 1 && !stageStatuses[stage - 1 as ValidationStage].canGraduate;
 

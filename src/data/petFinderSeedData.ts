@@ -6,10 +6,11 @@ import type { Assumption, EnhancedInterview } from '../types/discovery';
  */
 
 export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpdated'>[] = [
-  // Problem Assumptions
+  // Problem Assumptions (Stage 1)
   {
     type: 'problem',
     canvasArea: 'problem',
+    validationStage: 1,
     description: 'Pet adopters struggle to find suitable pets because shelter websites are outdated and hard to navigate',
     status: 'validated',
     confidence: 4,
@@ -26,6 +27,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'problem',
     canvasArea: 'problem',
+    validationStage: 1,
     description: 'Shelters lose potential adopters because their adoption process takes too long (3-5 weeks on average)',
     status: 'testing',
     confidence: 3,
@@ -41,6 +43,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'customer',
     canvasArea: 'problem',
+    validationStage: 1,
     description: 'First-time pet owners are anxious about choosing the right pet for their lifestyle',
     status: 'validated',
     confidence: 5,
@@ -55,10 +58,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-18',
   },
 
-  // Existing Alternatives
+  // Existing Alternatives (Stage 2)
   {
     type: 'customer',
     canvasArea: 'existingAlternatives',
+    validationStage: 2,
     description: 'Pet adopters currently use Petfinder.com but find the search filters inadequate',
     status: 'validated',
     confidence: 4,
@@ -74,6 +78,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'problem',
     canvasArea: 'existingAlternatives',
+    validationStage: 2,
     description: 'Shelters pay $200-500/month for outdated listing services that don\'t drive adoptions',
     status: 'testing',
     confidence: 2,
@@ -85,10 +90,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-10',
   },
 
-  // Customer Segments
+  // Customer Segments (Stage 1)
   {
     type: 'customer',
     canvasArea: 'customerSegments',
+    validationStage: 1,
     description: 'Urban millennials (25-40) with apartments are our primary adopter segment',
     status: 'validated',
     confidence: 5,
@@ -105,6 +111,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'customer',
     canvasArea: 'customerSegments',
+    validationStage: 1,
     description: 'Small to medium shelters (10-100 animals) struggle most with adoption marketing',
     status: 'validated',
     confidence: 4,
@@ -118,10 +125,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-16',
   },
 
-  // Early Adopters
+  // Early Adopters (Stage 2)
   {
     type: 'customer',
     canvasArea: 'earlyAdopters',
+    validationStage: 2,
     description: 'Tech-savvy pet lovers who already use social media to follow shelter accounts will try our platform first',
     status: 'untested',
     confidence: 3,
@@ -132,10 +140,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     interviewCount: 0,
   },
 
-  // Solution
+  // Solution (Stage 2)
   {
     type: 'solution',
     canvasArea: 'solution',
+    validationStage: 2,
     description: 'A mobile-first search experience with personality-based matching will convert 30% better than current solutions',
     status: 'untested',
     confidence: 2,
@@ -148,6 +157,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'solution',
     canvasArea: 'solution',
+    validationStage: 2,
     description: 'Video profiles of pets will increase adoption applications by 2x compared to photos alone',
     status: 'invalidated',
     confidence: 4,
@@ -162,10 +172,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-19',
   },
 
-  // Unique Value Proposition
+  // Unique Value Proposition (Stage 2)
   {
     type: 'solution',
     canvasArea: 'uniqueValueProposition',
+    validationStage: 2,
     description: 'Our personality quiz will match adopters with compatible pets better than traditional search filters',
     status: 'testing',
     confidence: 3,
@@ -179,10 +190,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-18',
   },
 
-  // Channels
+  // Channels (Stage 3)
   {
     type: 'customer',
     canvasArea: 'channels',
+    validationStage: 3,
     description: 'Instagram and TikTok are the most effective channels for reaching millennial pet adopters',
     status: 'validated',
     confidence: 5,
@@ -197,10 +209,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-17',
   },
 
-  // Revenue Streams
+  // Revenue Streams (Stage 3)
   {
     type: 'solution',
     canvasArea: 'revenueStreams',
+    validationStage: 3,
     description: 'Shelters will pay $99/month for premium listings and analytics',
     status: 'untested',
     confidence: 2,
@@ -213,6 +226,7 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
   {
     type: 'customer',
     canvasArea: 'revenueStreams',
+    validationStage: 3,
     description: 'Adopters are willing to pay $5-10 for premium matching and support features',
     status: 'invalidated',
     confidence: 4,
@@ -227,10 +241,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-20',
   },
 
-  // Cost Structure
+  // Cost Structure (Stage 3)
   {
     type: 'solution',
     canvasArea: 'costStructure',
+    validationStage: 3,
     description: 'Our primary costs will be platform development ($50k) and shelter onboarding ($2k/month)',
     status: 'untested',
     confidence: 3,
@@ -241,10 +256,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     interviewCount: 0,
   },
 
-  // Key Metrics
+  // Key Metrics (Stage 3)
   {
     type: 'solution',
     canvasArea: 'keyMetrics',
+    validationStage: 3,
     description: 'Successful adoption rate (applications that result in adoption) is our North Star metric',
     status: 'validated',
     confidence: 4,
@@ -258,10 +274,11 @@ export const petFinderAssumptions: Omit<Assumption, 'id' | 'created' | 'lastUpda
     lastTestedDate: '2024-01-16',
   },
 
-  // Unfair Advantage
+  // Unfair Advantage (Stage 3)
   {
     type: 'solution',
     canvasArea: 'unfairAdvantage',
+    validationStage: 3,
     description: 'Our founder\'s 10-year relationship with regional shelter network gives us exclusive partnership access',
     status: 'validated',
     confidence: 5,

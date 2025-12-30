@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { graduateToDiscovery, getRecommendedBeachhead } from '../../features/discovery/graduationService';
 import { calculateBeachheadReadiness } from '../../config/validationConfig';
+import type { Step0AssumptionType } from '../../types/discovery';
 
 interface Segment {
   id: string;
@@ -25,10 +26,10 @@ interface Customer {
 interface Assumption {
   id: string;
   sourceText: string;
-  sourceType: string;
+  sourceType: 'problem' | 'benefit' | 'segment' | 'manual';
   assumption: string;
   impactIfWrong: string;
-  type?: string;
+  assumptionType?: Step0AssumptionType;
   segmentId?: string;
 }
 

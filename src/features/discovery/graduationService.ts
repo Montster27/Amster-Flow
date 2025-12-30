@@ -10,10 +10,8 @@ import type {
   ValidationStage,
   Step0AssumptionType,
   BeachheadData,
-  ConfidenceLevel,
   PriorityLevel,
 } from '../../types/discovery';
-import { getStageForArea } from '../../types/discovery';
 
 // Step 0 data structure (from step0Store)
 interface Step0Segment {
@@ -34,10 +32,10 @@ interface Step0Customer {
 interface Step0Assumption {
   id: string;
   sourceText: string;
-  sourceType: 'problem' | 'segment' | 'manual';
+  sourceType: 'problem' | 'benefit' | 'segment' | 'manual';
   assumption: string;
   impactIfWrong: string;
-  type?: Step0AssumptionType;
+  assumptionType?: Step0AssumptionType;
   segmentId?: string;
 }
 
@@ -100,7 +98,7 @@ function generateCustomerIdentityAssumptions(
       sourceText: segment.name,
       assumption: `${segment.name} experiences the problem of "${ideaStatement.helps}" regularly (at least weekly)`,
       impactIfWrong: 'We may be targeting the wrong customer segment',
-      type: 'customerIdentity',
+      assumptionType: 'customerIdentity',
       segmentId: segment.id,
     },
     {
@@ -109,7 +107,7 @@ function generateCustomerIdentityAssumptions(
       sourceText: segment.name,
       assumption: `${segment.name} is actively looking for better solutions to ${ideaStatement.helps}`,
       impactIfWrong: 'The customer may not be motivated enough to switch to our solution',
-      type: 'customerIdentity',
+      assumptionType: 'customerIdentity',
       segmentId: segment.id,
     },
   ];
@@ -139,7 +137,7 @@ function generateProblemSeverityAssumptions(
 export function transformStep0ToDiscovery(
   step0Data: Step0Data,
   focusedSegmentId: string,
-  projectId: string
+  _projectId: string
 ): Assumption[] {
   const focusedSegment = step0Data.segments.find((s) => s.id === focusedSegmentId);
   if (!focusedSegment) {
@@ -161,7 +159,7 @@ export function transformStep0ToDiscovery(
   let assumptionsToMigrate = step0Data.assumptions;
 
   // Check if we have typed assumptions
-  const hasTypedAssumptions = assumptionsToMigrate.some((a) => a.type);
+  const hasTypedAssumptions = assumptionsToMigrate.some((a) => a.assumptionType);
 
   if (!hasTypedAssumptions) {
     // Generate typed assumptions
@@ -185,7 +183,7 @@ export function transformStep0ToDiscovery(
       continue;
     }
 
-    const assumptionType = step0Assumption.type || 'solutionHypothesis';
+    const assumptionType = step0Assumption.assumptionType || 'solutionHypothesis';
     const mapping = MIGRATION_MAP[assumptionType];
 
     const discoveryAssumption: Assumption = {
@@ -239,7 +237,7 @@ async function storeBeachheadSegment(
     .update({
       beachhead_data: beachheadData,
       v2_migrated_at: new Date().toISOString(),
-    })
+    } as Record<string, unknown>)
     .eq('id', projectId);
 
   if (error) {
@@ -366,7 +364,7 @@ export async function graduateToDiscovery(
 export async function hasGraduated(projectId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('projects')
-    .select('v2_migrated_at, beachhead_data')
+    .select('*')
     .eq('id', projectId)
     .single();
 
@@ -375,7 +373,9 @@ export async function hasGraduated(projectId: string): Promise<boolean> {
     return false;
   }
 
-  return data.v2_migrated_at !== null || data.beachhead_data !== null;
+  // Type assertion for V2 columns not in generated types
+  const project = data as unknown as { v2_migrated_at?: string | null; beachhead_data?: unknown };
+  return project.v2_migrated_at !== null || project.beachhead_data !== null;
 }
 
 /**
@@ -384,13 +384,19 @@ export async function hasGraduated(projectId: string): Promise<boolean> {
 export async function getBeachheadData(projectId: string): Promise<BeachheadData | null> {
   const { data, error } = await supabase
     .from('projects')
-    .select('beachhead_data')
+    .select('*')
     .eq('id', projectId)
     .single();
 
-  if (error || !data.beachhead_data) {
+  if (error) {
     return null;
   }
 
-  return data.beachhead_data as BeachheadData;
+  // Type assertion for V2 columns not in generated types
+  const project = data as unknown as { beachhead_data?: BeachheadData | null };
+  if (!project.beachhead_data) {
+    return null;
+  }
+
+  return project.beachhead_data;
 }

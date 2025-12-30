@@ -3,7 +3,7 @@
  * Visual progress indicator for validation stages
  */
 
-import type { StageStatus, ValidationStage } from '../../types/discovery';
+import type { StageStatus } from '../../types/discovery';
 import { VALIDATION_STAGES } from '../../types/discovery';
 
 interface StageProgressBarProps {

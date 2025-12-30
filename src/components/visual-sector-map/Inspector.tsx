@@ -90,6 +90,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
               linkedActorIds: (row as any).linked_actor_ids || [],
               linkedConnectionIds: (row as any).linked_connection_ids || [],
               canvasArea: (row as any).canvas_area as CanvasArea,
+              validationStage: (row as any).validation_stage || 1,
               importance: ((row as any).importance || 3) as ConfidenceLevel,
               priority: ((row as any).priority || 'medium') as PriorityLevel,
               riskScore: (row as any).risk_score || undefined,

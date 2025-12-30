@@ -12,6 +12,7 @@ import { EnhancedInterviews } from './EnhancedInterviews';
 import { DiscoveryDashboard } from './DiscoveryDashboard';
 import { seedPetFinderData, hasDiscoveryData } from '../../utils/seedPetFinderData';
 import type { Assumption, AssumptionStatus } from '../../types/discovery';
+import { getStageForArea } from '../../types/discovery';
 import { ReportLayout } from '../reports/ReportLayout';
 import { ReportSection } from '../reports/ReportSection';
 import { MetricGrid } from '../reports/MetricGrid';
@@ -141,6 +142,7 @@ export function DiscoveryModule({ projectId, onBack, onGoToStep0 }: DiscoveryMod
 
       // Discovery specific fields
       canvasArea: newAssumption.canvasArea,
+      validationStage: getStageForArea(newAssumption.canvasArea),
       importance: newAssumption.importance,
       priority,
       riskScore,

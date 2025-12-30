@@ -20,6 +20,7 @@ export function useStep0Data(projectId: string | undefined) {
     focusedSegmentId,
     focusJustification,
     assumptions,
+    hasGraduated,
     importData,
     exportData,
     reset,
@@ -62,6 +63,7 @@ export function useStep0Data(projectId: string | undefined) {
             focusedSegmentId: data.focused_segment_id,
             focusJustification: data.focus_justification || '',
             assumptions: (data.assumptions || []) as unknown as Assumption[],
+            hasGraduated: (data as any).has_graduated || false,
           });
         }
 
@@ -105,8 +107,9 @@ export function useStep0Data(projectId: string | undefined) {
             focused_segment_id: currentData.focusedSegmentId,
             focus_justification: currentData.focusJustification,
             assumptions: currentData.assumptions,
+            has_graduated: currentData.hasGraduated,
             updated_by: user.id,
-          }, {
+          } as any, {
             onConflict: 'project_id',
           });
       } catch (err) {
@@ -122,7 +125,7 @@ export function useStep0Data(projectId: string | undefined) {
     // Debounce saves by 1 second to avoid too many database writes
     const timeoutId = setTimeout(saveStep0Data, 1000);
     return () => clearTimeout(timeoutId);
-  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, focusJustification, assumptions, loading, exportData]);
+  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, focusJustification, assumptions, hasGraduated, loading, exportData]);
 
   return { loading, error };
 }

@@ -104,7 +104,7 @@ function getStageRecommendation(
   invalidatedCount: number,
   canGraduate: boolean,
   isUnlocked: boolean,
-  config: ValidationConfig
+  _config: ValidationConfig
 ): string {
   const stageConfig = VALIDATION_STAGES[stage];
 
@@ -262,7 +262,6 @@ export function checkValidationEligibility(
 
   // Calculate support ratio
   const supportingCount = linkedTags.filter((t) => t.validationEffect === 'supports').length;
-  const contradictingCount = linkedTags.filter((t) => t.validationEffect === 'contradicts').length;
   const supportRatio = supportingCount / linkedTags.length;
 
   if (supportRatio >= config.minimumSupportRatio) {
