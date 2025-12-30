@@ -7,27 +7,110 @@ export type IntervieweeType = 'potential-buyer' | 'competitor' | 'substitute' | 
 export type ConfidenceLevel = 1 | 2 | 3 | 4 | 5; // 1=very low, 5=very high
 
 // ============================================================================
-// DISCOVERY 2.0 TYPES (Lean Business Model Canvas Integration)
+// V2 TYPES: VALIDATION STAGES (Replaces VALIDATION_GROUPS)
+// ============================================================================
+
+// V2 Validation Stage numbers
+export type ValidationStage = 1 | 2 | 3;
+
+// V2 Stage definitions with progression requirements
+export const VALIDATION_STAGES = {
+  1: {
+    name: 'Customer-Problem Fit',
+    question: 'WHO has this problem and HOW BAD is it?',
+    description: 'Validate that your customer exists and their problem is worth solving',
+    color: 'blue',
+    areas: ['customerSegments', 'problem'] as CanvasArea[],
+    minimumInterviews: 5,
+    graduationCriteria: {
+      minConfidence: 4,
+      maxInvalidated: 0,
+    },
+  },
+  2: {
+    name: 'Problem-Solution Fit',
+    question: 'HOW should we solve it and for WHOM specifically?',
+    description: 'Validate your solution approach and early adopter profile',
+    color: 'purple',
+    areas: ['existingAlternatives', 'solution', 'uniqueValueProposition', 'earlyAdopters'] as CanvasArea[],
+    minimumInterviews: 5,
+    graduationCriteria: {
+      minConfidence: 4,
+      maxInvalidated: 1,
+    },
+  },
+  3: {
+    name: 'Business Model Viability',
+    question: 'Can we BUILD and SCALE this profitably?',
+    description: 'Validate the business model can sustain growth',
+    color: 'green',
+    areas: ['channels', 'revenueStreams', 'costStructure', 'keyMetrics', 'unfairAdvantage'] as CanvasArea[],
+    minimumInterviews: 3,
+    graduationCriteria: {
+      minConfidence: 3,
+      maxInvalidated: 2,
+    },
+  },
+} as const;
+
+// V2 Stage group mapping (for compatibility and quick lookups)
+export const VALIDATION_STAGE_GROUPS = {
+  1: ['customerSegments', 'problem'],
+  2: ['existingAlternatives', 'solution', 'uniqueValueProposition', 'earlyAdopters'],
+  3: ['channels', 'revenueStreams', 'costStructure', 'keyMetrics', 'unfairAdvantage'],
+} as const;
+
+// ============================================================================
+// LEAN BUSINESS MODEL CANVAS TYPES
 // ============================================================================
 
 // Lean Business Model Canvas (LBMC) areas
 export type CanvasArea =
-  | 'problem'
-  | 'existingAlternatives'
+  // Stage 1: Customer-Problem Fit
   | 'customerSegments'
-  | 'earlyAdopters'
+  | 'problem'
+  // Stage 2: Problem-Solution Fit
+  | 'existingAlternatives'
   | 'solution'
   | 'uniqueValueProposition'
+  | 'earlyAdopters'
+  // Stage 3: Business Model Viability
   | 'channels'
   | 'revenueStreams'
   | 'costStructure'
   | 'keyMetrics'
   | 'unfairAdvantage';
 
-// Progressive validation groups (staged approach)
+// Canvas area display labels
+export const CANVAS_AREA_LABELS: Record<CanvasArea, string> = {
+  customerSegments: 'Customer Segments',
+  problem: 'Problem',
+  existingAlternatives: 'Existing Alternatives',
+  solution: 'Solution',
+  uniqueValueProposition: 'Unique Value Proposition',
+  earlyAdopters: 'Early Adopters',
+  channels: 'Channels',
+  revenueStreams: 'Revenue Streams',
+  costStructure: 'Cost Structure',
+  keyMetrics: 'Key Metrics',
+  unfairAdvantage: 'Unfair Advantage',
+};
+
+// Helper to get validation stage for a canvas area
+export function getStageForArea(area: CanvasArea): ValidationStage {
+  if (VALIDATION_STAGE_GROUPS[1].includes(area as typeof VALIDATION_STAGE_GROUPS[1][number])) return 1;
+  if (VALIDATION_STAGE_GROUPS[2].includes(area as typeof VALIDATION_STAGE_GROUPS[2][number])) return 2;
+  return 3;
+}
+
+// ============================================================================
+// LEGACY COMPATIBILITY (V1 - Deprecated but kept for migration)
+// ============================================================================
+
+// @deprecated Use ValidationStage instead
 export type ValidationGroup = 'group1' | 'group2' | 'group3';
 
-// Group definitions for progressive validation workflow
+// @deprecated Use VALIDATION_STAGES instead
 export const VALIDATION_GROUPS = {
   group1: {
     name: 'Problem-Solution Fit',
@@ -49,17 +132,24 @@ export const VALIDATION_GROUPS = {
   },
 } as const;
 
-// Helper to get validation group for a canvas area
+// @deprecated Use getStageForArea instead
 export function getValidationGroup(area: CanvasArea): ValidationGroup {
   if (VALIDATION_GROUPS.group1.areas.includes(area)) return 'group1';
   if (VALIDATION_GROUPS.group2.areas.includes(area)) return 'group2';
   return 'group3';
 }
 
+// ============================================================================
+// ASSUMPTION TYPES
+// ============================================================================
+
 // Priority level for assumption testing
 export type PriorityLevel = 'high' | 'medium' | 'low';
 
-// Legacy Discovery 1.0 assumption type (kept for reference, not actively used)
+// Step 0 assumption types (for graduation migration)
+export type Step0AssumptionType = 'customerIdentity' | 'problemSeverity' | 'solutionHypothesis';
+
+// Base assumption interface
 export interface LegacyAssumption {
   id: string;
   type: AssumptionType;
@@ -78,62 +168,39 @@ export interface LegacyAssumption {
   linkedConnectionIds?: string[]; // Links to connections in Visual Sector Map
 }
 
-// Legacy Discovery 1.0 interview type (kept for reference, not actively used)
-export interface LegacyInterview {
-  id: string;
-  date: string; // ISO date string
-  customerSegment: string;
-  interviewee?: string;
-  intervieweeType?: IntervieweeType; // Type of person being interviewed
-  format: InterviewFormat;
-  duration?: number; // minutes
-  notes: string;
-  assumptionsAddressed: string[]; // Array of assumption IDs
-  keyInsights: string[];
-  surprises?: string;
-  nextAction?: string;
-  followUpNeeded: boolean;
-  status?: 'draft' | 'completed'; // Interview status
+// V2 Discovery Assumption (primary type used throughout the module)
+export interface Assumption extends LegacyAssumption {
+  // LBMC Integration
+  canvasArea: CanvasArea;
+
+  // V2: Validation stage (1, 2, or 3)
+  validationStage: ValidationStage;
+
+  // Risk-based prioritization
+  importance: ConfidenceLevel; // 1-5: How critical is this assumption?
+  priority: PriorityLevel; // Calculated or manually set: high/medium/low
+  riskScore?: number; // Calculated: (6 - confidence) * importance
+
+  // Enhanced tracking
+  interviewCount?: number; // Number of interviews that addressed this
+  lastTestedDate?: string; // ISO date of most recent interview
+
+  // V2: Migration tracking
+  migratedFromStep0?: boolean; // True if created during graduation
+  sourceSegment?: string; // Name of the segment this relates to
+  step0AssumptionType?: Step0AssumptionType; // Original type from Step 0
 }
 
-export interface Iteration {
-  id: string;
-  date: string; // ISO date string
-  version: number;
-  changes: string;
-  reasoning: string;
-  assumptionsAffected: string[]; // Array of assumption IDs
-  patternsObserved?: string;
-  riskiestAssumption?: string; // assumption ID
-  nextExperiment?: string;
-}
-
-export interface AssumptionTemplate {
-  type: AssumptionType;
-  prompts: string[];
-}
-
-export interface InterviewTemplate {
-  category: string;
-  questions: string[];
-}
+// Alias for backward compatibility
+export type Discovery2Assumption = Assumption;
 
 // ============================================================================
-// ENHANCED INTERVIEW SYSTEM (New Structured Approach)
+// INTERVIEW TYPES
 // ============================================================================
 
 export type IntervieweeTypeEnhanced = 'customer' | 'partner' | 'regulator' | 'expert' | 'other';
 export type ValidationEffect = 'supports' | 'contradicts' | 'neutral';
 export type InterviewStatus = 'draft' | 'completed';
-
-// Enhanced Assumption with additional tracking fields (Legacy - extends old base)
-export interface EnhancedAssumption extends LegacyAssumption {
-  category: 'problem' | 'solution' | 'customer' | 'price' | 'channel';
-  evidenceCount: number;
-  supportingCount: number;
-  contradictingCount: number;
-  lastInterviewDate?: string;
-}
 
 // Tag linking interview insights to assumptions
 export interface AssumptionTag {
@@ -172,6 +239,73 @@ export interface EnhancedInterview {
   // System fields
   created: string; // ISO date string
   lastUpdated: string;
+
+  // V2: Beachhead tracking
+  matchesBeachhead?: boolean; // True if interviewee matches beachhead segment
+  deviationAcknowledged?: boolean; // True if user acknowledged deviation
+  deviationReason?: string; // Why interviewing outside beachhead
+}
+
+// ============================================================================
+// BEACHHEAD & PROJECT TYPES
+// ============================================================================
+
+// Beachhead segment selection stored in project
+export interface BeachheadData {
+  segmentId: string;
+  segmentName: string;
+  selectedAt: string; // ISO timestamp
+  step0Score: number;
+  focusHistory: {
+    segmentId: string;
+    segmentName: string;
+    changedAt: string;
+    reason?: string;
+  }[];
+}
+
+// ============================================================================
+// STAGE STATUS TYPES
+// ============================================================================
+
+export interface StageStatus {
+  stage: ValidationStage;
+  interviewCount: number;
+  interviewsNeeded: number;
+  avgConfidence: number;
+  validatedCount: number;
+  invalidatedCount: number;
+  untestedCount: number;
+  totalAssumptions: number;
+  canGraduate: boolean;
+  isUnlocked: boolean;
+  recommendation: string;
+}
+
+// ============================================================================
+// SUPPORTING TYPES
+// ============================================================================
+
+export interface Iteration {
+  id: string;
+  date: string; // ISO date string
+  version: number;
+  changes: string;
+  reasoning: string;
+  assumptionsAffected: string[]; // Array of assumption IDs
+  patternsObserved?: string;
+  riskiestAssumption?: string; // assumption ID
+  nextExperiment?: string;
+}
+
+export interface AssumptionTemplate {
+  type: AssumptionType;
+  prompts: string[];
+}
+
+export interface InterviewTemplate {
+  category: string;
+  questions: string[];
 }
 
 // Synthesis result from multiple interviews
@@ -194,24 +328,29 @@ export interface InterviewSynthesis {
   }[];
 }
 
-// ============================================================================
-// DISCOVERY ASSUMPTION (with LBMC Integration)
-// This is the primary assumption type used throughout the Discovery module
-// ============================================================================
-
-export interface Assumption extends LegacyAssumption {
-  // LBMC Integration
-  canvasArea: CanvasArea; // Which LBMC area this assumption relates to
-
-  // Risk-based prioritization
-  importance: ConfidenceLevel; // 1-5: How critical is this assumption?
-  priority: PriorityLevel; // Calculated or manually set: high/medium/low
-  riskScore?: number; // Calculated: (6 - confidence) * importance
-
-  // Enhanced tracking
-  interviewCount?: number; // Number of interviews that addressed this
-  lastTestedDate?: string; // ISO date of most recent interview
+// Legacy interview type (kept for reference)
+export interface LegacyInterview {
+  id: string;
+  date: string;
+  customerSegment: string;
+  interviewee?: string;
+  intervieweeType?: IntervieweeType;
+  format: InterviewFormat;
+  duration?: number;
+  notes: string;
+  assumptionsAddressed: string[];
+  keyInsights: string[];
+  surprises?: string;
+  nextAction?: string;
+  followUpNeeded: boolean;
+  status?: 'draft' | 'completed';
 }
 
-// Alias for backward compatibility during migration
-export type Discovery2Assumption = Assumption;
+// Enhanced Assumption (legacy - extends old base)
+export interface EnhancedAssumption extends LegacyAssumption {
+  category: 'problem' | 'solution' | 'customer' | 'price' | 'channel';
+  evidenceCount: number;
+  supportingCount: number;
+  contradictingCount: number;
+  lastInterviewDate?: string;
+}

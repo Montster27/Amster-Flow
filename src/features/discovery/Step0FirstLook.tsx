@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ConfidenceLevel, Segment, useStep0Store } from './step0Store';
+import { ConfidenceLevel, Segment, AssumptionType, useStep0Store } from './step0Store';
+import { GraduationPanel } from '../../components/discovery/GraduationPanel';
+import { SCORING_GUIDANCE } from '../../config/validationConfig';
 
 // Example data for split-screen teaching
 const EXAMPLE_DATA = {
@@ -162,11 +164,18 @@ export function Step0FirstLook() {
     assumptions,
     syncAssumptionsFromCustomers,
     updateAssumption,
+    hasGraduated,
+    setGraduated,
+    getRecommendedBeachhead,
   } = useStep0Store();
 
   // Auto-focus newly added inputs
   const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'problem', index: number} | null>(null);
   const [newSegmentName, setNewSegmentName] = useState('');
+  const [showGraduationPanel, setShowGraduationPanel] = useState(false);
+
+  // Get recommended beachhead
+  const recommendedBeachhead = useMemo(() => getRecommendedBeachhead(), [getRecommendedBeachhead]);
 
   useEffect(() => {
     if (focusTarget) {
@@ -590,7 +599,10 @@ export function Step0FirstLook() {
                         <div className="grid grid-cols-3 gap-4 mb-4">
                           <div>
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500">Pain</span>
+                              <span className="text-slate-500 flex items-center gap-1">
+                                Pain
+                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.pain.description}>ⓘ</span>
+                              </span>
                               <span className="font-bold text-red-600">{s.pain}/5</span>
                             </div>
                             <input
@@ -601,10 +613,14 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'pain', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-500"
                             />
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.pain.levels[s.pain as keyof typeof SCORING_GUIDANCE.pain.levels]}</div>
                           </div>
                           <div>
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500">Access</span>
+                              <span className="text-slate-500 flex items-center gap-1">
+                                Access
+                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.access.description}>ⓘ</span>
+                              </span>
                               <span className="font-bold text-blue-600">{s.access}/5</span>
                             </div>
                             <input
@@ -615,10 +631,14 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'access', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.access.levels[s.access as keyof typeof SCORING_GUIDANCE.access.levels]}</div>
                           </div>
                           <div>
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500">Will Pay</span>
+                              <span className="text-slate-500 flex items-center gap-1">
+                                Will Pay
+                                <span className="text-slate-400 cursor-help" title={SCORING_GUIDANCE.willingness.description}>ⓘ</span>
+                              </span>
                               <span className="font-bold text-green-600">{s.willingness}/5</span>
                             </div>
                             <input
@@ -629,6 +649,7 @@ export function Step0FirstLook() {
                               onChange={(e) => updateSegment(s.id, 'willingness', Number(e.target.value))}
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-500"
                             />
+                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.willingness.levels[s.willingness as keyof typeof SCORING_GUIDANCE.willingness.levels]}</div>
                           </div>
                         </div>
 
@@ -752,6 +773,46 @@ export function Step0FirstLook() {
                             onChange={(e) => updateAssumption(a.id, 'assumption', e.target.value)}
                             placeholder="We assume that [customers] will [do X] because..."
                           />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-2">
+                            What type of assumption is this?
+                          </label>
+                          <div className="grid grid-cols-3 gap-2 mb-3">
+                            <button
+                              type="button"
+                              onClick={() => updateAssumption(a.id, 'assumptionType', 'customerIdentity' as AssumptionType)}
+                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
+                                a.assumptionType === 'customerIdentity'
+                                  ? 'border-blue-500 bg-blue-100 text-blue-700'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                              }`}
+                            >
+                              Customer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateAssumption(a.id, 'assumptionType', 'problemSeverity' as AssumptionType)}
+                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
+                                a.assumptionType === 'problemSeverity'
+                                  ? 'border-purple-500 bg-purple-100 text-purple-700'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'
+                              }`}
+                            >
+                              Problem
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateAssumption(a.id, 'assumptionType', 'solutionHypothesis' as AssumptionType)}
+                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
+                                a.assumptionType === 'solutionHypothesis'
+                                  ? 'border-green-500 bg-green-100 text-green-700'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-green-300'
+                              }`}
+                            >
+                              Solution
+                            </button>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-2">
@@ -890,19 +951,34 @@ export function Step0FirstLook() {
             </div>
           </div>
 
-          {/* Action Button */}
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => navigate(`/project/${projectId}`)}
-              className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
-            >
-              Continue to Discovery Module →
-            </button>
-            <p className="text-sm text-slate-500 mt-3">
-              The Discovery module will guide you through customer interviews and assumption testing.
-            </p>
-          </div>
+          {/* Graduation Panel */}
+          {showGraduationPanel ? (
+            <GraduationPanel
+              segments={segments}
+              assumptions={assumptions}
+              recommendedBeachhead={recommendedBeachhead}
+              focusedSegmentId={focusedSegmentId}
+              onGraduate={(beachheadId) => {
+                setGraduated(true);
+                navigate(`/project/${projectId}`);
+              }}
+              onCancel={() => setShowGraduationPanel(false)}
+            />
+          ) : (
+            /* Action Button */
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowGraduationPanel(true)}
+                className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
+              >
+                Graduate to Discovery Module →
+              </button>
+              <p className="text-sm text-slate-500 mt-3">
+                Choose your beachhead segment and migrate your assumptions to the Discovery module.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

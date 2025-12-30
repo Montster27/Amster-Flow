@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
 import type {
   EnhancedInterview,
@@ -6,12 +6,17 @@ import type {
   AssumptionTag,
   IntervieweeTypeEnhanced,
   ConfidenceLevel,
+  BeachheadData,
+  ValidationStage,
 } from '../../types/discovery';
+import { VALIDATION_STAGES } from '../../types/discovery';
+import { SegmentDeviationWarning } from './SegmentDeviationWarning';
 
 interface InterviewFormProps {
   assumptions: Assumption[];
   editingInterview: EnhancedInterview | null;
   onClose: () => void;
+  beachhead?: BeachheadData | null;
 }
 
 const BIG_THREE_GUIDANCE = {
@@ -36,12 +41,13 @@ const BIG_THREE_GUIDANCE = {
   ]
 };
 
-export function InterviewForm({ assumptions, editingInterview, onClose }: InterviewFormProps) {
+export function InterviewForm({ assumptions, editingInterview, onClose, beachhead }: InterviewFormProps) {
   const { addInterview, updateInterview, updateAssumption } = useDiscovery();
 
   // Form state
   const [intervieweeType, setIntervieweeType] = useState<IntervieweeTypeEnhanced>('customer');
-  const [segmentName, setSegmentName] = useState('');
+  // Pre-populate segment with beachhead if available
+  const [segmentName, setSegmentName] = useState(beachhead?.segmentName || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [context, setContext] = useState('');
   const [mainPainPoints, setMainPainPoints] = useState('');
@@ -53,6 +59,34 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
   const [assumptionTags, setAssumptionTags] = useState<AssumptionTag[]>([]);
   const [studentReflection, setStudentReflection] = useState('');
   const [status, setStatus] = useState<'draft' | 'completed'>('draft');
+  const [deviationAcknowledged, setDeviationAcknowledged] = useState(false);
+  const [deviationReason, setDeviationReason] = useState<string | undefined>();
+
+  // Group assumptions by stage for better selection
+  const groupedAssumptions = useMemo(() => {
+    const statusOrder: Record<string, number> = { untested: 0, testing: 1, validated: 2, invalidated: 3 };
+
+    const sortByPriority = (a: Assumption, b: Assumption) => {
+      const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+      if (statusDiff !== 0) return statusDiff;
+      const riskA = a.riskScore || (6 - a.confidence) * a.importance;
+      const riskB = b.riskScore || (6 - b.confidence) * b.importance;
+      return riskB - riskA;
+    };
+
+    const grouped: Record<ValidationStage, Assumption[]> = { 1: [], 2: [], 3: [] };
+    assumptions.forEach((a) => {
+      const stage = a.validationStage || 1;
+      grouped[stage].push(a);
+    });
+
+    // Sort within each stage
+    Object.keys(grouped).forEach((key) => {
+      grouped[parseInt(key) as ValidationStage].sort(sortByPriority);
+    });
+
+    return grouped;
+  }, [assumptions]);
 
   // Load editing interview data
   useEffect(() => {
@@ -70,8 +104,22 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
       setAssumptionTags(editingInterview.assumptionTags);
       setStudentReflection(editingInterview.studentReflection);
       setStatus(editingInterview.status);
+      setDeviationAcknowledged(editingInterview.deviationAcknowledged || false);
+      setDeviationReason(editingInterview.deviationReason);
     }
   }, [editingInterview]);
+
+  // Check if segment matches beachhead
+  const matchesBeachhead = useMemo(() => {
+    if (!beachhead) return true;
+    return segmentName.toLowerCase().trim() === beachhead.segmentName.toLowerCase().trim();
+  }, [segmentName, beachhead]);
+
+  // Handle deviation acknowledgement
+  const handleDeviationAcknowledge = (acknowledged: boolean, reason?: string) => {
+    setDeviationAcknowledged(acknowledged);
+    setDeviationReason(reason);
+  };
 
   const handleAddQuote = () => {
     setMemorableQuotes([...memorableQuotes, '']);
@@ -139,6 +187,10 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
       studentReflection: studentReflection.trim(),
       created: editingInterview?.created || new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
+      // V2 fields for beachhead tracking
+      matchesBeachhead,
+      deviationAcknowledged: !matchesBeachhead ? deviationAcknowledged : undefined,
+      deviationReason: !matchesBeachhead ? deviationReason : undefined,
     };
 
     if (editingInterview) {
@@ -230,15 +282,27 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Segment Name *
+              {beachhead && (
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  (Beachhead: {beachhead.segmentName})
+                </span>
+              )}
             </label>
             <input
               type="text"
               value={segmentName}
               onChange={(e) => setSegmentName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Small Business Owner"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                beachhead && !matchesBeachhead ? 'border-yellow-400' : 'border-gray-300'
+              }`}
+              placeholder={beachhead ? beachhead.segmentName : 'e.g., Small Business Owner'}
               required
             />
+            {beachhead && !matchesBeachhead && (
+              <p className="text-xs text-yellow-600 mt-1">
+                This differs from your beachhead segment
+              </p>
+            )}
           </div>
 
           <div>
@@ -254,6 +318,16 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
             />
           </div>
         </div>
+
+        {/* Segment Deviation Warning */}
+        {beachhead && segmentName.trim() && !matchesBeachhead && (
+          <SegmentDeviationWarning
+            currentSegment={segmentName}
+            beachhead={beachhead}
+            onAcknowledge={handleDeviationAcknowledge}
+            acknowledged={deviationAcknowledged}
+          />
+        )}
 
         {/* Context */}
         <div>
@@ -420,11 +494,36 @@ export function InterviewForm({ assumptions, editingInterview, onClose }: Interv
                       onChange={(e) => handleAssumptionTagChange(index, 'assumptionId', e.target.value)}
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
                     >
-                      {assumptions.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.description.substring(0, 50)}...
-                        </option>
-                      ))}
+                      {/* Stage 1 assumptions (prioritized) */}
+                      {groupedAssumptions[1].length > 0 && (
+                        <optgroup label={`Stage 1: ${VALIDATION_STAGES[1].name}`}>
+                          {groupedAssumptions[1].map((a) => (
+                            <option key={a.id} value={a.id}>
+                              [{a.status}] {a.description.substring(0, 45)}...
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {/* Stage 2 assumptions */}
+                      {groupedAssumptions[2].length > 0 && (
+                        <optgroup label={`Stage 2: ${VALIDATION_STAGES[2].name}`}>
+                          {groupedAssumptions[2].map((a) => (
+                            <option key={a.id} value={a.id}>
+                              [{a.status}] {a.description.substring(0, 45)}...
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {/* Stage 3 assumptions */}
+                      {groupedAssumptions[3].length > 0 && (
+                        <optgroup label={`Stage 3: ${VALIDATION_STAGES[3].name}`}>
+                          {groupedAssumptions[3].map((a) => (
+                            <option key={a.id} value={a.id}>
+                              [{a.status}] {a.description.substring(0, 45)}...
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
 

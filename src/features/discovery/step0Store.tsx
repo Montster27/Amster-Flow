@@ -13,12 +13,16 @@ export type Segment = {
   confidenceLevel: ConfidenceLevel; // Affects score weighting
 };
 
+// V2: Extended assumption types for proper stage mapping
+export type AssumptionType = 'customerIdentity' | 'problemSeverity' | 'solutionHypothesis';
+
 export type Assumption = {
   id: number;
   sourceText: string; // Original problem or benefit text
   sourceType: 'problem' | 'benefit';
   assumption: string; // Reframed as testable assumption
   impactIfWrong: 'idea-dies' | 'shrinks' | 'nice-to-have' | '';
+  assumptionType?: AssumptionType; // V2: Maps to validation stages
 };
 
 export type Customer = {
@@ -42,6 +46,7 @@ type Step0State = {
   focusedSegmentId: number | null;
   focusJustification: string;
   assumptions: Assumption[];
+  hasGraduated: boolean; // V2: Track if user has graduated to Discovery
 };
 
 type Step0Actions = {
@@ -63,9 +68,12 @@ type Step0Actions = {
   setFocusJustification: (value: string) => void;
   // Assumption actions
   syncAssumptionsFromCustomers: () => void;
-  updateAssumption: (id: number, field: keyof Omit<Assumption, 'id' | 'sourceText' | 'sourceType'>, value: string) => void;
+  updateAssumption: (id: number, field: keyof Omit<Assumption, 'id' | 'sourceText' | 'sourceType'>, value: string | AssumptionType) => void;
   // Lifecycle
   reset: () => void;
+  // V2: Graduation action
+  setGraduated: (graduated: boolean) => void;
+  getRecommendedBeachhead: () => Segment | null;
   // Persistence helpers
   importData: (data: Step0State) => void;
   exportData: () => Step0State;
@@ -79,6 +87,7 @@ const initialState: Step0State = {
   focusedSegmentId: null,
   focusJustification: '',
   assumptions: [],
+  hasGraduated: false,
 };
 
 const Step0Context = createContext<(Step0State & Step0Actions) | undefined>(undefined);
@@ -252,6 +261,35 @@ export function Step0Provider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => setState(initialState), []);
 
+  // V2: Graduation action
+  const setGraduated = useCallback((graduated: boolean) => {
+    setState((prev) => ({ ...prev, hasGraduated: graduated }));
+  }, []);
+
+  // V2: Get recommended beachhead based on highest score
+  const getRecommendedBeachhead = useCallback(() => {
+    if (state.segments.length === 0) return null;
+
+    // Calculate composite score for each segment
+    const scoredSegments = state.segments.map((segment) => {
+      // Apply confidence weight based on confidenceLevel
+      let confidenceWeight = 0.5;
+      if (segment.confidenceLevel === 'interviewed-30') confidenceWeight = 1.0;
+      else if (segment.confidenceLevel === 'several-told-me') confidenceWeight = 0.7;
+      else if (segment.confidenceLevel === 'seems-logical') confidenceWeight = 0.4;
+
+      // Composite score: (Pain + Access + Willingness) * ConfidenceWeight
+      const rawScore = segment.pain + segment.access + segment.willingness;
+      const weightedScore = rawScore * confidenceWeight;
+
+      return { segment, weightedScore, rawScore };
+    });
+
+    // Sort by weighted score descending and return top
+    scoredSegments.sort((a, b) => b.weightedScore - a.weightedScore);
+    return scoredSegments[0]?.segment || null;
+  }, [state.segments]);
+
   const importData = useCallback((data: Step0State) => {
     setState(data);
   }, []);
@@ -277,10 +315,12 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       syncAssumptionsFromCustomers,
       updateAssumption,
       reset,
+      setGraduated,
+      getRecommendedBeachhead,
       importData,
       exportData,
     }),
-    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateSegment, syncAssumptionsFromCustomers, updateAssumption, importData, exportData]
+    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerProblem, updateCustomerProblem, removeCustomerProblem, addSegment, syncSegmentsFromCustomers, reset, setFocusJustification, setFocusedSegmentId, setPart, updateSegment, syncAssumptionsFromCustomers, updateAssumption, setGraduated, getRecommendedBeachhead, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;

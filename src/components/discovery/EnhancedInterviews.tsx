@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { InterviewForm } from './InterviewForm';
-import type { EnhancedInterview, Assumption } from '../../types/discovery';
+import { SegmentDeviationBadge, InterviewRequirementsCard } from './SegmentDeviationWarning';
+import { calculateInterviewRequirements } from '../../utils/interviewValidation';
+import type { EnhancedInterview, Assumption, BeachheadData } from '../../types/discovery';
 
 interface EnhancedInterviewsProps {
   assumptions: Assumption[];
+  beachhead?: BeachheadData | null;
 }
 
-export function EnhancedInterviews({ assumptions }: EnhancedInterviewsProps) {
+export function EnhancedInterviews({ assumptions, beachhead }: EnhancedInterviewsProps) {
   const { interviews, deleteInterview } = useDiscovery();
   const [showForm, setShowForm] = useState(false);
   const [editingInterview, setEditingInterview] = useState<EnhancedInterview | null>(null);
+
+  // Calculate interview requirements for progress display
+  const interviewRequirements = useMemo(() => {
+    return calculateInterviewRequirements(
+      interviews,
+      assumptions,
+      beachhead?.segmentName || ''
+    );
+  }, [interviews, assumptions, beachhead]);
 
   const handleEdit = (interview: EnhancedInterview) => {
     setEditingInterview(interview);
@@ -81,7 +93,21 @@ export function EnhancedInterviews({ assumptions }: EnhancedInterviewsProps) {
           assumptions={assumptions}
           editingInterview={editingInterview}
           onClose={handleCloseForm}
+          beachhead={beachhead}
         />
+      )}
+
+      {/* Interview Requirements Progress */}
+      {!showForm && beachhead && (
+        <div className="mb-6">
+          <InterviewRequirementsCard
+            stage1Interviews={interviewRequirements.stage1Interviews}
+            stage1Required={interviewRequirements.stage1Required}
+            beachheadInterviews={interviewRequirements.beachheadInterviews}
+            beachheadRequired={interviewRequirements.beachheadRequired}
+            beachheadName={beachhead.segmentName}
+          />
+        </div>
       )}
 
       {/* Interviews List */}
@@ -125,9 +151,22 @@ export function EnhancedInterviews({ assumptions }: EnhancedInterviewsProps) {
                         <span className={`text-xs font-medium px-2 py-1 border rounded capitalize ${getStatusColor(interview.status)}`}>
                           {interview.status}
                         </span>
+                        {/* Beachhead matching badge */}
+                        {beachhead && (
+                          <SegmentDeviationBadge
+                            beachheadName={beachhead.segmentName}
+                            interviewSegment={interview.segmentName}
+                          />
+                        )}
                       </div>
                       <p className="text-sm text-gray-500">
                         {formatDate(interview.date)} · {interview.intervieweeType}
+                        {/* Show deviation reason if present */}
+                        {interview.deviationReason && (
+                          <span className="text-yellow-600 ml-2">
+                            — {interview.deviationReason}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
