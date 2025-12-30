@@ -96,9 +96,16 @@ ON projects(v2_migrated_at) WHERE v2_migrated_at IS NOT NULL;
 -- ============================================================================
 
 -- Ensure validation_stage is 1, 2, or 3
-ALTER TABLE project_assumptions
-ADD CONSTRAINT IF NOT EXISTS chk_validation_stage
-CHECK (validation_stage >= 1 AND validation_stage <= 3);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_validation_stage'
+    ) THEN
+        ALTER TABLE project_assumptions
+        ADD CONSTRAINT chk_validation_stage
+        CHECK (validation_stage >= 1 AND validation_stage <= 3);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- COMMENTS FOR DOCUMENTATION
