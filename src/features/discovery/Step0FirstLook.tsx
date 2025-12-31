@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ConfidenceLevel, Segment, AssumptionType, useStep0Store } from './step0Store';
-import { GraduationPanel } from '../../components/discovery/GraduationPanel';
-import { SCORING_GUIDANCE } from '../../config/validationConfig';
+import { Segment, useStep0Store } from './step0Store';
 
 // Example data for split-screen teaching
 const EXAMPLE_DATA = {
@@ -14,28 +12,24 @@ const EXAMPLE_DATA = {
   customers: [
     {
       name: 'Working parents with teens in sports',
-      problems: [
-        'Miss important games because schedules change last-minute',
-        'Spend 30+ min/week coordinating carpools via text',
-        'Kids forget to tell them about schedule changes',
+      benefits: [
+        'Never miss another game or practice',
+        'Save 30+ minutes per week on scheduling',
+        'Feel confident they know all upcoming events',
       ],
     },
     {
       name: 'Single parents juggling multiple kids',
-      problems: [
-        'No backup when work conflicts with kid activities',
-        'Overwhelmed tracking 3+ different schedules',
-        'Guilt about missing events they didn\'t know about',
+      benefits: [
+        'One place to see all schedules at a glance',
+        'Easy backup when conflicts arise',
+        'Less guilt from missed events',
       ],
     },
   ],
   segments: [
-    { name: 'Working parents with teens in sports', pain: 5, access: 4, willingness: 4, confidence: 'several-told-me' },
-    { name: 'Single parents juggling multiple kids', pain: 5, access: 3, willingness: 5, confidence: 'interviewed-30' },
-  ],
-  assumptions: [
-    { problem: 'Miss important games because schedules change last-minute', assumption: 'Parents check their phones at least 3x daily and would see push notifications about schedule changes', impact: 'idea-dies' },
-    { problem: 'Spend 30+ min/week coordinating carpools via text', assumption: 'Parents would trust other verified parents in the app enough to coordinate carpools', impact: 'shrinks' },
+    { name: 'Working parents with teens in sports', need: 'Stop missing last-minute schedule changes', accessRank: 5 },
+    { name: 'Single parents juggling multiple kids', need: 'Manage multiple schedules without overwhelm', accessRank: 3 },
   ],
 };
 
@@ -101,9 +95,9 @@ function SplitScreen({
   );
 }
 
-// Progress bar component
+// Progress bar component - now 4 parts instead of 5
 function ProgressBar({ currentPart, totalParts }: { currentPart: number; totalParts: number }) {
-  const parts = ['Your Idea', 'Who & Why', 'Rank & Focus', 'Key Bets', 'Summary'];
+  const parts = ['Your Idea', 'Who & Why', 'Needs & Ranking', 'Summary'];
 
   return (
     <div className="mb-6">
@@ -150,36 +144,26 @@ export function Step0FirstLook() {
     addCustomer,
     updateCustomer,
     removeCustomer,
-    addCustomerProblem,
-    updateCustomerProblem,
-    removeCustomerProblem,
+    addCustomerBenefit,
+    updateCustomerBenefit,
+    removeCustomerBenefit,
     segments,
     addSegment,
     syncSegmentsFromCustomers,
-    updateSegment,
+    updateSegmentNeed,
+    updateSegmentAccessRank,
     focusedSegmentId,
     setFocusedSegmentId,
-    focusJustification,
-    setFocusJustification,
-    assumptions,
-    syncAssumptionsFromCustomers,
-    updateAssumption,
     setGraduated,
-    getRecommendedBeachhead,
   } = useStep0Store();
 
   // Auto-focus newly added inputs
-  const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'problem', index: number} | null>(null);
+  const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'benefit', index: number} | null>(null);
   const [newSegmentName, setNewSegmentName] = useState('');
-  const [showGraduationPanel, setShowGraduationPanel] = useState(false);
-
-  // Get recommended beachhead (used for display/recommendation purposes)
-  const _recommendedBeachhead = useMemo(() => getRecommendedBeachhead(), [getRecommendedBeachhead]);
-  void _recommendedBeachhead; // Suppress unused warning - available for future use
 
   useEffect(() => {
     if (focusTarget) {
-      const inputId = `problem-${focusTarget.customerId}-${focusTarget.index}`;
+      const inputId = `benefit-${focusTarget.customerId}-${focusTarget.index}`;
       const element = document.getElementById(inputId);
       if (element) {
         element.focus();
@@ -195,16 +179,9 @@ export function Step0FirstLook() {
     }
   }, [part, syncSegmentsFromCustomers]);
 
-  // Sync assumptions when entering Part 3
-  useEffect(() => {
-    if (part === 3) {
-      syncAssumptionsFromCustomers();
-    }
-  }, [part, syncAssumptionsFromCustomers]);
-
-  const handleAddCustomerProblem = (customerId: number, currentLength: number) => {
-    addCustomerProblem(customerId, '');
-    setFocusTarget({ customerId, type: 'problem', index: currentLength });
+  const handleAddCustomerBenefit = (customerId: number, currentLength: number) => {
+    addCustomerBenefit(customerId, '');
+    setFocusTarget({ customerId, type: 'benefit', index: currentLength });
   };
 
   const handleAddSegment = () => {
@@ -214,19 +191,9 @@ export function Step0FirstLook() {
     }
   };
 
-  const getConfidenceBonus = (level: ConfidenceLevel): number => {
-    switch (level) {
-      case 'interviewed-30': return 10;
-      case 'several-told-me': return 5;
-      case 'seems-logical': return -5;
-      default: return 0;
-    }
-  };
-
-  const totalScore = (s: Segment) => s.pain + s.access + s.willingness + getConfidenceBonus(s.confidenceLevel);
-
+  // Sort segments by access rank (easiest to reach first)
   const sortedSegments = useMemo(
-    () => [...segments].sort((a, b) => totalScore(b) - totalScore(a)),
+    () => [...segments].sort((a, b) => b.accessRank - a.accessRank),
     [segments]
   );
 
@@ -235,27 +202,41 @@ export function Step0FirstLook() {
     [segments, focusedSegmentId]
   );
 
-  const criticalAssumptions = assumptions.filter((a) => a.impactIfWrong === 'idea-dies');
+  // Other segments (not focused) for reminder
+  const otherSegments = useMemo(
+    () => segments.filter((s) => s.id !== focusedSegmentId),
+    [segments, focusedSegmentId]
+  );
 
-  const nextPart = () => setPart(Math.min(4, part + 1));
+  const nextPart = () => setPart(Math.min(3, part + 1));
   const prevPart = () => setPart(Math.max(0, part - 1));
 
   // Check if current part is complete enough to proceed
   const canProceed = () => {
     switch (part) {
       case 0: return idea.building.trim() && idea.helps.trim() && idea.achieve.trim();
-      case 1: return customers.length > 0 && customers.some(c => c.text.trim() && c.problems.length > 0);
-      case 2: return focusedSegmentId !== null;
-      case 3: return assumptions.length > 0;
+      case 1: return customers.length > 0 && customers.some(c => c.text.trim() && c.benefits.length > 0);
+      case 2: return focusedSegmentId !== null && segments.some(s => s.need.trim());
       default: return true;
     }
+  };
+
+  const handleGraduate = () => {
+    setGraduated(true);
+    navigate(`/project/${projectId}/discovery`, {
+      state: {
+        message: 'Ready to start validating! Focus on your selected segment first.',
+        fromStep0: true,
+        focusedSegment: focusedSegment,
+      },
+    });
   };
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       {/* Header */}
       <div className="mb-6">
-        <ProgressBar currentPart={part} totalParts={5} />
+        <ProgressBar currentPart={part} totalParts={4} />
       </div>
 
       {/* Navigation */}
@@ -272,13 +253,12 @@ export function Step0FirstLook() {
           <div className="text-lg font-bold text-slate-800">
             {part === 0 && 'Your Idea'}
             {part === 1 && 'Who & Why'}
-            {part === 2 && 'Rank & Focus'}
-            {part === 3 && 'Key Bets'}
-            {part === 4 && 'Summary'}
+            {part === 2 && 'Needs & Ranking'}
+            {part === 3 && 'Summary'}
           </div>
-          <div className="text-sm text-slate-500">Step 0 · Part {part} of 4</div>
+          <div className="text-sm text-slate-500">Step 0 · Part {part} of 3</div>
         </div>
-        {part < 4 ? (
+        {part < 3 ? (
           <button
             type="button"
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -291,9 +271,9 @@ export function Step0FirstLook() {
           <button
             type="button"
             className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
-            onClick={() => navigate(`/project/${projectId}`)}
+            onClick={handleGraduate}
           >
-            Continue to Discovery →
+            Start Discovery →
           </button>
         )}
       </div>
@@ -386,14 +366,14 @@ export function Step0FirstLook() {
         />
       )}
 
-      {/* Part 1: Who & Why */}
+      {/* Part 1: Who & Why - Customers and Benefits */}
       {part === 1 && (
         <SplitScreen
-          exampleTitle="Example: Customers & Problems"
+          exampleTitle="Example: Customers & Benefits"
           exampleContent={
             <div className="space-y-4">
               <p className="text-sm text-amber-700 mb-4">
-                Think about different types of people who might have this problem:
+                List as many target customers as you can think of, and the benefits your solution provides for each:
               </p>
               {EXAMPLE_DATA.customers.map((customer, idx) => (
                 <div key={idx} className="bg-white rounded-lg p-4 border border-amber-200">
@@ -404,10 +384,10 @@ export function Step0FirstLook() {
                     <span className="font-semibold text-slate-800 text-sm">{customer.name}</span>
                   </div>
                   <div className="space-y-2">
-                    {customer.problems.map((problem, pidx) => (
-                      <div key={pidx} className="flex items-start gap-2 text-sm text-slate-600">
-                        <span className="text-red-400 mt-0.5">•</span>
-                        <span>{problem}</span>
+                    {customer.benefits.map((benefit, bidx) => (
+                      <div key={bidx} className="flex items-start gap-2 text-sm text-slate-600">
+                        <span className="text-green-500 mt-0.5">✓</span>
+                        <span>{benefit}</span>
                       </div>
                     ))}
                   </div>
@@ -415,16 +395,16 @@ export function Step0FirstLook() {
               ))}
               <div className="p-3 bg-amber-100 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <strong>Tip:</strong> Be specific! "Parents" is too broad. "Working parents with teens in travel sports" is better.
+                  <strong>Tip:</strong> Be specific! "Parents" is too broad. "Working parents with teens in travel sports" is better. List as many customer types as you can!
                 </p>
               </div>
             </div>
           }
-          studentTitle="Your Customers & Their Problems"
+          studentTitle="Your Customers & Their Benefits"
           studentContent={
             <div className="space-y-4">
               <p className="text-sm text-slate-600 mb-4">
-                Who might need your solution? What specific problems do they face?
+                Who might benefit from your solution? What value does it provide for each group?
               </p>
 
               {customers.length === 0 ? (
@@ -472,21 +452,21 @@ export function Step0FirstLook() {
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                            What problems do they face?
+                            What benefits do they get from your solution?
                           </label>
                           <div className="space-y-2">
-                            {c.problems.map((problem, idx) => (
+                            {c.benefits.map((benefit, idx) => (
                               <div key={idx} className="flex gap-2 group">
                                 <input
-                                  id={`problem-${c.id}-${idx}`}
-                                  className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                                  value={problem}
-                                  onChange={(e) => updateCustomerProblem(c.id, idx, e.target.value)}
-                                  placeholder="Describe a specific pain point..."
+                                  id={`benefit-${c.id}-${idx}`}
+                                  className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                                  value={benefit}
+                                  onChange={(e) => updateCustomerBenefit(c.id, idx, e.target.value)}
+                                  placeholder="Describe a specific benefit..."
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => removeCustomerProblem(c.id, idx)}
+                                  onClick={() => removeCustomerBenefit(c.id, idx)}
                                   className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 p-2"
                                 >
                                   ×
@@ -495,10 +475,10 @@ export function Step0FirstLook() {
                             ))}
                             <button
                               type="button"
-                              onClick={() => handleAddCustomerProblem(c.id, c.problems.length)}
-                              className="w-full rounded-lg border border-dashed border-red-200 px-3 py-2 text-sm text-red-400 hover:border-red-300 hover:bg-red-50"
+                              onClick={() => handleAddCustomerBenefit(c.id, c.benefits.length)}
+                              className="w-full rounded-lg border border-dashed border-green-200 px-3 py-2 text-sm text-green-500 hover:border-green-300 hover:bg-green-50"
                             >
-                              + Add problem
+                              + Add benefit
                             </button>
                           </div>
                         </div>
@@ -519,46 +499,46 @@ export function Step0FirstLook() {
         />
       )}
 
-      {/* Part 2: Rank & Focus */}
+      {/* Part 2: Needs & Ranking */}
       {part === 2 && (
         <SplitScreen
-          exampleTitle="Example: Ranking & Selection"
+          exampleTitle="Example: Needs & Ranking"
           exampleContent={
             <div className="space-y-4">
               <p className="text-sm text-amber-700 mb-4">
-                Rate each customer group to find your best starting point:
+                For each group, identify their most important need and rank how easy they are to reach:
               </p>
               {EXAMPLE_DATA.segments.map((seg, idx) => (
                 <div key={idx} className="bg-white rounded-lg p-4 border border-amber-200">
                   <div className="font-semibold text-slate-800 text-sm mb-3">{seg.name}</div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="text-center p-2 bg-red-50 rounded">
-                      <div className="text-red-600 font-bold">{seg.pain}/5</div>
-                      <div className="text-slate-500">Pain</div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500 mb-1">Most important need:</div>
+                      <div className="text-sm text-slate-700 bg-purple-50 p-2 rounded">{seg.need}</div>
                     </div>
-                    <div className="text-center p-2 bg-blue-50 rounded">
-                      <div className="text-blue-600 font-bold">{seg.access}/5</div>
-                      <div className="text-slate-500">Access</div>
-                    </div>
-                    <div className="text-center p-2 bg-green-50 rounded">
-                      <div className="text-green-600 font-bold">{seg.willingness}/5</div>
-                      <div className="text-slate-500">Will Pay</div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500 mb-1">How easy to reach:</div>
+                      <div className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                        seg.accessRank >= 4 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {seg.accessRank}/5 - {seg.accessRank >= 4 ? 'Easy' : 'Moderate'}
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
               <div className="p-3 bg-amber-100 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <strong>Key insight:</strong> High pain + high access = best for learning fast. Don't just pick the biggest market!
+                  <strong>Key insight:</strong> Start with customers you can easily reach! You need to validate quickly before investing more time.
                 </p>
               </div>
             </div>
           }
-          studentTitle="Rank Your Customer Groups"
+          studentTitle="Identify Needs & Rank Access"
           studentContent={
             <div className="space-y-4">
               <p className="text-sm text-slate-600 mb-4">
-                Rate each group and select one to focus on first.
+                What is the most important need for each group? Then rank how easy they are to reach.
               </p>
 
               {segments.length === 0 ? (
@@ -583,76 +563,54 @@ export function Step0FirstLook() {
                           <span className="font-semibold text-slate-800 text-sm">{s.name}</span>
                           {focusedSegmentId === s.id && (
                             <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs">
-                              Selected
+                              Starting Point
                             </span>
                           )}
                         </div>
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
-                          totalScore(s) >= 12 ? 'bg-green-100 text-green-700' :
-                          totalScore(s) >= 9 ? 'bg-yellow-100 text-yellow-700' :
+                          s.accessRank >= 4 ? 'bg-green-100 text-green-700' :
+                          s.accessRank >= 3 ? 'bg-yellow-100 text-yellow-700' :
                           'bg-slate-100 text-slate-600'
                         }`}>
-                          {totalScore(s)} pts
+                          Access: {s.accessRank}/5
                         </span>
                       </div>
-                      <div className="p-4">
-                        <div className="grid grid-cols-3 gap-4 mb-4">
-                          <div>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500 flex items-center gap-1">
-                                Pain
-                                <span className="text-slate-400 cursor-help" title="How badly do they need this solved?">ⓘ</span>
-                              </span>
-                              <span className="font-bold text-red-600">{s.pain}/5</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="1"
-                              max="5"
-                              value={s.pain}
-                              onChange={(e) => updateSegment(s.id, 'pain', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.pain[s.pain as keyof typeof SCORING_GUIDANCE.pain]}</div>
+                      <div className="p-4 space-y-4">
+                        {/* Most Important Need */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                            What is their most important need?
+                          </label>
+                          <textarea
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                            rows={2}
+                            value={s.need}
+                            onChange={(e) => updateSegmentNeed(s.id, e.target.value)}
+                            placeholder="What problem or desire is most urgent for them?"
+                          />
+                        </div>
+
+                        {/* Access Ranking */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className="text-slate-500 font-semibold uppercase tracking-wide">How easy to reach?</span>
+                            <span className="font-bold text-blue-600">{s.accessRank}/5</span>
                           </div>
-                          <div>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500 flex items-center gap-1">
-                                Access
-                                <span className="text-slate-400 cursor-help" title="How easily can you reach them?">ⓘ</span>
-                              </span>
-                              <span className="font-bold text-blue-600">{s.access}/5</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="1"
-                              max="5"
-                              value={s.access}
-                              onChange={(e) => updateSegment(s.id, 'access', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                            />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.access[s.access as keyof typeof SCORING_GUIDANCE.access]}</div>
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-slate-500 flex items-center gap-1">
-                                Will Pay
-                                <span className="text-slate-400 cursor-help" title="How willing are they to pay for a solution?">ⓘ</span>
-                              </span>
-                              <span className="font-bold text-green-600">{s.willingness}/5</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="1"
-                              max="5"
-                              value={s.willingness}
-                              onChange={(e) => updateSegment(s.id, 'willingness', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-green-500"
-                            />
-                            <div className="text-xs text-slate-400 mt-0.5">{SCORING_GUIDANCE.willingness[s.willingness as keyof typeof SCORING_GUIDANCE.willingness]}</div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={s.accessRank}
+                            onChange={(e) => updateSegmentAccessRank(s.id, Number(e.target.value))}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                          <div className="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>Hard to find</span>
+                            <span>Very easy</span>
                           </div>
                         </div>
 
+                        {/* Select as Starting Point */}
                         <div className="flex items-center gap-4 pt-3 border-t border-slate-100">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -662,7 +620,7 @@ export function Step0FirstLook() {
                               onChange={() => setFocusedSegmentId(s.id)}
                               className="w-4 h-4 text-blue-600"
                             />
-                            <span className="text-sm text-slate-600">Focus on this group first</span>
+                            <span className="text-sm text-slate-600">Use as starting point</span>
                           </label>
                         </div>
                       </div>
@@ -690,198 +648,13 @@ export function Step0FirstLook() {
                   </div>
                 </div>
               )}
-
-              {focusedSegmentId && (
-                <div className="mt-4">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Why focus on "{focusedSegment?.name}" first?
-                  </label>
-                  <textarea
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    rows={2}
-                    value={focusJustification}
-                    onChange={(e) => setFocusJustification(e.target.value)}
-                    placeholder="What will you learn fastest by talking to them?"
-                  />
-                </div>
-              )}
             </div>
           }
         />
       )}
 
-      {/* Part 3: Key Bets (Assumptions) */}
+      {/* Part 3: Summary */}
       {part === 3 && (
-        <SplitScreen
-          exampleTitle="Example: Turning Problems into Bets"
-          exampleContent={
-            <div className="space-y-4">
-              <p className="text-sm text-amber-700 mb-4">
-                Every problem you solve is a bet. Make them explicit:
-              </p>
-              {EXAMPLE_DATA.assumptions.map((item, idx) => (
-                <div key={idx} className="bg-white rounded-lg p-4 border border-amber-200">
-                  <div className="text-xs font-semibold text-slate-500 mb-1">Problem:</div>
-                  <div className="text-sm text-slate-700 mb-3">{item.problem}</div>
-                  <div className="text-xs font-semibold text-slate-500 mb-1">Our bet:</div>
-                  <div className="text-sm text-slate-800 mb-3 font-medium">{item.assumption}</div>
-                  <div className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                    item.impact === 'idea-dies' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {item.impact === 'idea-dies' ? 'Critical — idea dies if wrong' : 'Important — value shrinks if wrong'}
-                  </div>
-                </div>
-              ))}
-              <div className="p-3 bg-amber-100 rounded-lg">
-                <p className="text-xs text-amber-800">
-                  <strong>Focus first on the bets that could kill your idea.</strong> These are your riskiest assumptions.
-                </p>
-              </div>
-            </div>
-          }
-          studentTitle="Your Key Bets"
-          studentContent={
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600 mb-4">
-                Each problem assumes something is true. What are you betting on?
-              </p>
-
-              {assumptions.length === 0 ? (
-                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
-                  <p className="text-sm text-slate-500">Add problems in Part 1 to see them here.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {assumptions.map((a) => (
-                    <div key={a.id} className={`rounded-lg border-2 overflow-hidden ${
-                      a.impactIfWrong === 'idea-dies' ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'
-                    }`}>
-                      <div className={`px-4 py-2 ${
-                        a.impactIfWrong === 'idea-dies' ? 'bg-red-100' : 'bg-slate-50'
-                      }`}>
-                        <div className="text-xs font-semibold text-slate-500">Problem from customer research:</div>
-                        <div className="text-sm text-slate-700">{a.sourceText}</div>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">
-                            What's the underlying assumption?
-                          </label>
-                          <input
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            value={a.assumption}
-                            onChange={(e) => updateAssumption(a.id, 'assumption', e.target.value)}
-                            placeholder="We assume that [customers] will [do X] because..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-2">
-                            What type of assumption is this?
-                          </label>
-                          <div className="grid grid-cols-3 gap-2 mb-3">
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'assumptionType', 'customerIdentity' as AssumptionType)}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.assumptionType === 'customerIdentity'
-                                  ? 'border-blue-500 bg-blue-100 text-blue-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
-                              }`}
-                            >
-                              Customer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'assumptionType', 'problemSeverity' as AssumptionType)}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.assumptionType === 'problemSeverity'
-                                  ? 'border-purple-500 bg-purple-100 text-purple-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'
-                              }`}
-                            >
-                              Problem
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'assumptionType', 'solutionHypothesis' as AssumptionType)}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.assumptionType === 'solutionHypothesis'
-                                  ? 'border-green-500 bg-green-100 text-green-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-green-300'
-                              }`}
-                            >
-                              Solution
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 mb-2">
-                            If this assumption is wrong...
-                          </label>
-                          <div className="grid grid-cols-3 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'impactIfWrong', 'idea-dies')}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.impactIfWrong === 'idea-dies'
-                                  ? 'border-red-500 bg-red-100 text-red-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-red-300'
-                              }`}
-                            >
-                              Idea dies
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'impactIfWrong', 'shrinks')}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.impactIfWrong === 'shrinks'
-                                  ? 'border-yellow-500 bg-yellow-100 text-yellow-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-yellow-300'
-                              }`}
-                            >
-                              Value shrinks
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateAssumption(a.id, 'impactIfWrong', 'nice-to-have')}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
-                                a.impactIfWrong === 'nice-to-have'
-                                  ? 'border-green-500 bg-green-100 text-green-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-green-300'
-                              }`}
-                            >
-                              Nice to have
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {criticalAssumptions.length > 0 && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-500 text-lg">⚠️</span>
-                    <div>
-                      <div className="font-semibold text-red-800 text-sm">
-                        {criticalAssumptions.length} Critical Assumption{criticalAssumptions.length > 1 ? 's' : ''}
-                      </div>
-                      <p className="text-xs text-red-700 mt-1">
-                        Test these first — if any are wrong, your idea won't work.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          }
-        />
-      )}
-
-      {/* Part 4: Summary */}
-      {part === 4 && (
         <div className="space-y-6">
           <div className="rounded-xl border-2 border-green-200 bg-gradient-to-b from-green-50 to-white p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -889,8 +662,8 @@ export function Step0FirstLook() {
                 ✓
               </span>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Step 0 Complete!</h2>
-                <p className="text-sm text-slate-600">Here's your focused starting point:</p>
+                <h2 className="text-xl font-bold text-slate-800">Ready to Start Discovery!</h2>
+                <p className="text-sm text-slate-600">Your goal: quickly find out if this is a good starting place</p>
               </div>
             </div>
 
@@ -903,83 +676,76 @@ export function Step0FirstLook() {
               </p>
             </div>
 
-            {/* Focus Group */}
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Focus Group</h3>
-              <p className="text-lg text-blue-800 font-semibold">{focusedSegment?.name || 'Not selected'}</p>
-              {focusJustification && (
-                <p className="text-sm text-blue-700 mt-2">Why: {focusJustification}</p>
-              )}
-            </div>
-
-            {/* Critical Assumptions */}
-            {criticalAssumptions.length > 0 && (
-              <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
-                <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wide mb-2">
-                  Critical Assumptions to Test
-                </h3>
-                <ul className="space-y-2">
-                  {criticalAssumptions.map((a) => (
-                    <li key={a.id} className="flex items-start gap-2 text-sm text-red-800">
-                      <span className="text-red-500 mt-0.5">⚠️</span>
-                      <span>{a.assumption || a.sourceText}</span>
-                    </li>
-                  ))}
-                </ul>
+            {/* Starting Point */}
+            {focusedSegment && (
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Your Starting Point</h3>
+                <p className="text-lg text-blue-800 font-semibold mb-2">{focusedSegment.name}</p>
+                {focusedSegment.need && (
+                  <div className="mt-2">
+                    <span className="text-xs font-semibold text-blue-600">Their key need: </span>
+                    <span className="text-sm text-blue-700">{focusedSegment.need}</span>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Next Steps */}
-            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+            {/* Quick Validation Goal */}
+            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
               <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-3">
-                Suggested Next Steps
+                Your Goal in Discovery
               </h3>
-              <ol className="space-y-2 text-sm text-amber-800">
-                <li className="flex items-start gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-200 text-amber-700 text-xs font-bold shrink-0">1</span>
-                  <span>Interview 5 people from your focus group ({focusedSegment?.name || 'selected segment'})</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-200 text-amber-700 text-xs font-bold shrink-0">2</span>
-                  <span>Ask about their problems — don't pitch your solution yet</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-200 text-amber-700 text-xs font-bold shrink-0">3</span>
-                  <span>Test your critical assumptions before building anything</span>
-                </li>
-              </ol>
+              <p className="text-sm text-amber-800 mb-4">
+                Talk to 5-10 people in your starting segment. Ask about their needs and problems —
+                <strong> don't pitch your solution yet.</strong> You're trying to quickly validate if this is the right place to focus.
+              </p>
+              <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-100 p-3 rounded-lg">
+                <span className="text-lg">💡</span>
+                <span>
+                  <strong>Remember:</strong> If conversations aren't going well with this segment,
+                  that's valuable information! You have {otherSegments.length} other segment{otherSegments.length !== 1 ? 's' : ''} to explore.
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Graduation Panel */}
-          {showGraduationPanel ? (
-            <GraduationPanel
-              projectId={projectId || ''}
-              ideaStatement={idea}
-              customers={customers.map(c => ({ ...c, id: String(c.id) }))}
-              segments={segments.map(s => ({ ...s, id: String(s.id) }))}
-              assumptions={assumptions.map(a => ({ ...a, id: String(a.id) }))}
-              focusedSegmentId={focusedSegmentId !== null ? String(focusedSegmentId) : undefined}
-              onGraduationComplete={() => {
-                setGraduated(true);
-                setShowGraduationPanel(false);
-              }}
-            />
-          ) : (
-            /* Action Button */
-            <div className="text-center">
+            {/* Other Options Reminder */}
+            {otherSegments.length > 0 && (
+              <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">
+                  Other Segments to Try
+                </h3>
+                <p className="text-sm text-slate-600 mb-3">
+                  If your current target isn't working, come back and try one of these:
+                </p>
+                <div className="space-y-2">
+                  {otherSegments.map((s: Segment) => (
+                    <div key={s.id} className="flex items-center justify-between text-sm bg-white p-2 rounded border border-slate-100">
+                      <span className="text-slate-700">{s.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        s.accessRank >= 4 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        Access: {s.accessRank}/5
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action */}
+            <div className="text-center pt-4 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => setShowGraduationPanel(true)}
+                onClick={handleGraduate}
                 className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
               >
-                Graduate to Discovery Module →
+                Start Discovery →
               </button>
               <p className="text-sm text-slate-500 mt-3">
-                Choose your beachhead segment and migrate your assumptions to the Discovery module.
+                Begin talking to customers and validating your starting point
               </p>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

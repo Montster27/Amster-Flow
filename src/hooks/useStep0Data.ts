@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useStep0Store, type Customer, type Segment, type Assumption, type IdeaStatement } from '../features/discovery/step0Store';
+import { useStep0Store, type Customer, type Segment, type IdeaStatement } from '../features/discovery/step0Store';
 import { captureException } from '../lib/sentry';
 
 /**
@@ -18,8 +18,6 @@ export function useStep0Data(projectId: string | undefined) {
     customers,
     segments,
     focusedSegmentId,
-    focusJustification,
-    assumptions,
     hasGraduated,
     importData,
     exportData,
@@ -61,8 +59,6 @@ export function useStep0Data(projectId: string | undefined) {
             customers: (data.customers || []) as unknown as Customer[],
             segments: (data.segments || []) as unknown as Segment[],
             focusedSegmentId: data.focused_segment_id,
-            focusJustification: data.focus_justification || '',
-            assumptions: (data.assumptions || []) as unknown as Assumption[],
             hasGraduated: (data as any).has_graduated || false,
           });
         }
@@ -105,8 +101,6 @@ export function useStep0Data(projectId: string | undefined) {
             customers: currentData.customers,
             segments: currentData.segments,
             focused_segment_id: currentData.focusedSegmentId,
-            focus_justification: currentData.focusJustification,
-            assumptions: currentData.assumptions,
             has_graduated: currentData.hasGraduated,
             updated_by: user.id,
           } as any, {
@@ -125,7 +119,7 @@ export function useStep0Data(projectId: string | undefined) {
     // Debounce saves by 1 second to avoid too many database writes
     const timeoutId = setTimeout(saveStep0Data, 1000);
     return () => clearTimeout(timeoutId);
-  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, focusJustification, assumptions, hasGraduated, loading, exportData]);
+  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, hasGraduated, loading, exportData]);
 
   return { loading, error };
 }
