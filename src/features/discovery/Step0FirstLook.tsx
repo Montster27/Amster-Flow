@@ -28,8 +28,18 @@ const EXAMPLE_DATA = {
     },
   ],
   segments: [
-    { name: 'Working parents with teens in sports', need: 'Stop missing last-minute schedule changes', accessRank: 5 },
-    { name: 'Single parents juggling multiple kids', need: 'Manage multiple schedules without overwhelm', accessRank: 3 },
+    {
+      name: 'Working parents with teens in sports',
+      benefits: ['Never miss another game or practice', 'Save 30+ minutes per week on scheduling', 'Feel confident they know all upcoming events'],
+      need: 'Never miss another game or practice', // Selected from benefits
+      accessRank: 5
+    },
+    {
+      name: 'Single parents juggling multiple kids',
+      benefits: ['One place to see all schedules at a glance', 'Easy backup when conflicts arise', 'Less guilt from missed events'],
+      need: 'One place to see all schedules at a glance', // Selected from benefits
+      accessRank: 3
+    },
   ],
 };
 
@@ -506,15 +516,28 @@ export function Step0FirstLook() {
           exampleContent={
             <div className="space-y-4">
               <p className="text-sm text-amber-700 mb-4">
-                For each group, identify their most important need and rank how easy they are to reach:
+                Select the most important need from the benefits you listed, then rank how easy they are to reach:
               </p>
               {EXAMPLE_DATA.segments.map((seg, idx) => (
                 <div key={idx} className="bg-white rounded-lg p-4 border border-amber-200">
                   <div className="font-semibold text-slate-800 text-sm mb-3">{seg.name}</div>
                   <div className="space-y-3">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500 mb-1">Most important need:</div>
-                      <div className="text-sm text-slate-700 bg-purple-50 p-2 rounded">{seg.need}</div>
+                      <div className="text-xs font-semibold text-slate-500 mb-2">Benefits listed:</div>
+                      <div className="space-y-1">
+                        {seg.benefits.map((benefit, bidx) => (
+                          <div
+                            key={bidx}
+                            className={`text-sm px-2 py-1 rounded ${
+                              benefit === seg.need
+                                ? 'bg-purple-100 text-purple-800 font-medium border border-purple-300'
+                                : 'text-slate-600'
+                            }`}
+                          >
+                            {benefit === seg.need ? '✓ ' : '○ '}{benefit}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-slate-500 mb-1">How easy to reach:</div>
@@ -538,7 +561,7 @@ export function Step0FirstLook() {
           studentContent={
             <div className="space-y-4">
               <p className="text-sm text-slate-600 mb-4">
-                What is the most important need for each group? Then rank how easy they are to reach.
+                Select the most important need for each group from the benefits you listed, then rank how easy they are to reach.
               </p>
 
               {segments.length === 0 ? (
@@ -576,15 +599,51 @@ export function Step0FirstLook() {
                         </span>
                       </div>
                       <div className="p-4 space-y-4">
-                        {/* Most Important Need */}
+                        {/* Benefits from Part 1 */}
+                        {s.benefits.length > 0 && (
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                              Benefits you listed for this group:
+                            </label>
+                            <div className="space-y-2">
+                              {s.benefits.map((benefit, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => updateSegmentNeed(s.id, benefit)}
+                                  className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-all ${
+                                    s.need === benefit
+                                      ? 'border-purple-500 bg-purple-50 text-purple-800 font-medium'
+                                      : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300 hover:bg-purple-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                      s.need === benefit ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
+                                    }`}>
+                                      {s.need === benefit && (
+                                        <span className="w-2 h-2 rounded-full bg-white" />
+                                      )}
+                                    </span>
+                                    <span>{benefit}</span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Most Important Need - custom input */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                            What is their most important need?
+                            {s.benefits.length > 0 ? 'Or describe a different need:' : 'What is their most important need?'}
                           </label>
                           <textarea
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                            className={`w-full rounded-lg border px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 ${
+                              s.need && !s.benefits.includes(s.need) ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
+                            }`}
                             rows={2}
-                            value={s.need}
+                            value={s.benefits.includes(s.need) ? '' : s.need}
                             onChange={(e) => updateSegmentNeed(s.id, e.target.value)}
                             placeholder="What problem or desire is most urgent for them?"
                           />
