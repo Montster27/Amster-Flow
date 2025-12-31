@@ -2,11 +2,112 @@ import { createContext, ReactNode, useCallback, useContext, useMemo, useState } 
 
 export type ConfidenceLevel = 'interviewed-30' | 'several-told-me' | 'seems-logical' | '';
 
+// The 10 need categories for classifying benefits
+export type NeedCategoryId =
+  | 'functional'
+  | 'efficiency'
+  | 'economic'
+  | 'emotional'
+  | 'identity'
+  | 'social'
+  | 'control'
+  | 'risk'
+  | 'growth'
+  | 'meaning'
+  | '';
+
+export type NeedCategory = {
+  id: NeedCategoryId;
+  name: string;
+  description: string;
+  signal: string;
+  examples: string[];
+};
+
+export const NEED_CATEGORIES: NeedCategory[] = [
+  {
+    id: 'functional',
+    name: 'Functional / Survival',
+    description: 'Core requirements to live, work, or operate. Non-negotiable needs; failure creates immediate harm.',
+    signal: 'I can\'t function without this.',
+    examples: ['Access to food, water, shelter', 'Medicine for chronic conditions', 'Physical safety', 'Ability to earn income'],
+  },
+  {
+    id: 'efficiency',
+    name: 'Efficiency & Time-Saving',
+    description: 'Reducing effort, friction, or wasted time. Customers value speed, automation, and simplification.',
+    signal: 'This takes too long / too much effort.',
+    examples: ['Saving time in daily tasks', 'Reducing manual effort', 'Automating repetitive work', 'Faster decision-making'],
+  },
+  {
+    id: 'economic',
+    name: 'Economic & Financial',
+    description: 'Improving financial outcomes or reducing risk. Focus on money, predictability, and value.',
+    signal: 'This saves me money / helps me make money.',
+    examples: ['Lowering costs', 'Increasing income', 'Improving ROI', 'Reducing financial risk'],
+  },
+  {
+    id: 'emotional',
+    name: 'Emotional & Psychological',
+    description: 'How the product makes the customer feel. Often invisible but extremely powerful.',
+    signal: 'I feel better knowing this exists.',
+    examples: ['Peace of mind', 'Reduced anxiety', 'Feeling in control', 'Confidence in decisions'],
+  },
+  {
+    id: 'identity',
+    name: 'Identity & Self-Image',
+    description: 'How the product reflects who the customer is (or wants to be). Tied to ego and status.',
+    signal: 'This says something about me.',
+    examples: ['Looking successful or competent', 'Aligning with personal values', 'Signaling expertise'],
+  },
+  {
+    id: 'social',
+    name: 'Social & Relational',
+    description: 'How the product affects relationships with others. Products often serve as social tools.',
+    signal: 'People expect me to use this.',
+    examples: ['Belonging to a community', 'Gaining social approval', 'Improving collaboration'],
+  },
+  {
+    id: 'control',
+    name: 'Control & Autonomy',
+    description: 'Desire to make choices independently and retain agency. Customers value leverage.',
+    signal: 'I don\'t want to be dependent on someone else.',
+    examples: ['Control over schedule', 'Independence from intermediaries', 'Ability to customize'],
+  },
+  {
+    id: 'risk',
+    name: 'Risk Reduction & Safety',
+    description: 'Avoiding negative outcomes. Distinct from emotional comfort—this is about prevention.',
+    signal: 'What happens if this goes wrong?',
+    examples: ['Error prevention', 'Compliance and legal safety', 'Data protection', 'Backup and recovery'],
+  },
+  {
+    id: 'growth',
+    name: 'Growth & Learning',
+    description: 'Becoming better over time. These needs are future-oriented.',
+    signal: 'This helps me get better.',
+    examples: ['Skill development', 'Career advancement', 'Personal growth', 'Mastery'],
+  },
+  {
+    id: 'meaning',
+    name: 'Meaning & Impact',
+    description: 'Desire to contribute beyond oneself. Common in mission-driven markets.',
+    signal: 'This matters beyond just me.',
+    examples: ['Making a positive impact', 'Acting ethically', 'Sustainability', 'Helping others'],
+  },
+];
+
+// A benefit with its assigned need category
+export type Benefit = {
+  text: string;
+  needCategory: NeedCategoryId;
+};
+
 export type Segment = {
   id: number;
   name: string;
   customerId?: number; // Links to customer from Part 1
-  benefits: string[]; // Copied from customer for reference
+  benefits: Benefit[]; // Copied from customer with need categories
   need: string; // Most important need for this segment
   accessRank: number; // 1-5 how easy to reach (used for ranking)
 };
@@ -14,7 +115,7 @@ export type Segment = {
 export type Customer = {
   id: number;
   text: string;
-  benefits: string[]; // What benefits does this solution provide for them?
+  benefits: Benefit[]; // Benefits with need category assignments
 };
 
 // The user's one-sentence idea
@@ -43,6 +144,7 @@ type Step0Actions = {
   removeCustomer: (id: number) => void;
   addCustomerBenefit: (customerId: number, benefit: string) => void;
   updateCustomerBenefit: (customerId: number, index: number, benefit: string) => void;
+  updateCustomerBenefitNeedCategory: (customerId: number, index: number, needCategory: NeedCategoryId) => void;
   removeCustomerBenefit: (customerId: number, index: number) => void;
   // Segment actions
   addSegment: (name: string) => void;
@@ -112,7 +214,9 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       customers: prev.customers.map((c) =>
-        c.id === customerId ? { ...c, benefits: [...c.benefits, benefit] } : c
+        c.id === customerId
+          ? { ...c, benefits: [...c.benefits, { text: benefit, needCategory: '' as NeedCategoryId }] }
+          : c
       ),
     }));
   }, []);
@@ -122,7 +226,18 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       ...prev,
       customers: prev.customers.map((c) =>
         c.id === customerId
-          ? { ...c, benefits: c.benefits.map((b, i) => (i === index ? benefit : b)) }
+          ? { ...c, benefits: c.benefits.map((b, i) => (i === index ? { ...b, text: benefit } : b)) }
+          : c
+      ),
+    }));
+  }, []);
+
+  const updateCustomerBenefitNeedCategory = useCallback((customerId: number, index: number, needCategory: NeedCategoryId) => {
+    setState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) =>
+        c.id === customerId
+          ? { ...c, benefits: c.benefits.map((b, i) => (i === index ? { ...b, needCategory } : b)) }
           : c
       ),
     }));
@@ -230,6 +345,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       removeCustomer,
       addCustomerBenefit,
       updateCustomerBenefit,
+      updateCustomerBenefitNeedCategory,
       removeCustomerBenefit,
       addSegment,
       syncSegmentsFromCustomers,
@@ -242,7 +358,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       importData,
       exportData,
     }),
-    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, importData, exportData]
+    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, updateCustomerBenefitNeedCategory, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;

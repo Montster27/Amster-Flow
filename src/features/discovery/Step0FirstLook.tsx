@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Segment, useStep0Store } from './step0Store';
+import { Segment, useStep0Store, NEED_CATEGORIES, NeedCategoryId, Benefit } from './step0Store';
 
 // Example data for split-screen teaching
 const EXAMPLE_DATA = {
@@ -13,32 +13,29 @@ const EXAMPLE_DATA = {
     {
       name: 'Working parents with teens in sports',
       benefits: [
-        'Never miss another game or practice',
-        'Save 30+ minutes per week on scheduling',
-        'Feel confident they know all upcoming events',
+        { text: 'Never miss another game or practice', needCategory: 'emotional' as NeedCategoryId },
+        { text: 'Save 30+ minutes per week on scheduling', needCategory: 'efficiency' as NeedCategoryId },
+        { text: 'Feel confident they know all upcoming events', needCategory: 'emotional' as NeedCategoryId },
       ],
     },
     {
       name: 'Single parents juggling multiple kids',
       benefits: [
-        'One place to see all schedules at a glance',
-        'Easy backup when conflicts arise',
-        'Less guilt from missed events',
+        { text: 'One place to see all schedules at a glance', needCategory: 'efficiency' as NeedCategoryId },
+        { text: 'Easy backup when conflicts arise', needCategory: 'risk' as NeedCategoryId },
+        { text: 'Less guilt from missed events', needCategory: 'emotional' as NeedCategoryId },
       ],
     },
   ],
   segments: [
     {
       name: 'Working parents with teens in sports',
-      benefits: ['Never miss another game or practice', 'Save 30+ minutes per week on scheduling', 'Feel confident they know all upcoming events'],
-      need: 'Never miss another game or practice', // Selected from benefits
+      benefits: [
+        { text: 'Never miss another game or practice', needCategory: 'emotional' as NeedCategoryId },
+        { text: 'Save 30+ minutes per week on scheduling', needCategory: 'efficiency' as NeedCategoryId },
+      ],
+      need: 'Never miss another game or practice',
       accessRank: 5
-    },
-    {
-      name: 'Single parents juggling multiple kids',
-      benefits: ['One place to see all schedules at a glance', 'Easy backup when conflicts arise', 'Less guilt from missed events'],
-      need: 'One place to see all schedules at a glance', // Selected from benefits
-      accessRank: 3
     },
   ],
 };
@@ -105,9 +102,9 @@ function SplitScreen({
   );
 }
 
-// Progress bar component - now 4 parts instead of 5
+// Progress bar component - now 5 parts
 function ProgressBar({ currentPart, totalParts }: { currentPart: number; totalParts: number }) {
-  const parts = ['Your Idea', 'Who & Why', 'Needs & Ranking', 'Summary'];
+  const parts = ['Your Idea', 'Who & Why', 'Assign Needs', 'Rank & Focus', 'Summary'];
 
   return (
     <div className="mb-6">
@@ -125,7 +122,7 @@ function ProgressBar({ currentPart, totalParts }: { currentPart: number; totalPa
             >
               {idx < currentPart ? '✓' : idx}
             </div>
-            <span className={`text-xs mt-1 ${idx === currentPart ? 'text-blue-600 font-medium' : 'text-slate-500'}`}>
+            <span className={`text-xs mt-1 text-center ${idx === currentPart ? 'text-blue-600 font-medium' : 'text-slate-500'}`}>
               {name}
             </span>
           </div>
@@ -138,6 +135,31 @@ function ProgressBar({ currentPart, totalParts }: { currentPart: number; totalPa
         />
       </div>
     </div>
+  );
+}
+
+// Need category badge component
+function NeedBadge({ categoryId, size = 'sm' }: { categoryId: NeedCategoryId; size?: 'sm' | 'md' }) {
+  const category = NEED_CATEGORIES.find(c => c.id === categoryId);
+  if (!category) return null;
+
+  const colors: Record<string, string> = {
+    functional: 'bg-red-100 text-red-700 border-red-200',
+    efficiency: 'bg-blue-100 text-blue-700 border-blue-200',
+    economic: 'bg-green-100 text-green-700 border-green-200',
+    emotional: 'bg-purple-100 text-purple-700 border-purple-200',
+    identity: 'bg-pink-100 text-pink-700 border-pink-200',
+    social: 'bg-orange-100 text-orange-700 border-orange-200',
+    control: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    risk: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    growth: 'bg-teal-100 text-teal-700 border-teal-200',
+    meaning: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border ${colors[categoryId] || 'bg-slate-100 text-slate-600'} ${size === 'sm' ? 'text-xs' : 'text-sm'}`}>
+      {category.name}
+    </span>
   );
 }
 
@@ -156,6 +178,7 @@ export function Step0FirstLook() {
     removeCustomer,
     addCustomerBenefit,
     updateCustomerBenefit,
+    updateCustomerBenefitNeedCategory,
     removeCustomerBenefit,
     segments,
     addSegment,
@@ -170,6 +193,7 @@ export function Step0FirstLook() {
   // Auto-focus newly added inputs
   const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'benefit', index: number} | null>(null);
   const [newSegmentName, setNewSegmentName] = useState('');
+  const [expandedCategory, setExpandedCategory] = useState<NeedCategoryId | null>(null);
 
   useEffect(() => {
     if (focusTarget) {
@@ -182,9 +206,9 @@ export function Step0FirstLook() {
     }
   }, [focusTarget, customers]);
 
-  // Sync segments when entering Part 2
+  // Sync segments when entering Part 3 (Rank & Focus)
   useEffect(() => {
-    if (part === 2) {
+    if (part === 3) {
       syncSegmentsFromCustomers();
     }
   }, [part, syncSegmentsFromCustomers]);
@@ -201,12 +225,6 @@ export function Step0FirstLook() {
     }
   };
 
-  // Sort segments by access rank (easiest to reach first)
-  const sortedSegments = useMemo(
-    () => [...segments].sort((a, b) => b.accessRank - a.accessRank),
-    [segments]
-  );
-
   const focusedSegment = useMemo(
     () => segments.find((s) => s.id === focusedSegmentId) || null,
     [segments, focusedSegmentId]
@@ -218,7 +236,14 @@ export function Step0FirstLook() {
     [segments, focusedSegmentId]
   );
 
-  const nextPart = () => setPart(Math.min(3, part + 1));
+  // Count total benefits and assigned benefits for Part 2 progress
+  const totalBenefits = customers.reduce((sum, c) => sum + c.benefits.length, 0);
+  const assignedBenefits = customers.reduce(
+    (sum, c) => sum + c.benefits.filter(b => b.needCategory).length,
+    0
+  );
+
+  const nextPart = () => setPart(Math.min(4, part + 1));
   const prevPart = () => setPart(Math.max(0, part - 1));
 
   // Check if current part is complete enough to proceed
@@ -226,7 +251,8 @@ export function Step0FirstLook() {
     switch (part) {
       case 0: return idea.building.trim() && idea.helps.trim() && idea.achieve.trim();
       case 1: return customers.length > 0 && customers.some(c => c.text.trim() && c.benefits.length > 0);
-      case 2: return focusedSegmentId !== null && segments.some(s => s.need.trim());
+      case 2: return totalBenefits > 0 && assignedBenefits === totalBenefits; // All benefits must have a need category
+      case 3: return focusedSegmentId !== null && segments.some(s => s.need.trim());
       default: return true;
     }
   };
@@ -246,7 +272,7 @@ export function Step0FirstLook() {
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       {/* Header */}
       <div className="mb-6">
-        <ProgressBar currentPart={part} totalParts={4} />
+        <ProgressBar currentPart={part} totalParts={5} />
       </div>
 
       {/* Navigation */}
@@ -263,12 +289,13 @@ export function Step0FirstLook() {
           <div className="text-lg font-bold text-slate-800">
             {part === 0 && 'Your Idea'}
             {part === 1 && 'Who & Why'}
-            {part === 2 && 'Needs & Ranking'}
-            {part === 3 && 'Summary'}
+            {part === 2 && 'Assign Needs'}
+            {part === 3 && 'Rank & Focus'}
+            {part === 4 && 'Summary'}
           </div>
-          <div className="text-sm text-slate-500">Step 0 · Part {part} of 3</div>
+          <div className="text-sm text-slate-500">Step 0 · Part {part} of 4</div>
         </div>
-        {part < 3 ? (
+        {part < 4 ? (
           <button
             type="button"
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -397,7 +424,7 @@ export function Step0FirstLook() {
                     {customer.benefits.map((benefit, bidx) => (
                       <div key={bidx} className="flex items-start gap-2 text-sm text-slate-600">
                         <span className="text-green-500 mt-0.5">✓</span>
-                        <span>{benefit}</span>
+                        <span>{benefit.text}</span>
                       </div>
                     ))}
                   </div>
@@ -470,7 +497,7 @@ export function Step0FirstLook() {
                                 <input
                                   id={`benefit-${c.id}-${idx}`}
                                   className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                                  value={benefit}
+                                  value={benefit.text}
                                   onChange={(e) => updateCustomerBenefit(c.id, idx, e.target.value)}
                                   placeholder="Describe a specific benefit..."
                                 />
@@ -509,10 +536,154 @@ export function Step0FirstLook() {
         />
       )}
 
-      {/* Part 2: Needs & Ranking */}
+      {/* Part 2: Assign Needs - Map benefits to need categories */}
       {part === 2 && (
         <SplitScreen
-          exampleTitle="Example: Needs & Ranking"
+          exampleTitle="Example: Assigning Needs"
+          exampleContent={
+            <div className="space-y-4">
+              <p className="text-sm text-amber-700 mb-4">
+                Each benefit addresses a deeper customer need. Categorize each benefit:
+              </p>
+              {EXAMPLE_DATA.customers.map((customer, idx) => (
+                <div key={idx} className="bg-white rounded-lg p-4 border border-amber-200">
+                  <div className="font-semibold text-slate-800 text-sm mb-3">{customer.name}</div>
+                  <div className="space-y-2">
+                    {customer.benefits.map((benefit, bidx) => (
+                      <div key={bidx} className="flex items-center gap-2 text-sm">
+                        <span className="flex-1 text-slate-600">{benefit.text}</span>
+                        <NeedBadge categoryId={benefit.needCategory} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="p-3 bg-amber-100 rounded-lg">
+                <p className="text-xs text-amber-800">
+                  <strong>Key insight:</strong> Products that try to serve many need types early usually fail. Focus on 1-2 dominant needs.
+                </p>
+              </div>
+            </div>
+          }
+          studentTitle="Categorize Your Benefits"
+          studentContent={
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-600">
+                  What type of need does each benefit address?
+                </p>
+                <div className="text-sm font-medium">
+                  <span className={assignedBenefits === totalBenefits ? 'text-green-600' : 'text-amber-600'}>
+                    {assignedBenefits}/{totalBenefits} assigned
+                  </span>
+                </div>
+              </div>
+
+              {/* Need Categories Reference - Collapsible */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategory(expandedCategory ? null : 'functional')}
+                  className="w-full px-4 py-2 flex items-center justify-between text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  <span>Need Categories Reference</span>
+                  <span>{expandedCategory ? '−' : '+'}</span>
+                </button>
+                {expandedCategory && (
+                  <div className="px-4 py-3 border-t border-slate-200 bg-white max-h-64 overflow-y-auto">
+                    <div className="grid gap-2">
+                      {NEED_CATEGORIES.map(cat => (
+                        <div
+                          key={cat.id}
+                          className="p-2 rounded-lg border border-slate-100 hover:border-slate-200"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <NeedBadge categoryId={cat.id} size="md" />
+                          </div>
+                          <p className="text-xs text-slate-500 mb-1">{cat.description}</p>
+                          <p className="text-xs text-slate-400 italic">Signal: "{cat.signal}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer benefits with need assignment */}
+              {customers.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                  <p className="text-sm text-slate-500">No benefits to assign. Go back and add some.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {customers.filter(c => c.benefits.length > 0).map((c) => (
+                    <div key={c.id} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                      <div className="bg-slate-50 px-4 py-2 border-b">
+                        <span className="font-semibold text-slate-800 text-sm">{c.text || 'Unnamed customer'}</span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {c.benefits.map((benefit, idx) => (
+                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg bg-slate-50">
+                            <div className="flex-1 text-sm text-slate-700">
+                              {benefit.text || <span className="text-slate-400 italic">Empty benefit</span>}
+                            </div>
+                            <select
+                              value={benefit.needCategory}
+                              onChange={(e) => updateCustomerBenefitNeedCategory(c.id, idx, e.target.value as NeedCategoryId)}
+                              className={`rounded-lg border px-3 py-1.5 text-sm ${
+                                benefit.needCategory
+                                  ? 'border-green-300 bg-green-50 text-green-800'
+                                  : 'border-amber-300 bg-amber-50 text-amber-800'
+                              }`}
+                            >
+                              <option value="">Select need type...</option>
+                              {NEED_CATEGORIES.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Summary of need distribution */}
+              {assignedBenefits > 0 && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3">Need Distribution</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {NEED_CATEGORIES.filter(cat => {
+                      const count = customers.reduce(
+                        (sum, c) => sum + c.benefits.filter(b => b.needCategory === cat.id).length,
+                        0
+                      );
+                      return count > 0;
+                    }).map(cat => {
+                      const count = customers.reduce(
+                        (sum, c) => sum + c.benefits.filter(b => b.needCategory === cat.id).length,
+                        0
+                      );
+                      return (
+                        <div key={cat.id} className="flex items-center gap-1">
+                          <NeedBadge categoryId={cat.id} />
+                          <span className="text-xs font-bold text-slate-600">×{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+        />
+      )}
+
+      {/* Part 3: Rank & Focus */}
+      {part === 3 && (
+        <SplitScreen
+          exampleTitle="Example: Rank & Focus"
           exampleContent={
             <div className="space-y-4">
               <p className="text-sm text-amber-700 mb-4">
@@ -523,18 +694,19 @@ export function Step0FirstLook() {
                   <div className="font-semibold text-slate-800 text-sm mb-3">{seg.name}</div>
                   <div className="space-y-3">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500 mb-2">Benefits listed:</div>
+                      <div className="text-xs font-semibold text-slate-500 mb-2">Benefits with needs:</div>
                       <div className="space-y-1">
                         {seg.benefits.map((benefit, bidx) => (
                           <div
                             key={bidx}
-                            className={`text-sm px-2 py-1 rounded ${
-                              benefit === seg.need
+                            className={`flex items-center justify-between text-sm px-2 py-1 rounded ${
+                              benefit.text === seg.need
                                 ? 'bg-purple-100 text-purple-800 font-medium border border-purple-300'
                                 : 'text-slate-600'
                             }`}
                           >
-                            {benefit === seg.need ? '✓ ' : '○ '}{benefit}
+                            <span>{benefit.text === seg.need ? '✓ ' : '○ '}{benefit.text}</span>
+                            <NeedBadge categoryId={benefit.needCategory} />
                           </div>
                         ))}
                       </div>
@@ -557,11 +729,11 @@ export function Step0FirstLook() {
               </div>
             </div>
           }
-          studentTitle="Identify Needs & Rank Access"
+          studentTitle="Select Focus & Rank Access"
           studentContent={
             <div className="space-y-4">
               <p className="text-sm text-slate-600 mb-4">
-                Select the most important need for each group from the benefits you listed, then rank how easy they are to reach.
+                Select the most important need for each group, then rank how easy they are to reach.
               </p>
 
               {segments.length === 0 ? (
@@ -570,7 +742,7 @@ export function Step0FirstLook() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {sortedSegments.map((s) => (
+                  {segments.map((s) => (
                     <div
                       key={s.id}
                       className={`rounded-lg border-2 overflow-hidden transition-all ${
@@ -599,33 +771,36 @@ export function Step0FirstLook() {
                         </span>
                       </div>
                       <div className="p-4 space-y-4">
-                        {/* Benefits from Part 1 */}
+                        {/* Benefits from previous steps with need categories */}
                         {s.benefits.length > 0 && (
                           <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                              Benefits you listed for this group:
+                              Select the most important need to focus on:
                             </label>
                             <div className="space-y-2">
-                              {s.benefits.map((benefit, idx) => (
+                              {s.benefits.map((benefit: Benefit, idx: number) => (
                                 <button
                                   key={idx}
                                   type="button"
-                                  onClick={() => updateSegmentNeed(s.id, benefit)}
+                                  onClick={() => updateSegmentNeed(s.id, benefit.text)}
                                   className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-all ${
-                                    s.need === benefit
+                                    s.need === benefit.text
                                       ? 'border-purple-500 bg-purple-50 text-purple-800 font-medium'
                                       : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300 hover:bg-purple-50'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                      s.need === benefit ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
-                                    }`}>
-                                      {s.need === benefit && (
-                                        <span className="w-2 h-2 rounded-full bg-white" />
-                                      )}
-                                    </span>
-                                    <span>{benefit}</span>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                        s.need === benefit.text ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
+                                      }`}>
+                                        {s.need === benefit.text && (
+                                          <span className="w-2 h-2 rounded-full bg-white" />
+                                        )}
+                                      </span>
+                                      <span>{benefit.text}</span>
+                                    </div>
+                                    {benefit.needCategory && <NeedBadge categoryId={benefit.needCategory} />}
                                   </div>
                                 </button>
                               ))}
@@ -633,17 +808,17 @@ export function Step0FirstLook() {
                           </div>
                         )}
 
-                        {/* Most Important Need - custom input */}
+                        {/* Custom need input */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                             {s.benefits.length > 0 ? 'Or describe a different need:' : 'What is their most important need?'}
                           </label>
                           <textarea
                             className={`w-full rounded-lg border px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 ${
-                              s.need && !s.benefits.includes(s.need) ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
+                              s.need && !s.benefits.some(b => b.text === s.need) ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
                             }`}
                             rows={2}
-                            value={s.benefits.includes(s.need) ? '' : s.need}
+                            value={s.benefits.some(b => b.text === s.need) ? '' : s.need}
                             onChange={(e) => updateSegmentNeed(s.id, e.target.value)}
                             placeholder="What problem or desire is most urgent for them?"
                           />
@@ -712,8 +887,8 @@ export function Step0FirstLook() {
         />
       )}
 
-      {/* Part 3: Summary */}
-      {part === 3 && (
+      {/* Part 4: Summary */}
+      {part === 4 && (
         <div className="space-y-6">
           <div className="rounded-xl border-2 border-green-200 bg-gradient-to-b from-green-50 to-white p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -735,15 +910,21 @@ export function Step0FirstLook() {
               </p>
             </div>
 
-            {/* Starting Point */}
+            {/* Starting Point with Need Category */}
             {focusedSegment && (
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wide mb-2">Your Starting Point</h3>
                 <p className="text-lg text-blue-800 font-semibold mb-2">{focusedSegment.name}</p>
                 {focusedSegment.need && (
                   <div className="mt-2">
-                    <span className="text-xs font-semibold text-blue-600">Their key need: </span>
+                    <span className="text-xs font-semibold text-blue-600">Key need: </span>
                     <span className="text-sm text-blue-700">{focusedSegment.need}</span>
+                    {(() => {
+                      const matchingBenefit = focusedSegment.benefits.find(b => b.text === focusedSegment.need);
+                      return matchingBenefit?.needCategory ? (
+                        <span className="ml-2"><NeedBadge categoryId={matchingBenefit.needCategory} /></span>
+                      ) : null;
+                    })()}
                   </div>
                 )}
               </div>
