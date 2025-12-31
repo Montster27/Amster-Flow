@@ -5,12 +5,11 @@
 -- PHASE 0: BACKUP AND MIGRATION TRACKING
 -- ============================================================================
 
--- Backup existing assumptions before any changes
-CREATE TABLE IF NOT EXISTS project_assumptions_backup AS
-SELECT *, NOW() as backed_up_at FROM project_assumptions WHERE false;
+-- Drop and recreate backup table to ensure schema matches
+DROP TABLE IF EXISTS project_assumptions_backup;
 
--- Insert backup of existing data
-INSERT INTO project_assumptions_backup
+-- Backup existing assumptions before any changes
+CREATE TABLE project_assumptions_backup AS
 SELECT *, NOW() as backed_up_at FROM project_assumptions;
 
 -- Add migration tracking to projects
