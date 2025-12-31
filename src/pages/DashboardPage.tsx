@@ -400,8 +400,8 @@ export function DashboardPage() {
       setNewProjectDescription('');
       setCreateProjectError(null);
 
-      // Navigate to the project
-      navigate(`/project/${newProject.id}`);
+      // Navigate to Step 0 for new projects
+      navigate(`/project/${newProject.id}/discovery/step-0`);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Error creating project');
       captureException(error, {
