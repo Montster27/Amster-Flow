@@ -82,7 +82,7 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="font-medium capitalize">
-                  {module.replace(/([A-Z])/g, ' $1').trim()}
+                  {module === 'discovery' ? 'Old Discovery' : module.replace(/([A-Z])/g, ' $1').trim()}
                 </span>
                 {isCompleted && (
                   <span className="text-green-500" aria-label="Completed">
@@ -91,13 +91,13 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
                 )}
               </button>
 
-              {/* Discovery Link - appears after "discovery" module */}
+              {/* New Discovery Link - appears after "discovery" module */}
               {module === 'discovery' && projectId && (
                 <button
                   onClick={() => navigate(`/project/${projectId}/discovery`)}
                   className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
                 >
-                  <span className="font-medium">Discovery</span>
+                  <span className="font-medium">New Discovery</span>
                 </button>
               )}
             </>

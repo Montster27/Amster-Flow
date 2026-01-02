@@ -259,11 +259,13 @@ export function Step0FirstLook() {
 
   const handleGraduate = () => {
     setGraduated(true);
-    navigate(`/project/${projectId}/discovery`, {
+    // Navigate to Problem module to get more detailed on this market
+    navigate(`/project/${projectId}`, {
       state: {
-        message: 'Ready to start validating! Focus on your selected segment first.',
+        message: 'Now it\'s time to get more detailed on this market. Let\'s dig deeper into the problem.',
         fromStep0: true,
         focusedSegment: focusedSegment,
+        startModule: 'problem',
       },
     });
   };
@@ -310,7 +312,7 @@ export function Step0FirstLook() {
             className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
             onClick={handleGraduate}
           >
-            Start Discovery →
+            Problem Module →
           </button>
         )}
       </div>
@@ -896,8 +898,8 @@ export function Step0FirstLook() {
                 ✓
               </span>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Ready to Start Discovery!</h2>
-                <p className="text-sm text-slate-600">Your goal: quickly find out if this is a good starting place</p>
+                <h2 className="text-xl font-bold text-slate-800">Time to Get More Detailed!</h2>
+                <p className="text-sm text-slate-600">Now let's dig deeper into this market and validate your assumptions</p>
               </div>
             </div>
 
@@ -930,20 +932,20 @@ export function Step0FirstLook() {
               </div>
             )}
 
-            {/* Quick Validation Goal */}
+            {/* Next Steps */}
             <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
               <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-3">
-                Your Goal in Discovery
+                What's Next
               </h3>
               <p className="text-sm text-amber-800 mb-4">
-                Talk to 5-10 people in your starting segment. Ask about their needs and problems —
-                <strong> don't pitch your solution yet.</strong> You're trying to quickly validate if this is the right place to focus.
+                You've identified your starting point. Now it's time to get more detailed on this market.
+                The Problem module will help you articulate the specific pain points your customers experience.
               </p>
               <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-100 p-3 rounded-lg">
                 <span className="text-lg">💡</span>
                 <span>
-                  <strong>Remember:</strong> If conversations aren't going well with this segment,
-                  that's valuable information! You have {otherSegments.length} other segment{otherSegments.length !== 1 ? 's' : ''} to explore.
+                  <strong>Remember:</strong> If this segment doesn't work out,
+                  you have {otherSegments.length} other segment{otherSegments.length !== 1 ? 's' : ''} to explore. That's valuable optionality!
                 </span>
               </div>
             </div>
@@ -979,10 +981,10 @@ export function Step0FirstLook() {
                 onClick={handleGraduate}
                 className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
               >
-                Start Discovery →
+                Go to Problem Module →
               </button>
               <p className="text-sm text-slate-500 mt-3">
-                Begin talking to customers and validating your starting point
+                Define the specific problems your customers face
               </p>
             </div>
           </div>
