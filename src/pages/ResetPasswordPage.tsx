@@ -1,19 +1,70 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { captureException } from '../lib/sentry';
 import { logAuthEvent } from '../lib/auditLog';
 
+// Parse error parameters from URL (both hash and search params)
+function parseUrlErrors(): { error: string | null; errorDescription: string | null } {
+  // Check URL hash first (Supabase typically uses hash for auth callbacks)
+  const hash = window.location.hash.substring(1); // Remove leading #
+  const hashParams = new URLSearchParams(hash);
+
+  // Also check query params as fallback
+  const searchParams = new URLSearchParams(window.location.search);
+
+  const error = hashParams.get('error') || searchParams.get('error');
+  const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
+
+  return { error, errorDescription };
+}
+
+// Map Supabase error codes to user-friendly messages
+function getErrorMessage(error: string | null, errorDescription: string | null): string {
+  if (errorDescription) {
+    // Decode URL-encoded description and capitalize first letter
+    const decoded = decodeURIComponent(errorDescription.replace(/\+/g, ' '));
+    return decoded.charAt(0).toUpperCase() + decoded.slice(1);
+  }
+
+  // Map common error codes
+  switch (error) {
+    case 'access_denied':
+      return 'Access denied. The reset link may have expired or already been used.';
+    case 'unauthorized_client':
+      return 'This reset link is not authorized.';
+    case 'invalid_request':
+      return 'Invalid request. Please try requesting a new reset link.';
+    case 'expired_token':
+      return 'This reset link has expired. Please request a new one.';
+    default:
+      return 'This password reset link is invalid or has expired.';
+  }
+}
+
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validSession, setValidSession] = useState<boolean | null>(null);
+  const [urlErrorMessage, setUrlErrorMessage] = useState<string | null>(null);
   const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    // First, check for errors in URL parameters (immediate check)
+    const { error: urlError, errorDescription } = parseUrlErrors();
+
+    if (urlError) {
+      // Supabase has already indicated an error - show it immediately
+      hasProcessedRef.current = true;
+      setUrlErrorMessage(getErrorMessage(urlError, errorDescription));
+      setValidSession(false);
+      return; // Don't set up listeners if we already know it failed
+    }
+
     // Listen for auth state changes, specifically PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Prevent processing multiple times
@@ -47,6 +98,7 @@ export function ResetPasswordPage() {
     checkExistingSession();
 
     // Set a timeout to show invalid message if no session is established
+    // This is a fallback for cases where no URL error exists but token processing fails silently
     const timeout = setTimeout(() => {
       if (!hasProcessedRef.current) {
         setValidSession(false);
@@ -57,7 +109,7 @@ export function ResetPasswordPage() {
       subscription.unsubscribe();
       clearTimeout(timeout);
     };
-  }, []);
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +179,7 @@ export function ResetPasswordPage() {
           </div>
           <div className="bg-red-50 border-2 border-red-400 rounded-lg p-6">
             <p className="text-center text-red-900 mb-4">
-              This password reset link is invalid or has expired.
+              {urlErrorMessage || 'This password reset link is invalid or has expired.'}
             </p>
             <p className="text-sm text-red-800 text-center">
               Password reset links expire after 1 hour. Please request a new one.
