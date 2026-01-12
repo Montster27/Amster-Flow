@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { captureException } from '../lib/sentry';
@@ -11,19 +11,52 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validSession, setValidSession] = useState<boolean | null>(null);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
-    // Check if we have a valid recovery session
-    const checkSession = async () => {
+    // Listen for auth state changes, specifically PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Prevent processing multiple times
+      if (hasProcessedRef.current) return;
+
+      if (event === 'PASSWORD_RECOVERY') {
+        // Supabase has processed the recovery token from URL
+        hasProcessedRef.current = true;
+        setValidSession(true);
+      } else if (event === 'SIGNED_IN' && session) {
+        // User might already have a valid session (token was processed before listener attached)
+        hasProcessedRef.current = true;
+        setValidSession(true);
+      }
+    });
+
+    // Also check if there's already a session (in case token was processed very quickly)
+    const checkExistingSession = async () => {
+      // Small delay to allow Supabase to process URL hash
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (hasProcessedRef.current) return; // Already handled by listener
+
       const { data } = await supabase.auth.getSession();
       if (data.session) {
+        hasProcessedRef.current = true;
         setValidSession(true);
-      } else {
-        setValidSession(false);
       }
     };
 
-    checkSession();
+    checkExistingSession();
+
+    // Set a timeout to show invalid message if no session is established
+    const timeout = setTimeout(() => {
+      if (!hasProcessedRef.current) {
+        setValidSession(false);
+      }
+    }, 3000); // Wait 3 seconds before showing invalid
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +108,10 @@ export function ResetPasswordPage() {
   if (validSession === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-600">Verifying your reset link...</div>
+        </div>
       </div>
     );
   }
