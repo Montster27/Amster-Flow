@@ -45,11 +45,6 @@
       "Focus on solving the core problem, not building every feature you can imagine."
     ]
   },
-  "discovery": {
-    "title": "Customer Discovery",
-    "type": "discovery",
-    "intro": "Track your assumptions, conduct interviews, and iterate based on real customer feedback. Use the Y Combinator framework to validate your ideas systematically."
-  },
   "sectorMap": {
     "title": "Sector Map",
     "type": "sectorMap",

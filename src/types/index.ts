@@ -6,7 +6,7 @@ export interface ModuleData {
   intro: string;
   questions?: string[]; // Optional for non-question-based modules
   hints?: string[];
-  type?: 'standard' | 'discovery'; // Module type
+  type?: 'standard' | 'sectorMap' | 'pivot'; // Module type
 }
 
 export interface QuestionsData {

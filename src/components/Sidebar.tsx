@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '../config/constants';
 import { useGuide } from '../contexts/GuideContext';
-import { useDiscovery } from '../contexts/DiscoveryContext';
 import { useEnhancedInterviews } from '../hooks/useEnhancedInterviews';
 
 interface SidebarProps {
@@ -15,13 +14,11 @@ interface SidebarProps {
 export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: SidebarProps) {
   const navigate = useNavigate();
   const { currentModule, progress } = useGuide();
-  const { interviews } = useDiscovery();
   const { interviews: enhancedInterviews } = useEnhancedInterviews(projectId);
   const [showAbout, setShowAbout] = useState(false);
 
   // Check if pivot module should be enabled (requires 3+ interviews)
-  // Count BOTH old basic interviews AND new enhanced interviews
-  const totalInterviews = interviews.length + enhancedInterviews.length;
+  const totalInterviews = enhancedInterviews.length;
   const hasMinimumInterviews = totalInterviews >= APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT;
 
   return (
@@ -71,38 +68,36 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           }
 
           return (
-            <>
-              <button
-                key={module}
-                onClick={() => onModuleClick(module)}
-                className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className="font-medium capitalize">
-                  {module === 'discovery' ? 'Old Discovery' : module.replace(/([A-Z])/g, ' $1').trim()}
+            <button
+              key={module}
+              onClick={() => onModuleClick(module)}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${isActive
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span className="font-medium capitalize">
+                {module.replace(/([A-Z])/g, ' $1').trim()}
+              </span>
+              {isCompleted && (
+                <span className="text-green-500" aria-label="Completed">
+                  ✓
                 </span>
-                {isCompleted && (
-                  <span className="text-green-500" aria-label="Completed">
-                    ✓
-                  </span>
-                )}
-              </button>
-
-              {/* New Discovery Link - appears after "discovery" module */}
-              {module === 'discovery' && projectId && (
-                <button
-                  onClick={() => navigate(`/project/${projectId}/discovery`)}
-                  className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                >
-                  <span className="font-medium">New Discovery</span>
-                </button>
               )}
-            </>
+            </button>
           );
         })}
+
+        {/* Discovery - standalone link to discovery page */}
+        {projectId && (
+          <button
+            onClick={() => navigate(`/project/${projectId}/discovery`)}
+            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+          >
+            <span className="font-medium">Discovery</span>
+          </button>
+        )}
 
         {onViewSummary && (
           <button

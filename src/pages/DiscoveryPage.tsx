@@ -16,7 +16,7 @@ type Project = Database['public']['Tables']['projects']['Row'];
 
 /**
  * Discovery Page Inner
- * Renders the Discovery module with sidebar (matching Old Discovery behavior)
+ * Renders the Discovery module with sidebar
  */
 function DiscoveryPageContent() {
   const { projectId } = useParams<{ projectId: string }>();

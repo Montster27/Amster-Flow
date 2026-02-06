@@ -17,8 +17,8 @@ const validateQuestionsData = (data: any): data is QuestionsData => {
         if (typeof module.title !== 'string') return false;
         if (typeof module.intro !== 'string') return false;
 
-        // Discovery, Sector Map, and Pivot modules don't need questions/hints
-        if (module.type === 'discovery' || module.type === 'sectorMap' || module.type === 'pivot') {
+        // Sector Map and Pivot modules don't need questions/hints
+        if (module.type === 'sectorMap' || module.type === 'pivot') {
             return true;
         }
 

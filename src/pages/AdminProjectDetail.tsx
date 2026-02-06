@@ -317,7 +317,7 @@ export function AdminProjectDetail() {
 
             {/* Standard Modules (Problem, Customer Segments, Solution) */}
             {questionsData && Object.entries(questionsData).map(([moduleKey, moduleData]) => {
-              if (moduleData.type === 'discovery' || moduleData.type === 'sectorMap') return null;
+              if (moduleData.type === 'sectorMap') return null;
 
               const answers = moduleAnswers[moduleKey] || {};
               const hasAnswers = Object.keys(answers).length > 0;
