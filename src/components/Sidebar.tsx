@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '../config/constants';
 import { useGuide } from '../contexts/GuideContext';
@@ -43,10 +43,17 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           const isCompleted = progress[module]?.completed;
           const isActive = currentModule === module;
 
-          // Special handling for Pivot module
-          if (module === 'pivot') {
+          // Discovery link - appears before Pivot
+          if (module === 'pivot' && projectId) {
             return (
-              <button
+              <React.Fragment key="discovery-and-pivot">
+                <button
+                  onClick={() => navigate(`/project/${projectId}/discovery`)}
+                  className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                >
+                  <span className="font-medium">Discovery</span>
+                </button>
+                <button
                 key={module}
                 onClick={() => hasMinimumInterviews && onModuleClick(module)}
                 disabled={!hasMinimumInterviews}
@@ -64,6 +71,7 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
                   </span>
                 )}
               </button>
+              </React.Fragment>
             );
           }
 
@@ -88,16 +96,6 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
             </button>
           );
         })}
-
-        {/* Discovery - standalone link to discovery page */}
-        {projectId && (
-          <button
-            onClick={() => navigate(`/project/${projectId}/discovery`)}
-            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
-          >
-            <span className="font-medium">Discovery</span>
-          </button>
-        )}
 
         {onViewSummary && (
           <button
