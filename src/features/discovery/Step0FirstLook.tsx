@@ -272,12 +272,11 @@ export function Step0FirstLook() {
 
   const handleConfirmGraduation = () => {
     setGraduated(true);
-    navigate(`/project/${projectId}/discovery`, {
+    navigate(`/project/${projectId}/quick-check`, {
       state: {
-        message: 'You\'ve completed your first look. Time to test your assumptions with real interviews.',
+        message: 'Before interviewing anyone, let\'s articulate what you\'re testing.',
         fromStep0: true,
         focusedSegment: focusedSegment,
-        startModule: 'discovery',
       },
     });
   };
@@ -1228,7 +1227,7 @@ export function Step0FirstLook() {
               </div>
               <h2 className="text-2xl font-bold text-slate-800">You've completed your First Look!</h2>
               <p className="text-sm text-slate-600 mt-2">
-                Here's what you'll test first in Discovery.
+                Next: a quick check to articulate what you're testing before interviewing anyone.
               </p>
             </div>
 
@@ -1286,7 +1285,7 @@ export function Step0FirstLook() {
                 onClick={handleConfirmGraduation}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
               >
-                Begin Discovery
+                Continue to Quick Check
               </button>
             </div>
           </div>

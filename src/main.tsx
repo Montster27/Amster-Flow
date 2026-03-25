@@ -8,6 +8,7 @@ import { DiscoveryProvider } from './contexts/DiscoveryContext'
 import { PivotProvider } from './contexts/PivotContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { AdminProtectedRoute } from './components/AdminProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { SignUpPage } from './pages/SignUpPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
@@ -17,6 +18,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ProjectPage } from './pages/ProjectPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
 import { Step0Page } from './pages/Step0Page'
+import QuickCheckPage from './features/quickcheck/QuickCheckPage'
 import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
@@ -82,6 +84,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     }
                   />
                   <Route
+                    path="/project/:projectId/quick-check"
+                    element={
+                      <ProtectedRoute>
+                        <QuickCheckPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/project/:projectId/sector-map"
                     element={
                       <ProtectedRoute>
@@ -106,45 +116,45 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     }
                   />
 
-                  {/* Admin routes */}
+                  {/* Admin routes - require admin privileges */}
                   <Route
                     path="/admin"
                     element={
-                      <ProtectedRoute>
+                      <AdminProtectedRoute>
                         <AdminPage />
-                      </ProtectedRoute>
+                      </AdminProtectedRoute>
                     }
                   />
                   <Route
                     path="/admin/newsletter"
                     element={
-                      <ProtectedRoute>
+                      <AdminProtectedRoute>
                         <AdminNewsletter />
-                      </ProtectedRoute>
+                      </AdminProtectedRoute>
                     }
                   />
                   <Route
                     path="/admin/reports"
                     element={
-                      <ProtectedRoute>
+                      <AdminProtectedRoute>
                         <AdminReports />
-                      </ProtectedRoute>
+                      </AdminProtectedRoute>
                     }
                   />
                   <Route
                     path="/admin/user/:userId"
                     element={
-                      <ProtectedRoute>
+                      <AdminProtectedRoute>
                         <AdminUserDetail />
-                      </ProtectedRoute>
+                      </AdminProtectedRoute>
                     }
                   />
                   <Route
                     path="/admin/project/:projectId"
                     element={
-                      <ProtectedRoute>
+                      <AdminProtectedRoute>
                         <AdminProjectDetail />
-                      </ProtectedRoute>
+                      </AdminProtectedRoute>
                     }
                   />
 

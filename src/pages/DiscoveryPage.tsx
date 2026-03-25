@@ -24,17 +24,51 @@ function DiscoveryPageContent() {
   const { loading, error } = useDiscoveryData(projectId);
   const { questionsData } = useProjectContext();
   const { setCurrentModule, setCurrentQuestionIndex } = useGuide();
+  const [gateChecked, setGateChecked] = useState(false);
+  const [needsQuickCheck, setNeedsQuickCheck] = useState(false);
 
   const modules = questionsData ? Object.keys(questionsData) : [];
+
+  // Check if Quick Check is completed (gate)
+  useEffect(() => {
+    if (!projectId) return;
+    const checkGate = async () => {
+      // Check if project has existing assumptions (backward compat)
+      const { data: assumptions } = await supabase
+        .from('project_assumptions')
+        .select('id')
+        .eq('project_id', projectId)
+        .limit(1);
+
+      if (assumptions && assumptions.length > 0) {
+        setGateChecked(true);
+        return;
+      }
+
+      // Check Quick Check completion
+      const { data: qcData } = await supabase
+        .from('project_quick_check')
+        .select('beachhead_completed')
+        .eq('project_id', projectId)
+        .maybeSingle();
+
+      if (qcData && (qcData as any).beachhead_completed) {
+        setGateChecked(true);
+      } else {
+        setNeedsQuickCheck(true);
+        setGateChecked(true);
+      }
+    };
+    checkGate();
+  }, [projectId]);
 
   const handleModuleClick = (module: string) => {
     setCurrentModule(module);
     setCurrentQuestionIndex(0);
-    // Navigate back to project page to show the selected module
     navigate(`/project/${projectId}`);
   };
 
-  if (loading) {
+  if (loading || !gateChecked) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
@@ -59,6 +93,31 @@ function DiscoveryPageContent() {
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Back to Project
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate: redirect to Quick Check if not completed
+  if (needsQuickCheck) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Complete Quick Check First</h2>
+          <p className="text-gray-600 mb-6">
+            Before starting interviews, articulate what you're testing for each segment. This takes 5 minutes and makes your interviews much more focused.
+          </p>
+          <button
+            onClick={() => navigate(`/project/${projectId}/quick-check`)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+          >
+            Go to Quick Check
           </button>
         </div>
       </div>

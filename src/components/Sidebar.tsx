@@ -39,7 +39,17 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           </button>
         )}
 
-        {modules.map((module) => {
+        {/* Quick Check - between Step 0 and Discovery */}
+        {projectId && (
+          <button
+            onClick={() => navigate(`/project/${projectId}/quick-check`)}
+            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+          >
+            <span className="font-medium">Quick Check</span>
+          </button>
+        )}
+
+        {modules.filter((m) => !['problem', 'customerSegments', 'solution'].includes(m)).map((module) => {
           const isCompleted = progress[module]?.completed;
           const isActive = currentModule === module;
 
