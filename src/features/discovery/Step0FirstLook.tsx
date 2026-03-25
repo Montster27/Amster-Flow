@@ -188,12 +188,21 @@ export function Step0FirstLook() {
     focusedSegmentId,
     setFocusedSegmentId,
     setGraduated,
+    founderMarketFit,
+    updateFounderMarketFit,
+    whyNow,
+    updateWhyNow,
+    schlepAssessment,
+    updateSchlepAssessment,
+    beachheadQualifiers,
+    updateBeachheadQualifiers,
   } = useStep0Store();
 
   // Auto-focus newly added inputs
   const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'benefit', index: number} | null>(null);
   const [newSegmentName, setNewSegmentName] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<NeedCategoryId | null>(null);
+  const [showGraduationScreen, setShowGraduationScreen] = useState(false);
 
   useEffect(() => {
     if (focusTarget) {
@@ -257,15 +266,18 @@ export function Step0FirstLook() {
     }
   };
 
-  const handleGraduate = () => {
+  const handleGraduateClick = () => {
+    setShowGraduationScreen(true);
+  };
+
+  const handleConfirmGraduation = () => {
     setGraduated(true);
-    // Navigate to Problem module to get more detailed on this market
-    navigate(`/project/${projectId}`, {
+    navigate(`/project/${projectId}/discovery`, {
       state: {
-        message: 'Now it\'s time to get more detailed on this market. Let\'s dig deeper into the problem.',
+        message: 'You\'ve completed your first look. Time to test your assumptions with real interviews.',
         fromStep0: true,
         focusedSegment: focusedSegment,
-        startModule: 'problem',
+        startModule: 'discovery',
       },
     });
   };
@@ -310,7 +322,7 @@ export function Step0FirstLook() {
           <button
             type="button"
             className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
-            onClick={handleGraduate}
+            onClick={handleGraduateClick}
           >
             Problem Module →
           </button>
@@ -351,7 +363,7 @@ export function Step0FirstLook() {
           studentContent={
             <div className="space-y-4">
               <p className="text-sm text-slate-600 mb-4">
-                Describe your idea in one sentence. Don't worry about perfection — you can refine this later.
+                Test these assumptions before building anything. Describe your idea in one sentence — prove the problem exists before solving it.
               </p>
               <div className="space-y-4">
                 <div>
@@ -400,6 +412,176 @@ export function Step0FirstLook() {
                   </p>
                 </div>
               )}
+
+              {/* Founder-Market Fit Section */}
+              {idea.building && idea.helps && idea.achieve && (
+                <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">Founder-Market Fit</h4>
+                  <p className="text-xs text-slate-500 mb-4">Why are you the right person to solve this? This is the #1 investor filter at seed stage.</p>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Have you personally experienced this problem?
+                      </label>
+                      <select
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        value={founderMarketFit.directExperience}
+                        onChange={(e) => updateFounderMarketFit('directExperience', e.target.value)}
+                      >
+                        <option value="">Select...</option>
+                        <option value="yes">Yes — I've lived this problem</option>
+                        <option value="adjacent">Adjacent — I've seen it closely</option>
+                        <option value="no">No — I observed it from outside</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        What gives you relevant expertise in this space?
+                      </label>
+                      <textarea
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        placeholder="Domain knowledge, professional experience, research background... (min 50 characters)"
+                        rows={2}
+                        value={founderMarketFit.domainCredibility}
+                        onChange={(e) => updateFounderMarketFit('domainCredibility', e.target.value)}
+                      />
+                      {founderMarketFit.domainCredibility.length > 0 && founderMarketFit.domainCredibility.length < 50 && (
+                        <p className="text-xs text-amber-600 mt-1">{50 - founderMarketFit.domainCredibility.length} more characters needed</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Do you have direct access to the target segment today?
+                      </label>
+                      <select
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        value={founderMarketFit.accessAdvantage}
+                        onChange={(e) => updateFounderMarketFit('accessAdvantage', e.target.value)}
+                      >
+                        <option value="">Select...</option>
+                        <option value="yes">Yes — I can reach them directly</option>
+                        <option value="no">No — I'd need to find them</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        What happened that makes this the right time for you?
+                      </label>
+                      <textarea
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        placeholder="Career change, personal experience, industry shift..."
+                        rows={2}
+                        value={founderMarketFit.whyNowForYou}
+                        onChange={(e) => updateFounderMarketFit('whyNowForYou', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* FMF Score Badge */}
+                  {founderMarketFit.directExperience && founderMarketFit.domainCredibility.length >= 50 && founderMarketFit.accessAdvantage && founderMarketFit.whyNowForYou ? (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <span className="text-xs font-bold text-green-700">Strong Founder-Market Fit</span>
+                    </div>
+                  ) : (founderMarketFit.directExperience === 'no' || (founderMarketFit.domainCredibility.length > 0 && founderMarketFit.domainCredibility.length < 50)) ? (
+                    <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <span className="text-xs text-amber-700">Consider whether you have sufficient insight to validate this segment quickly.</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Why Now? Section */}
+              {idea.building && idea.helps && idea.achieve && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">Why Now?</h4>
+                  <p className="text-xs text-slate-500 mb-4">What shift makes this idea solvable today that wasn't true 2 years ago?</p>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Catalyst type</label>
+                      <select
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        value={whyNow.catalystType}
+                        onChange={(e) => updateWhyNow('catalystType', e.target.value)}
+                      >
+                        <option value="">Select what changed...</option>
+                        <option value="technology">Technology shift (new API, model, platform, hardware)</option>
+                        <option value="regulatory">Regulatory change (new law, lifted restriction, compliance mandate)</option>
+                        <option value="behavioral">Behavioral shift (new habit, demographic change, cultural norm)</option>
+                        <option value="economic">Economic change (cost collapse, new funding, market disruption)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Explain the timing</label>
+                      <textarea
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        placeholder="What specific change enables this solution now? (min 100 characters)"
+                        rows={3}
+                        value={whyNow.elaboration}
+                        onChange={(e) => updateWhyNow('elaboration', e.target.value)}
+                      />
+                      {whyNow.elaboration.length > 0 && whyNow.elaboration.length < 100 && (
+                        <p className="text-xs text-amber-600 mt-1">{100 - whyNow.elaboration.length} more characters needed</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {!whyNow.catalystType && !whyNow.elaboration && (
+                    <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <span className="text-xs text-amber-700">If you can't explain why this is solvable now, the timing for this idea may be wrong.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Schlep Filter Self-Assessment */}
+              {idea.building && idea.helps && idea.achieve && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">Idea Attractiveness Check</h4>
+                  <p className="text-xs text-slate-500 mb-3">How would you describe this problem to work on?</p>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 whitespace-nowrap">Tedious & Unglamorous</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      value={schlepAssessment.attractiveness}
+                      onChange={(e) => updateSchlepAssessment('attractiveness', parseInt(e.target.value))}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-slate-500 whitespace-nowrap">Exciting & Prestigious</span>
+                  </div>
+
+                  {schlepAssessment.attractiveness >= 4 && (
+                    <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <span className="text-xs text-amber-700">
+                        The best ideas often look boring or messy. If this feels too exciting, make sure you're not filtering out harder, more valuable problems. The schlep IS the moat.
+                      </span>
+                    </div>
+                  )}
+
+                  {schlepAssessment.attractiveness >= 4 && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Did you consider any messier versions of this problem?
+                      </label>
+                      <textarea
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                        placeholder="What harder, less glamorous problems did you pass on?"
+                        rows={2}
+                        value={schlepAssessment.messierAlternative}
+                        onChange={(e) => updateSchlepAssessment('messierAlternative', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           }
         />
@@ -434,7 +616,7 @@ export function Step0FirstLook() {
               ))}
               <div className="p-3 bg-amber-100 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <strong>Tip:</strong> Be specific! "Parents" is too broad. "Working parents with teens in travel sports" is better. List as many customer types as you can!
+                  <strong>Tip:</strong> Who is the SMALLEST group most desperate for this? "Parents" is too broad. "Working parents with teens in travel sports" is better. Ideas are mangos, not children — don't fall in love with one segment. Find the one with the most pain first.
                 </p>
               </div>
             </div>
@@ -726,7 +908,7 @@ export function Step0FirstLook() {
               ))}
               <div className="p-3 bg-amber-100 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <strong>Key insight:</strong> Start with customers you can easily reach! You need to validate quickly before investing more time.
+                  <strong>Find your BEACHHEAD</strong> — the smallest group where pain is so acute they're already trying to solve it on their own. Narrow is better. Ask: Who would be DEVASTATED if this solution disappeared?
                 </p>
               </div>
             </div>
@@ -859,6 +1041,49 @@ export function Step0FirstLook() {
                             <span className="text-sm text-slate-600">Use as starting point</span>
                           </label>
                         </div>
+
+                        {/* Beachhead Qualifiers — shown when segment is selected */}
+                        {focusedSegmentId === s.id && (
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                            <p className="text-xs font-bold text-blue-800">Beachhead Qualifier</p>
+                            <div>
+                              <label className="block text-xs text-slate-700 mb-1">How small is this group?</label>
+                              <input
+                                type="text"
+                                className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs"
+                                placeholder="e.g., '~500 freelance designers in Boston'"
+                                value={beachheadQualifiers.howSmall}
+                                onChange={(e) => updateBeachheadQualifiers('howSmall', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-700 mb-1">Are they actively trying to solve this today?</label>
+                              <select
+                                className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs"
+                                value={beachheadQualifiers.activelySolving}
+                                onChange={(e) => updateBeachheadQualifiers('activelySolving', e.target.value)}
+                              >
+                                <option value="">Select...</option>
+                                <option value="yes">Yes — they have workarounds</option>
+                                <option value="no">No — they live with it</option>
+                                <option value="unsure">Unsure</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-700 mb-1">Can you reach them directly?</label>
+                              <select
+                                className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs"
+                                value={beachheadQualifiers.canReachDirectly}
+                                onChange={(e) => updateBeachheadQualifiers('canReachDirectly', e.target.value)}
+                              >
+                                <option value="">Select...</option>
+                                <option value="yes">Yes — I know where they are</option>
+                                <option value="no">No — I'd need introductions</option>
+                                <option value="unsure">Unsure</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -978,14 +1203,91 @@ export function Step0FirstLook() {
             <div className="text-center pt-4 border-t border-slate-200">
               <button
                 type="button"
-                onClick={handleGraduate}
+                onClick={handleGraduateClick}
                 className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
               >
-                Go to Problem Module →
+                Graduate to Discovery →
               </button>
               <p className="text-sm text-slate-500 mt-3">
-                Define the specific problems your customers face
+                Begin testing your assumptions with real customer interviews
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Graduation Transition Screen */}
+      {showGraduationScreen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800">You've completed your First Look!</h2>
+              <p className="text-sm text-slate-600 mt-2">
+                Here's what you'll test first in Discovery.
+              </p>
+            </div>
+
+            {/* Beachhead Summary */}
+            {focusedSegment && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Your Beachhead Segment</p>
+                <p className="text-sm font-bold text-blue-900">{focusedSegment.name}</p>
+              </div>
+            )}
+
+            {/* Top 3 Assumptions to Test */}
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
+                Your interviews should test these first:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center">1</span>
+                  <p className="text-xs text-slate-700">
+                    Does <strong>{focusedSegment?.name || 'your segment'}</strong> actually experience this problem regularly?
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center">2</span>
+                  <p className="text-xs text-slate-700">
+                    Is <strong>{focusedSegment?.name || 'your segment'}</strong> actively looking for better solutions?
+                  </p>
+                </div>
+                <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center">3</span>
+                  <p className="text-xs text-slate-700">
+                    Would they pay to solve: <strong>"{focusedSegment?.need || 'their core need'}"</strong>?
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg mb-6">
+              <p className="text-xs text-slate-600 italic">
+                "You need at least 5 interviews before you can validate any assumption. One interview isn't a pattern — it's an anecdote."
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowGraduationScreen(false)}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmGraduation}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
+              >
+                Begin Discovery
+              </button>
             </div>
           </div>
         </div>

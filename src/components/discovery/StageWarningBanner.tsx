@@ -85,19 +85,19 @@ export function StageWarningBanner({
           <p className={`text-sm mt-1 ${isLocked ? 'text-gray-600' : 'text-yellow-700'}`}>
             {isLocked ? (
               <>
-                Complete{' '}
+                Before moving on — are you 100% sure you know WHO has this problem and WHY it matters to them? Complete{' '}
                 <span className="font-medium">
                   Stage {previousStage}: {previousStageConfig?.name}
                 </span>{' '}
-                validation before working on this stage.
+                first. The data isn't there yet.
               </>
             ) : (
               <>
-                We recommend completing{' '}
+                Don't skip steps. Talk to{' '}
                 <span className="font-medium">
-                  Stage {previousStage}: {previousStageConfig?.name}
+                  {VALIDATION_STAGES[previousStage as ValidationStage]?.minimumInterviews || 5} more people
                 </span>{' '}
-                first. You can still work here, but validating earlier assumptions provides a stronger foundation.
+                in Stage {previousStage} before moving here. Validating earlier assumptions provides a stronger foundation.
               </>
             )}
           </p>

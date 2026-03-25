@@ -176,7 +176,9 @@ export function transformStep0ToDiscovery(
     assumptionsToMigrate = [...customerIdentity, ...problemSeverity, ...solutionHypotheses] as Step0Assumption[];
   }
 
-  // Transform each assumption
+  // Transform each assumption — track testOrder for locked assumptions
+  let nextTestOrder = 1;
+
   for (const step0Assumption of assumptionsToMigrate) {
     // Only include assumptions for the focused segment
     if (step0Assumption.segmentId && step0Assumption.segmentId !== focusedSegmentId) {
@@ -185,6 +187,9 @@ export function transformStep0ToDiscovery(
 
     const assumptionType = step0Assumption.assumptionType || 'solutionHypothesis';
     const mapping = MIGRATION_MAP[assumptionType];
+
+    // Customer identity and problem severity assumptions are locked (must be tested first)
+    const shouldLock = assumptionType === 'customerIdentity' || assumptionType === 'problemSeverity';
 
     const discoveryAssumption: Assumption = {
       id: crypto.randomUUID(),
@@ -209,6 +214,10 @@ export function transformStep0ToDiscovery(
       migratedFromStep0: true,
       sourceSegment: focusedSegment.name,
       step0AssumptionType: assumptionType,
+
+      // V2 Locked assumptions (auto-generated WHO/WHAT assumptions)
+      isLocked: shouldLock,
+      testOrder: shouldLock ? nextTestOrder++ : undefined,
     };
 
     discoveryAssumptions.push(discoveryAssumption);
@@ -276,6 +285,8 @@ async function insertDiscoveryAssumptions(
     risk_score: a.riskScore,
     migrated_from_step0: a.migratedFromStep0,
     source_segment: a.sourceSegment,
+    is_locked: a.isLocked || false,
+    test_order: a.testOrder || null,
   }));
 
   const { error } = await supabase.from('project_assumptions').insert(dbAssumptions);

@@ -78,6 +78,11 @@ export function AssumptionFrameworkTable({
     Object.keys(grouped).forEach((key) => {
       const stage = parseInt(key) as ValidationStage;
       grouped[stage].sort((a, b) => {
+        // Locked assumptions always come first, ordered by testOrder
+        if (a.isLocked && !b.isLocked) return -1;
+        if (!a.isLocked && b.isLocked) return 1;
+        if (a.isLocked && b.isLocked) return (a.testOrder || 0) - (b.testOrder || 0);
+
         // First by status (untested first)
         const statusDiff = statusOrder[a.status] - statusOrder[b.status];
         if (statusDiff !== 0) return statusDiff;
@@ -119,7 +124,17 @@ export function AssumptionFrameworkTable({
 
         {/* Assumption */}
         <td className="px-6 py-4">
-          <div className="text-sm text-gray-900 max-w-md">{assumption.description}</div>
+          <div className="text-sm text-gray-900 max-w-md">
+            {assumption.isLocked && (
+              <span className="inline-flex items-center mr-2 px-1.5 py-0.5 text-xs font-bold rounded bg-amber-100 text-amber-800 border border-amber-300">
+                <svg className="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                Test #{assumption.testOrder}
+              </span>
+            )}
+            {assumption.description}
+          </div>
           {assumption.migratedFromStep0 && (
             <span className="inline-flex items-center mt-1 text-xs text-blue-600">
               <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -183,9 +198,13 @@ export function AssumptionFrameworkTable({
           <button onClick={() => onEdit(assumption)} className="text-blue-600 hover:text-blue-900 mr-4">
             Edit
           </button>
-          <button onClick={() => onDelete(assumption.id)} className="text-red-600 hover:text-red-900">
-            Delete
-          </button>
+          {assumption.isLocked ? (
+            <span className="text-gray-400 text-xs" title="Core assumption — cannot be deleted">locked</span>
+          ) : (
+            <button onClick={() => onDelete(assumption.id)} className="text-red-600 hover:text-red-900">
+              Delete
+            </button>
+          )}
         </td>
       </tr>
     );
@@ -246,7 +265,7 @@ export function AssumptionFrameworkTable({
             <div className="ml-4 text-right">
               {status.canGraduate ? (
                 <div className="bg-green-100 border border-green-300 rounded-lg px-4 py-2">
-                  <p className="text-xs font-semibold text-green-800">✅ Stage Complete</p>
+                  <p className="text-xs font-semibold text-green-800">✅ You've earned the right to move on</p>
                   {stage < 3 && <p className="text-xs text-green-700">Ready for Stage {stage + 1}</p>}
                 </div>
               ) : status.totalAssumptions > 0 && status.interviewCount > 0 ? (
@@ -257,7 +276,7 @@ export function AssumptionFrameworkTable({
                   </div>
                 ) : (
                   <div className="bg-yellow-100 border border-yellow-300 rounded-lg px-4 py-2">
-                    <p className="text-xs font-semibold text-yellow-800">🔬 Keep testing</p>
+                    <p className="text-xs font-semibold text-yellow-800">🔬 Talk to more people</p>
                     <p className="text-xs text-yellow-700">{status.recommendation}</p>
                   </div>
                 )

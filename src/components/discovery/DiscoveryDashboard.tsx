@@ -434,6 +434,65 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
           </ul>
         </div>
       )}
+
+      {/* Pivot Resistance Detection */}
+      {(() => {
+        // Check for contradicting interviews vs. unchanged confidence
+        const uvpAssumptions = assumptions.filter(a => a.canvasArea === 'uniqueValueProposition' || a.canvasArea === 'solution');
+        const resistanceSignals: { assumption: Assumption; contradictions: number }[] = [];
+
+        uvpAssumptions.forEach(assumption => {
+          const linkedInterviews = interviews.filter(interview =>
+            interview.assumptionTags.some(tag =>
+              tag.assumptionId === assumption.id && tag.validationEffect === 'contradicts'
+            )
+          );
+          if (linkedInterviews.length >= 3 && assumption.confidence >= 3) {
+            resistanceSignals.push({ assumption, contradictions: linkedInterviews.length });
+          }
+        });
+
+        const redAssumptions = assumptions.filter(a =>
+          a.status === 'invalidated' || ((a.interviewCount || 0) >= 3 && a.confidence <= 2)
+        );
+
+        if (resistanceSignals.length === 0 && redAssumptions.length < 2) return null;
+
+        return (
+          <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.96-.833-2.73 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              Pivot Resistance Check
+            </h3>
+
+            {resistanceSignals.length > 0 && (
+              <div className="mb-3">
+                {resistanceSignals.map(({ assumption, contradictions }) => (
+                  <div key={assumption.id} className="p-3 bg-white border border-red-200 rounded-lg mb-2">
+                    <p className="text-sm text-red-800">
+                      <strong>{contradictions} interviews contradict</strong> your assumption: "{assumption.description}"
+                      — but your confidence score hasn't dropped. Are you avoiding the pivot?
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {redAssumptions.length >= 2 && (
+              <div className="p-3 bg-white border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  <strong>{redAssumptions.length} core assumptions are red.</strong> Pivoting isn't failure — the 5% who do this correctly either pivot early to better ideas or kill bad ones before wasting months. This is that moment.
+                </p>
+                <p className="text-xs text-red-600 mt-2 italic">
+                  What's stopping you from pivoting?
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

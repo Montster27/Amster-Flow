@@ -17,10 +17,10 @@ export type ValidationStage = 1 | 2 | 3;
 export const VALIDATION_STAGES = {
   1: {
     name: 'Customer-Problem Fit',
-    question: 'WHO has this problem and HOW BAD is it?',
-    description: 'Validate that your customer exists and their problem is worth solving',
+    question: 'WHO has this problem, WHO are the early adopters, and HOW BAD is it?',
+    description: 'Validate that your customer exists, identify early adopters, and confirm their problem is worth solving',
     color: 'blue',
-    areas: ['customerSegments', 'problem'] as CanvasArea[],
+    areas: ['customerSegments', 'earlyAdopters', 'problem'] as CanvasArea[],
     minimumInterviews: 5,
     graduationCriteria: {
       minConfidence: 4,
@@ -29,10 +29,10 @@ export const VALIDATION_STAGES = {
   },
   2: {
     name: 'Problem-Solution Fit',
-    question: 'HOW should we solve it and for WHOM specifically?',
-    description: 'Validate your solution approach and early adopter profile',
+    question: 'HOW should we solve it and WHAT makes us different?',
+    description: 'Validate your solution approach and unique value proposition',
     color: 'purple',
-    areas: ['existingAlternatives', 'solution', 'uniqueValueProposition', 'earlyAdopters'] as CanvasArea[],
+    areas: ['existingAlternatives', 'solution', 'uniqueValueProposition'] as CanvasArea[],
     minimumInterviews: 5,
     graduationCriteria: {
       minConfidence: 4,
@@ -55,8 +55,8 @@ export const VALIDATION_STAGES = {
 
 // V2 Stage group mapping (for compatibility and quick lookups)
 export const VALIDATION_STAGE_GROUPS = {
-  1: ['customerSegments', 'problem'],
-  2: ['existingAlternatives', 'solution', 'uniqueValueProposition', 'earlyAdopters'],
+  1: ['customerSegments', 'earlyAdopters', 'problem'],
+  2: ['existingAlternatives', 'solution', 'uniqueValueProposition'],
   3: ['channels', 'revenueStreams', 'costStructure', 'keyMetrics', 'unfairAdvantage'],
 } as const;
 
@@ -68,12 +68,12 @@ export const VALIDATION_STAGE_GROUPS = {
 export type CanvasArea =
   // Stage 1: Customer-Problem Fit
   | 'customerSegments'
+  | 'earlyAdopters'
   | 'problem'
   // Stage 2: Problem-Solution Fit
   | 'existingAlternatives'
   | 'solution'
   | 'uniqueValueProposition'
-  | 'earlyAdopters'
   // Stage 3: Business Model Viability
   | 'channels'
   | 'revenueStreams'
@@ -98,8 +98,8 @@ export const CANVAS_AREA_LABELS: Record<CanvasArea, string> = {
 
 // Helper to get validation stage for a canvas area
 export function getStageForArea(area: CanvasArea): ValidationStage {
-  if (VALIDATION_STAGE_GROUPS[1].includes(area as typeof VALIDATION_STAGE_GROUPS[1][number])) return 1;
-  if (VALIDATION_STAGE_GROUPS[2].includes(area as typeof VALIDATION_STAGE_GROUPS[2][number])) return 2;
+  if ((VALIDATION_STAGE_GROUPS[1] as readonly string[]).includes(area)) return 1;
+  if ((VALIDATION_STAGE_GROUPS[2] as readonly string[]).includes(area)) return 2;
   return 3;
 }
 
@@ -189,6 +189,10 @@ export interface Assumption extends LegacyAssumption {
   migratedFromStep0?: boolean; // True if created during graduation
   sourceSegment?: string; // Name of the segment this relates to
   step0AssumptionType?: Step0AssumptionType; // Original type from Step 0
+
+  // V2: Locked assumptions (auto-generated customer identity)
+  isLocked?: boolean; // True = cannot be reordered or deleted
+  testOrder?: number; // 1, 2, 3 = forced test order for locked assumptions
 }
 
 // Alias for backward compatibility
@@ -244,6 +248,12 @@ export interface EnhancedInterview {
   matchesBeachhead?: boolean; // True if interviewee matches beachhead segment
   deviationAcknowledged?: boolean; // True if user acknowledged deviation
   deviationReason?: string; // Why interviewing outside beachhead
+
+  // V2: Jobs-to-Be-Done probes
+  jtbdFunctional?: string; // "Walk me through the last time..."
+  jtbdSocial?: string; // "How does this affect how others see..."
+  jtbdEmotional?: string; // "How do you feel when you can't solve..."
+  jtbdClassification?: 'functional' | 'social' | 'emotional'; // Auto-suggested job type
 }
 
 // ============================================================================

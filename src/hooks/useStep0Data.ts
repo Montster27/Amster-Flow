@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import { useStep0Store, type Customer, type Segment, type IdeaStatement } from '../features/discovery/step0Store';
+import { useStep0Store, type Customer, type Segment, type IdeaStatement, type FounderMarketFit, type WhyNow, type SchlepAssessment, type BeachheadQualifiers } from '../features/discovery/step0Store';
 import { captureException } from '../lib/sentry';
 
 /**
@@ -19,6 +19,10 @@ export function useStep0Data(projectId: string | undefined) {
     segments,
     focusedSegmentId,
     hasGraduated,
+    founderMarketFit,
+    whyNow,
+    schlepAssessment,
+    beachheadQualifiers,
     importData,
     exportData,
     reset,
@@ -53,13 +57,18 @@ export function useStep0Data(projectId: string | undefined) {
 
         // If data exists, import it
         if (data) {
+          const row = data as any;
           importData({
             part: data.current_part,
             idea: (data.idea || { building: '', helps: '', achieve: '' }) as unknown as IdeaStatement,
             customers: (data.customers || []) as unknown as Customer[],
             segments: (data.segments || []) as unknown as Segment[],
             focusedSegmentId: data.focused_segment_id,
-            hasGraduated: (data as any).has_graduated || false,
+            hasGraduated: row.has_graduated || false,
+            founderMarketFit: (row.founder_market_fit || { directExperience: '', domainCredibility: '', accessAdvantage: '', whyNowForYou: '' }) as FounderMarketFit,
+            whyNow: (row.why_now || { catalystType: '', elaboration: '' }) as WhyNow,
+            schlepAssessment: (row.schlep_assessment || { attractiveness: 3, messierAlternative: '' }) as SchlepAssessment,
+            beachheadQualifiers: (row.beachhead_qualifiers || { howSmall: '', activelySolving: '', canReachDirectly: '' }) as BeachheadQualifiers,
           });
         }
 
@@ -102,6 +111,10 @@ export function useStep0Data(projectId: string | undefined) {
             segments: currentData.segments,
             focused_segment_id: currentData.focusedSegmentId,
             has_graduated: currentData.hasGraduated,
+            founder_market_fit: currentData.founderMarketFit,
+            why_now: currentData.whyNow,
+            schlep_assessment: currentData.schlepAssessment,
+            beachhead_qualifiers: currentData.beachheadQualifiers,
             updated_by: user.id,
           } as any, {
             onConflict: 'project_id',
@@ -119,7 +132,7 @@ export function useStep0Data(projectId: string | undefined) {
     // Debounce saves by 1 second to avoid too many database writes
     const timeoutId = setTimeout(saveStep0Data, 1000);
     return () => clearTimeout(timeoutId);
-  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, hasGraduated, loading, exportData]);
+  }, [projectId, user, part, idea, customers, segments, focusedSegmentId, hasGraduated, founderMarketFit, whyNow, schlepAssessment, beachheadQualifiers, loading, exportData]);
 
   return { loading, error };
 }

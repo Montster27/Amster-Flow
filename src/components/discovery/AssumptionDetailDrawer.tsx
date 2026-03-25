@@ -149,14 +149,39 @@ export const AssumptionDetailDrawer = ({ assumption, onClose }: AssumptionDetail
               <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
               <select
                 value={assumption.status}
-                onChange={(e) => updateAssumption(assumption.id, { status: e.target.value as AssumptionStatus })}
+                onChange={(e) => {
+                  const newStatus = e.target.value as AssumptionStatus;
+                  const interviewCount = assumption.interviewCount || 0;
+                  if (newStatus === 'validated' && interviewCount < 5) {
+                    alert(`You need at least 5 interviews to validate this assumption. You currently have ${interviewCount}. Talk to ${5 - interviewCount} more people.`);
+                    return;
+                  }
+                  updateAssumption(assumption.id, { status: newStatus });
+                }}
                 className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
               >
                 <option value="untested">Untested</option>
                 <option value="testing">Testing</option>
-                <option value="validated">Validated</option>
+                <option value="validated">Validated {(assumption.interviewCount || 0) < 5 ? `(needs ${5 - (assumption.interviewCount || 0)} more interviews)` : ''}</option>
                 <option value="invalidated">Invalidated</option>
               </select>
+              {/* Interview threshold progress */}
+              {assumption.validationStage === 1 && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${(assumption.interviewCount || 0) >= 5 ? 'bg-green-500' : (assumption.interviewCount || 0) >= 3 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                        style={{ width: `${Math.min(100, ((assumption.interviewCount || 0) / 5) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500">{assumption.interviewCount || 0}/5</span>
+                  </div>
+                  {(assumption.interviewCount || 0) >= 3 && (assumption.interviewCount || 0) < 5 && (
+                    <p className="text-xs text-amber-600 mt-1">You need {5 - (assumption.interviewCount || 0)} more interviews to validate this assumption.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

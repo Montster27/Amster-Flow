@@ -125,6 +125,33 @@ export type IdeaStatement = {
   achieve: string; // "do X better/faster/cheaper"
 };
 
+// Founder-Market Fit assessment
+export type FounderMarketFit = {
+  directExperience: 'yes' | 'no' | 'adjacent' | '';
+  domainCredibility: string; // min 50 chars
+  accessAdvantage: 'yes' | 'no' | '';
+  whyNowForYou: string;
+};
+
+// Why Now? timing catalyst
+export type WhyNow = {
+  catalystType: 'technology' | 'regulatory' | 'behavioral' | 'economic' | '';
+  elaboration: string; // min 100 chars
+};
+
+// Schlep filter self-assessment
+export type SchlepAssessment = {
+  attractiveness: number; // 1 (tedious) to 5 (exciting)
+  messierAlternative: string; // optional reflection
+};
+
+// Beachhead qualifier fields
+export type BeachheadQualifiers = {
+  howSmall: string;
+  activelySolving: 'yes' | 'no' | 'unsure' | '';
+  canReachDirectly: 'yes' | 'no' | 'unsure' | '';
+};
+
 type Step0State = {
   part: number;
   idea: IdeaStatement;
@@ -132,6 +159,11 @@ type Step0State = {
   segments: Segment[];
   focusedSegmentId: number | null;
   hasGraduated: boolean; // V2: Track if user has graduated to Discovery
+  // PivotKit Refresh fields
+  founderMarketFit: FounderMarketFit;
+  whyNow: WhyNow;
+  schlepAssessment: SchlepAssessment;
+  beachheadQualifiers: BeachheadQualifiers;
 };
 
 type Step0Actions = {
@@ -157,6 +189,11 @@ type Step0Actions = {
   // V2: Graduation action
   setGraduated: (graduated: boolean) => void;
   getRecommendedBeachhead: () => Segment | null;
+  // PivotKit Refresh actions
+  updateFounderMarketFit: (field: keyof FounderMarketFit, value: string) => void;
+  updateWhyNow: (field: keyof WhyNow, value: string) => void;
+  updateSchlepAssessment: (field: keyof SchlepAssessment, value: string | number) => void;
+  updateBeachheadQualifiers: (field: keyof BeachheadQualifiers, value: string) => void;
   // Persistence helpers
   importData: (data: Step0State) => void;
   exportData: () => Step0State;
@@ -169,6 +206,10 @@ const initialState: Step0State = {
   segments: [],
   focusedSegmentId: null,
   hasGraduated: false,
+  founderMarketFit: { directExperience: '', domainCredibility: '', accessAdvantage: '', whyNowForYou: '' },
+  whyNow: { catalystType: '', elaboration: '' },
+  schlepAssessment: { attractiveness: 3, messierAlternative: '' },
+  beachheadQualifiers: { howSmall: '', activelySolving: '', canReachDirectly: '' },
 };
 
 const Step0Context = createContext<(Step0State & Step0Actions) | undefined>(undefined);
@@ -329,6 +370,35 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     return sorted[0] || null;
   }, [state.segments]);
 
+  // PivotKit Refresh actions
+  const updateFounderMarketFit = useCallback((field: keyof FounderMarketFit, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      founderMarketFit: { ...prev.founderMarketFit, [field]: value },
+    }));
+  }, []);
+
+  const updateWhyNow = useCallback((field: keyof WhyNow, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      whyNow: { ...prev.whyNow, [field]: value },
+    }));
+  }, []);
+
+  const updateSchlepAssessment = useCallback((field: keyof SchlepAssessment, value: string | number) => {
+    setState((prev) => ({
+      ...prev,
+      schlepAssessment: { ...prev.schlepAssessment, [field]: value },
+    }));
+  }, []);
+
+  const updateBeachheadQualifiers = useCallback((field: keyof BeachheadQualifiers, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      beachheadQualifiers: { ...prev.beachheadQualifiers, [field]: value },
+    }));
+  }, []);
+
   const importData = useCallback((data: Step0State) => {
     setState(data);
   }, []);
@@ -355,10 +425,14 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       reset,
       setGraduated,
       getRecommendedBeachhead,
+      updateFounderMarketFit,
+      updateWhyNow,
+      updateSchlepAssessment,
+      updateBeachheadQualifiers,
       importData,
       exportData,
     }),
-    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, updateCustomerBenefitNeedCategory, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, importData, exportData]
+    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, updateCustomerBenefitNeedCategory, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, updateFounderMarketFit, updateWhyNow, updateSchlepAssessment, updateBeachheadQualifiers, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;

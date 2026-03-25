@@ -141,6 +141,76 @@ export function DiscoverySummary({ summary, details, loading }: DiscoverySummary
           </div>
         </div>
       )}
+      {/* Discovery Quality Score */}
+      {summary && details && (
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Discovery Quality Score</h3>
+          {(() => {
+            // Calculate quality score components
+            const avgInterviewsPerAssumption = summary.totalAssumptions > 0
+              ? summary.totalInterviews / summary.totalAssumptions
+              : 0;
+            const interviewScore = Math.min(1, avgInterviewsPerAssumption / 5) * 25;
+
+            // Segment diversity: check if all interviews are from same type
+            const uniqueInterviewTypes = new Set(
+              Object.entries(details.interviewsByType)
+                .filter(([, count]) => count > 0)
+                .map(([type]) => type)
+            ).size;
+            const diversityScore = Math.min(1, uniqueInterviewTypes / 3) * 15;
+
+            // Confidence movement: check if any assumptions have been invalidated
+            const hasNegativeSignal = summary.statusDistribution.invalidated > 0;
+            const confidenceScore = hasNegativeSignal ? 20 : (summary.totalInterviews > 0 ? 5 : 0);
+
+            // Stage progression time (approximate — check if validated quickly)
+            const progressionScore = summary.validationRate < 100 || summary.totalInterviews >= 5 ? 15 : 5;
+
+            // Pivot/patch audit
+            const redAssumptions = summary.statusDistribution.invalidated;
+            const pivotScore = redAssumptions >= 2 ? 10 : 25;
+
+            const totalScore = interviewScore + diversityScore + confidenceScore + progressionScore + pivotScore;
+            const rating = totalScore >= 70 ? 'Strong' : totalScore >= 50 ? 'Adequate' : totalScore >= 30 ? 'Concerning' : 'Insufficient Evidence';
+            const ratingColor = totalScore >= 70 ? 'text-green-700 bg-green-100' : totalScore >= 50 ? 'text-blue-700 bg-blue-100' : totalScore >= 30 ? 'text-yellow-700 bg-yellow-100' : 'text-red-700 bg-red-100';
+
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${ratingColor}`}>
+                    {rating}
+                  </span>
+                  <span className="text-sm text-gray-500">{totalScore.toFixed(0)}/100</span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Interview depth (avg per assumption)</span>
+                    <span className="font-medium">{interviewScore.toFixed(0)}/25</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Segment diversity</span>
+                    <span className="font-medium">{diversityScore.toFixed(0)}/15</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Confidence movement {!hasNegativeSignal && summary.totalInterviews > 0 ? '(no negative signal — suspicious)' : ''}</span>
+                    <span className="font-medium">{confidenceScore.toFixed(0)}/20</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Stage progression pace</span>
+                    <span className="font-medium">{progressionScore.toFixed(0)}/15</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Pivot/patch audit {redAssumptions >= 2 ? '(2+ red — needs pivot review)' : ''}</span>
+                    <span className="font-medium">{pivotScore.toFixed(0)}/25</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

@@ -62,6 +62,12 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
   const [deviationAcknowledged, setDeviationAcknowledged] = useState(false);
   const [deviationReason, setDeviationReason] = useState<string | undefined>();
 
+  // JTBD probes
+  const [jtbdFunctional, setJtbdFunctional] = useState('');
+  const [jtbdSocial, setJtbdSocial] = useState('');
+  const [jtbdEmotional, setJtbdEmotional] = useState('');
+  const [jtbdClassification, setJtbdClassification] = useState<'functional' | 'social' | 'emotional' | undefined>();
+
   // Group assumptions by stage for better selection
   const groupedAssumptions = useMemo(() => {
     const statusOrder: Record<string, number> = { untested: 0, testing: 1, validated: 2, invalidated: 3 };
@@ -106,6 +112,10 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
       setStatus(editingInterview.status);
       setDeviationAcknowledged(editingInterview.deviationAcknowledged || false);
       setDeviationReason(editingInterview.deviationReason);
+      setJtbdFunctional(editingInterview.jtbdFunctional || '');
+      setJtbdSocial(editingInterview.jtbdSocial || '');
+      setJtbdEmotional(editingInterview.jtbdEmotional || '');
+      setJtbdClassification(editingInterview.jtbdClassification);
     }
   }, [editingInterview]);
 
@@ -191,6 +201,11 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
       matchesBeachhead,
       deviationAcknowledged: !matchesBeachhead ? deviationAcknowledged : undefined,
       deviationReason: !matchesBeachhead ? deviationReason : undefined,
+      // V2 JTBD probes
+      jtbdFunctional: jtbdFunctional.trim() || undefined,
+      jtbdSocial: jtbdSocial.trim() || undefined,
+      jtbdEmotional: jtbdEmotional.trim() || undefined,
+      jtbdClassification,
     };
 
     if (editingInterview) {
@@ -588,6 +603,69 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Jobs-to-Be-Done Probes (Optional) */}
+        <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+          <h4 className="text-sm font-bold text-purple-800 mb-1">Jobs-to-Be-Done Probes</h4>
+          <p className="text-xs text-purple-600 mb-3">Optional: dig deeper into WHY they need a solution, not just WHAT they want.</p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Functional: "Walk me through the last time you had this problem. What did you actually do?"
+              </label>
+              <textarea
+                value={jtbdFunctional}
+                onChange={(e) => setJtbdFunctional(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                placeholder="Their actual behavior and workaround..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Social: "How does this problem affect how others see your work/capability?"
+              </label>
+              <textarea
+                value={jtbdSocial}
+                onChange={(e) => setJtbdSocial(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                placeholder="Social or reputational impact..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Emotional: "How do you feel when you can't solve this quickly?"
+              </label>
+              <textarea
+                value={jtbdEmotional}
+                onChange={(e) => setJtbdEmotional(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                placeholder="Frustration, anxiety, embarrassment..."
+              />
+            </div>
+
+            {(jtbdFunctional || jtbdSocial || jtbdEmotional) && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Primary job type for this interviewee:</label>
+                <select
+                  value={jtbdClassification || ''}
+                  onChange={(e) => setJtbdClassification(e.target.value as 'functional' | 'social' | 'emotional' | undefined || undefined)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                >
+                  <option value="">Select classification...</option>
+                  <option value="functional">Functional — they need to get something done</option>
+                  <option value="social">Social — it affects how others perceive them</option>
+                  <option value="emotional">Emotional — it's about how they feel</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
