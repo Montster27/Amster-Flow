@@ -121,6 +121,21 @@ export function ResetPasswordPage() {
       return;
     }
 
+    if (!/[A-Z]/.test(password)) {
+      setError('Password must contain at least one uppercase letter');
+      return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+      setError('Password must contain at least one lowercase letter');
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -241,7 +256,7 @@ export function ResetPasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={8}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Must be at least 8 characters"
+                placeholder="Min 8 chars, uppercase, lowercase, number"
               />
             </div>
 

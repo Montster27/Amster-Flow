@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { setUser as setSentryUser, captureException } from '../lib/sentry';
+import { setUser as setSentryUser, captureException, addBreadcrumb } from '../lib/sentry';
 import { logAuthEvent } from '../lib/auditLog';
 
 interface AuthContextType {
@@ -31,12 +31,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Use ref to track user for logout logging (avoids stale closure)
+  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      userRef.current = session?.user ?? null;
       // Set user in Sentry for error tracking context
       setSentryUser(
         session?.user ? { id: session.user.id, email: session.user.email } : null
@@ -48,8 +51,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      // Capture previous user before updating state (for logout logging)
+      const previousUser = userRef.current;
+
       setSession(session);
       setUser(session?.user ?? null);
+      userRef.current = session?.user ?? null;
       // Update Sentry user context on auth state changes
       setSentryUser(
         session?.user ? { id: session.user.id, email: session.user.email } : null
@@ -60,10 +67,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (event === 'SIGNED_IN' && session?.user) {
         logAuthEvent('auth.login', session.user.id, session.user.email || 'unknown');
       } else if (event === 'SIGNED_OUT') {
-        // For sign out, we don't have user info anymore, but we can log it
-        // The audit log allows null user_id for signout events
-        if (user) {
-          logAuthEvent('auth.logout', user.id, user.email || 'unknown');
+        // Use previousUser from ref to avoid stale closure
+        if (previousUser) {
+          logAuthEvent('auth.logout', previousUser.id, previousUser.email || 'unknown');
         }
       }
     });
@@ -118,18 +124,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         // If server sign out fails (403, network error, etc.),
         // still clear local session
-        console.warn('Server sign out failed, clearing local session:', error);
+        addBreadcrumb('auth', 'Server sign out failed, clearing local session', { error: error.message });
 
         // Force local sign out by clearing storage
         await supabase.auth.signOut({ scope: 'local' });
       }
     } catch (err) {
       // If anything fails, force local sign out
-      console.error('Sign out error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      addBreadcrumb('auth', 'Sign out error', { error: errorMessage });
       try {
         await supabase.auth.signOut({ scope: 'local' });
       } catch (localError) {
-        console.error('Local sign out also failed:', localError);
+        const localErrorMessage = localError instanceof Error ? localError.message : 'Unknown error';
+        addBreadcrumb('auth', 'Local sign out also failed', { error: localErrorMessage });
       }
     }
   };

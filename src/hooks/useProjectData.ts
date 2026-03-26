@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useGuide } from '../contexts/GuideContext';
 import type { ModuleProgress } from '../contexts/GuideContext';
-import { captureException } from '../lib/sentry';
+import { captureException, addBreadcrumb } from '../lib/sentry';
 
 
 /**
@@ -187,7 +187,7 @@ export function useProjectData(projectId: string | undefined) {
           extra: { projectId, context: 'useProjectData save' },
         });
         // Don't set global error here to avoid disrupting the UI for background saves
-        console.error('Failed to save project data:', error);
+        addBreadcrumb('project-data', 'Failed to save project data', { projectId, error: error.message });
       } finally {
         isSavingRef.current = false;
       }
