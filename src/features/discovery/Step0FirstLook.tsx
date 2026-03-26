@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Segment, useStep0Store, NEED_CATEGORIES, NeedCategoryId, Benefit } from './step0Store';
+import { getContent } from '../../lib/pivotKitContent';
+import { MentorVoice, TooltipText } from '../../components/ui/MentorVoice';
 
 // Example data for split-screen teaching
 const EXAMPLE_DATA = {
@@ -330,6 +332,13 @@ export function Step0FirstLook() {
 
       {/* Part 0: Your Idea */}
       {part === 0 && (
+        <>
+        {/* Item 1: Opening orientation — first thing user reads */}
+        <MentorVoice text={getContent('step0_p0_opening_orientation')} type="mentor_voice" className="mb-4" />
+
+        {/* Item 4: Mangos callout */}
+        <MentorVoice text={getContent('step0_p0_mangos')} type="mentor_voice" dismissible className="mb-4" />
+
         <SplitScreen
           exampleTitle="Example: Family Schedule App"
           exampleContent={
@@ -361,13 +370,14 @@ export function Step0FirstLook() {
           studentTitle="Your Turn"
           studentContent={
             <div className="space-y-4">
+              {/* Item 2: Page subtitle */}
               <p className="text-sm text-slate-600 mb-4">
-                Test these assumptions before building anything. Describe your idea in one sentence — prove the problem exists before solving it.
+                {getContent('step0_p0_page_subtitle')}
               </p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    I'm building...
+                    <TooltipText text={getContent('step0_p0_idea_statement_tooltip')}>I'm building...</TooltipText>
                   </label>
                   <input
                     type="text"
@@ -415,8 +425,9 @@ export function Step0FirstLook() {
               {/* Founder-Market Fit Section */}
               {idea.building && idea.helps && idea.achieve && (
                 <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Founder-Market Fit</h4>
-                  <p className="text-xs text-slate-500 mb-4">Why are you the right person to solve this? This is the #1 investor filter at seed stage.</p>
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">
+                    <TooltipText text={getContent('step0_p0_fmf_tooltip')}>{getContent('step0_p0_fmf_label')}</TooltipText>
+                  </h4>
 
                   <div className="space-y-3">
                     <div>
@@ -485,10 +496,8 @@ export function Step0FirstLook() {
                     <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
                       <span className="text-xs font-bold text-green-700">Strong Founder-Market Fit</span>
                     </div>
-                  ) : (founderMarketFit.directExperience === 'no' || (founderMarketFit.domainCredibility.length > 0 && founderMarketFit.domainCredibility.length < 50)) ? (
-                    <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                      <span className="text-xs text-amber-700">Consider whether you have sufficient insight to validate this segment quickly.</span>
-                    </div>
+                  ) : (founderMarketFit.directExperience === 'no' && founderMarketFit.accessAdvantage === 'no') ? (
+                    <MentorVoice text={getContent('step0_p0_fmf_warning')} type="warning" className="mt-3" />
                   ) : null}
                 </div>
               )}
@@ -496,8 +505,9 @@ export function Step0FirstLook() {
               {/* Why Now? Section */}
               {idea.building && idea.helps && idea.achieve && (
                 <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Why Now?</h4>
-                  <p className="text-xs text-slate-500 mb-4">What shift makes this idea solvable today that wasn't true 2 years ago?</p>
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">
+                    <TooltipText text={getContent('step0_p0_why_now_tooltip')}>{getContent('step0_p0_why_now_label')}</TooltipText>
+                  </h4>
 
                   <div className="space-y-3">
                     <div>
@@ -584,6 +594,7 @@ export function Step0FirstLook() {
             </div>
           }
         />
+        </>
       )}
 
       {/* Part 1: Who & Why - Customers and Benefits */}
@@ -615,7 +626,7 @@ export function Step0FirstLook() {
               ))}
               <div className="p-3 bg-amber-100 rounded-lg">
                 <p className="text-xs text-amber-800">
-                  <strong>Tip:</strong> Who is the SMALLEST group most desperate for this? "Parents" is too broad. "Working parents with teens in travel sports" is better. Ideas are mangos, not children — don't fall in love with one segment. Find the one with the most pain first.
+                  <strong>Tip:</strong> {getContent('step0_p1_desperate_segment')}
                 </p>
               </div>
             </div>
@@ -623,9 +634,8 @@ export function Step0FirstLook() {
           studentTitle="Your Customers & Their Benefits"
           studentContent={
             <div className="space-y-4">
-              <p className="text-sm text-slate-600 mb-4">
-                Who might benefit from your solution? What value does it provide for each group?
-              </p>
+              {/* Item 10: Part 1 explainer */}
+              <MentorVoice text={getContent('step0_p1_explainer')} type="explainer" className="mb-4" />
 
               {customers.length === 0 ? (
                 <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
@@ -905,11 +915,11 @@ export function Step0FirstLook() {
                   </div>
                 </div>
               ))}
-              <div className="p-3 bg-amber-100 rounded-lg">
-                <p className="text-xs text-amber-800">
-                  <strong>Find your BEACHHEAD</strong> — the smallest group where pain is so acute they're already trying to solve it on their own. Narrow is better. Ask: Who would be DEVASTATED if this solution disappeared?
-                </p>
-              </div>
+              {/* Item 12: Beachhead tip */}
+              <MentorVoice text={getContent('step0_p2_beachhead_tip')} type="tip" className="mb-2" />
+
+              {/* Item 13: TAM callout */}
+              <MentorVoice text={getContent('step0_p2_tam_callout')} type="callout" />
             </div>
           }
           studentTitle="Select Focus & Rank Access"
@@ -1122,10 +1132,12 @@ export function Step0FirstLook() {
                 ✓
               </span>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Time to Get More Detailed!</h2>
-                <p className="text-sm text-slate-600">Now let's dig deeper into this market and validate your assumptions</p>
+                <h2 className="text-xl font-bold text-slate-800">Your First Pass</h2>
               </div>
             </div>
+
+            {/* Item 18: Part 4 summary mentor voice */}
+            <MentorVoice text={getContent('step0_p4_summary')} type="mentor_voice" className="mb-6" />
 
             {/* Idea Summary */}
             <div className="mb-6 p-4 bg-white rounded-lg border border-slate-200">

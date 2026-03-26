@@ -10,6 +10,8 @@ import { VALIDATION_STAGES, getStageForArea, CANVAS_AREA_LABELS } from '../../ty
 import { evaluateAllStages } from '../../utils/stageEvaluation';
 import { StageProgressBar } from './StageProgressBar';
 import { StageWarningBanner } from './StageWarningBanner';
+import { getContent, CANVAS_AREA_TOOLTIPS } from '../../lib/pivotKitContent';
+import { MentorVoice, TooltipText } from '../ui/MentorVoice';
 
 interface AssumptionFrameworkTableProps {
   assumptions: Assumption[];
@@ -115,10 +117,16 @@ export function AssumptionFrameworkTable({
           </span>
         </td>
 
-        {/* LBMC Area */}
+        {/* LBMC Area — Items 24-31: canvas area tooltips */}
         <td className="px-6 py-4 whitespace-nowrap">
           <span className="text-xs font-medium text-gray-900">
-            {CANVAS_AREA_LABELS[assumption.canvasArea]}
+            {CANVAS_AREA_TOOLTIPS[assumption.canvasArea] ? (
+              <TooltipText text={getContent(CANVAS_AREA_TOOLTIPS[assumption.canvasArea])}>
+                {CANVAS_AREA_LABELS[assumption.canvasArea]}
+              </TooltipText>
+            ) : (
+              CANVAS_AREA_LABELS[assumption.canvasArea]
+            )}
           </span>
         </td>
 
@@ -251,7 +259,11 @@ export function AssumptionFrameworkTable({
                 )}
               </div>
               <p className="text-sm text-gray-700 mb-1 font-medium">{stageConfig.question}</p>
-              <p className="text-xs text-gray-600 mb-3">{stageConfig.description}</p>
+
+              {/* Items 19-21: Stage intro content from mentor voice library */}
+              {getContent(`discovery_stage${stage}_intro`) && (
+                <MentorVoice text={getContent(`discovery_stage${stage}_intro`)} type="stage_intro" className="mt-2 mb-3" />
+              )}
 
               {/* Stage Progress */}
               {stageAssumptions.length > 0 && (

@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import type { BeachheadData } from '../../types/discovery';
+import { getContent } from '../../lib/pivotKitContent';
 
 interface SegmentDeviationWarningProps {
   currentSegment: string;
@@ -87,9 +88,7 @@ export function SegmentDeviationWarning({
             interviewing <span className="font-medium">"{currentSegment}"</span>.
           </p>
           <p className="text-sm text-yellow-600 mt-2">
-            Interviewing outside your focus is okay for exploration, but{' '}
-            <span className="font-semibold">5 interviews with your beachhead</span> are required to
-            validate Stage 1 assumptions.
+            {getContent('interview_segment_warning')}
           </p>
 
           {/* Reason Input */}

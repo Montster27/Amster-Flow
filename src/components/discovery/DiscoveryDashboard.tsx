@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import type { Assumption, EnhancedInterview } from '../../types/discovery';
+import { getContent } from '../../lib/pivotKitContent';
+import { MentorVoice } from '../ui/MentorVoice';
 
 interface DiscoveryDashboardProps {
   assumptions: Assumption[];
@@ -467,28 +469,14 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
               Pivot Resistance Check
             </h3>
 
+            {/* Item 34: Pivot resistance per assumption */}
             {resistanceSignals.length > 0 && (
-              <div className="mb-3">
-                {resistanceSignals.map(({ assumption, contradictions }) => (
-                  <div key={assumption.id} className="p-3 bg-white border border-red-200 rounded-lg mb-2">
-                    <p className="text-sm text-red-800">
-                      <strong>{contradictions} interviews contradict</strong> your assumption: "{assumption.description}"
-                      — but your confidence score hasn't dropped. Are you avoiding the pivot?
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <MentorVoice text={getContent('assumption_pivot_resistance')} type="mentor_voice_flag" className="mb-3" />
             )}
 
+            {/* Item 33: Confidence never drops */}
             {redAssumptions.length >= 2 && (
-              <div className="p-3 bg-white border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
-                  <strong>{redAssumptions.length} core assumptions are red.</strong> Pivoting isn't failure — the 5% who do this correctly either pivot early to better ideas or kill bad ones before wasting months. This is that moment.
-                </p>
-                <p className="text-xs text-red-600 mt-2 italic">
-                  What's stopping you from pivoting?
-                </p>
-              </div>
+              <MentorVoice text={getContent('assumption_confidence_never_drops')} type="mentor_voice_flag" />
             )}
           </div>
         );

@@ -6,6 +6,8 @@
 import { useState } from 'react';
 import type { ValidationStage, StageStatus } from '../../types/discovery';
 import { VALIDATION_STAGES } from '../../types/discovery';
+import { getContent } from '../../lib/pivotKitContent';
+import { MentorVoice } from '../ui/MentorVoice';
 
 interface StageWarningBannerProps {
   stage: ValidationStage;
@@ -84,20 +86,18 @@ export function StageWarningBanner({
           </h4>
           <p className={`text-sm mt-1 ${isLocked ? 'text-gray-600' : 'text-yellow-700'}`}>
             {isLocked ? (
-              <>
-                Before moving on — are you 100% sure you know WHO has this problem and WHY it matters to them? Complete{' '}
-                <span className="font-medium">
-                  Stage {previousStage}: {previousStageConfig?.name}
-                </span>{' '}
-                first. The data isn't there yet.
-              </>
+              getContent(`stage${stage}_lock_callout`) || (
+                <>
+                  Complete Stage {previousStage}: {previousStageConfig?.name} first.
+                </>
+              )
             ) : (
               <>
                 Don't skip steps. Talk to{' '}
                 <span className="font-medium">
                   {VALIDATION_STAGES[previousStage as ValidationStage]?.minimumInterviews || 5} more people
                 </span>{' '}
-                in Stage {previousStage} before moving here. Validating earlier assumptions provides a stronger foundation.
+                in Stage {previousStage} before moving here.
               </>
             )}
           </p>

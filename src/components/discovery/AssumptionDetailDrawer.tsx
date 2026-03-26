@@ -4,6 +4,8 @@ import { useDiscovery } from '../../contexts/DiscoveryContext';
 import { VisualSectorMapContext } from '../../contexts/VisualSectorMapContext';
 import { Assumption, AssumptionStatus, ConfidenceLevel } from '../../types/discovery';
 import { ACTOR_ICONS, CONNECTION_ICONS } from '../../types/visualSectorMap';
+import { getContent } from '../../lib/pivotKitContent';
+import { TooltipText } from '../ui/MentorVoice';
 
 interface AssumptionDetailDrawerProps {
   assumption: Assumption | null;
@@ -186,7 +188,7 @@ export const AssumptionDetailDrawer = ({ assumption, onClose }: AssumptionDetail
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Confidence: {getConfidenceLabel(assumption.confidence)}
+                <TooltipText text={getContent('assumption_confidence_tooltip')}>Confidence: {getConfidenceLabel(assumption.confidence)}</TooltipText>
               </label>
               <input
                 type="range"

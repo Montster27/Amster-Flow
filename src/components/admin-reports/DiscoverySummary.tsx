@@ -1,5 +1,7 @@
 import { StatCard, ProgressStatCard } from './StatCard';
 import type { DiscoverySummaryMetrics, DiscoveryDetailMetrics } from '../../types/adminReports';
+import { getContent } from '../../lib/pivotKitContent';
+import { MentorVoice } from '../ui/MentorVoice';
 
 interface DiscoverySummaryProps {
   summary: DiscoverySummaryMetrics | null;
@@ -144,7 +146,9 @@ export function DiscoverySummary({ summary, details, loading }: DiscoverySummary
       {/* Discovery Quality Score */}
       {summary && details && (
         <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-700 mb-4">Discovery Quality Score</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Discovery Quality Score</h3>
+          {/* Item 42: Mentor quality score explainer */}
+          <MentorVoice text={getContent('mentor_quality_score_explainer')} type="explainer" className="mb-4" />
           {(() => {
             // Calculate quality score components
             const avgInterviewsPerAssumption = summary.totalAssumptions > 0

@@ -10,6 +10,8 @@ import type {
   ValidationStage,
 } from '../../types/discovery';
 import { VALIDATION_STAGES } from '../../types/discovery';
+import { getContent } from '../../lib/pivotKitContent';
+import { MentorVoice } from '../ui/MentorVoice';
 import { SegmentDeviationWarning } from './SegmentDeviationWarning';
 
 interface InterviewFormProps {
@@ -240,6 +242,9 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
 
   return (
     <div className="bg-white rounded-lg shadow-lg border-2 border-blue-200 p-6 mb-6">
+      {/* Item 36: Not pitching reminder — shown on every interview */}
+      <MentorVoice text={getContent('interview_not_pitching')} type="reminder" className="mb-4" />
+
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900">
           {editingInterview ? 'Edit Interview' : 'New Interview'}
@@ -255,23 +260,8 @@ export function InterviewForm({ assumptions, editingInterview, onClose, beachhea
         </button>
       </div>
 
-      {/* Big 3 + Why Guidance */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h4 className="text-sm font-bold text-blue-900 mb-2">{BIG_THREE_GUIDANCE.title}</h4>
-        <p className="text-xs text-blue-800 mb-3">{BIG_THREE_GUIDANCE.description}</p>
-        <div className="space-y-3">
-          {BIG_THREE_GUIDANCE.questions.map((item) => (
-            <div key={item.number} className="bg-white p-3 rounded border border-blue-100">
-              <p className="text-sm font-medium text-gray-900 mb-1">
-                {item.number}. {item.question}
-              </p>
-              <p className="text-xs text-gray-600 italic">
-                <strong>Follow-up:</strong> {item.why}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Item 37: Big 3 framework guidance */}
+      <MentorVoice text={getContent('interview_big3_framework')} type="tip" className="mb-6" />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
