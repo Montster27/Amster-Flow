@@ -21,27 +21,7 @@ interface InterviewFormProps {
   beachhead?: BeachheadData | null;
 }
 
-const BIG_THREE_GUIDANCE = {
-  title: "The Big 3 + Why Framework",
-  description: "Focus your interview on these three critical questions, always asking 'Why?' to dig deeper:",
-  questions: [
-    {
-      number: 1,
-      question: "What's the biggest problem/challenge you face with [topic]?",
-      why: "Then ask: Why is this a problem? What have you tried? What's the impact?"
-    },
-    {
-      number: 2,
-      question: "How do you currently solve this?",
-      why: "Then ask: Why did you choose this approach? What's frustrating about it? What does it cost you?"
-    },
-    {
-      number: 3,
-      question: "If you could wave a magic wand, what would be different?",
-      why: "Then ask: Why would that be valuable? What would change for you? What would you pay for that?"
-    }
-  ]
-};
+// Big 3 guidance now served from pivotKitContent.ts via getContent('interview_big3_framework')
 
 export function InterviewForm({ assumptions, editingInterview, onClose, beachhead }: InterviewFormProps) {
   const { addInterview, updateInterview, updateAssumption } = useDiscovery();

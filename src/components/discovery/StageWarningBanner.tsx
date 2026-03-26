@@ -7,7 +7,6 @@ import { useState } from 'react';
 import type { ValidationStage, StageStatus } from '../../types/discovery';
 import { VALIDATION_STAGES } from '../../types/discovery';
 import { getContent } from '../../lib/pivotKitContent';
-import { MentorVoice } from '../ui/MentorVoice';
 
 interface StageWarningBannerProps {
   stage: ValidationStage;
