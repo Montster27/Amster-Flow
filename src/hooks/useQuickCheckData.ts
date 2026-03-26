@@ -37,7 +37,8 @@ export function useQuickCheckData(projectId: string | undefined) {
         setError(null);
 
         // Try loading existing Quick Check data
-        const { data: qcData, error: qcError } = await supabase
+        // Table not in generated types yet — use type assertion
+        const { data: qcData, error: qcError } = await (supabase as any)
           .from('project_quick_check')
           .select('*')
           .eq('project_id', projectId)
@@ -124,14 +125,14 @@ export function useQuickCheckData(projectId: string | undefined) {
       try {
         isSavingRef.current = true;
         const currentData = exportData();
-        await supabase
+        await (supabase as any)
           .from('project_quick_check')
           .upsert({
             project_id: projectId,
             segments: currentData.segments,
             beachhead_completed: currentData.beachheadCompleted,
             updated_by: user.id,
-          } as any, { onConflict: 'project_id' });
+          }, { onConflict: 'project_id' });
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Error saving Quick Check data');
         captureException(error, { extra: { projectId, context: 'useQuickCheckData save' } });

@@ -46,7 +46,7 @@ function DiscoveryPageContent() {
       }
 
       // Check Quick Check completion
-      const { data: qcData } = await supabase
+      const { data: qcData } = await (supabase as any)
         .from('project_quick_check')
         .select('beachhead_completed')
         .eq('project_id', projectId)

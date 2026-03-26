@@ -183,13 +183,6 @@ function QuickCheckContent() {
             hypothesis: s.hypothesis,
           }));
 
-        await supabase
-          .from('projects')
-          .update({
-            beachhead_data: supabase.rpc ? undefined : undefined, // handled below
-          } as any)
-          .eq('id', projectId);
-
         // Update beachhead_data to include parked segments
         const { data: projectData } = await supabase
           .from('projects')
