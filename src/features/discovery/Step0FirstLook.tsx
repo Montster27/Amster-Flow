@@ -187,6 +187,7 @@ export function Step0FirstLook() {
     syncSegmentsFromCustomers,
     updateSegmentNeed,
     updateSegmentAccessRank,
+    reorderSegmentBenefits,
     focusedSegmentId,
     setFocusedSegmentId,
     setGraduated,
@@ -963,18 +964,21 @@ export function Step0FirstLook() {
                   <div className="font-semibold text-slate-800 text-sm mb-3">{seg.name}</div>
                   <div className="space-y-3">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500 mb-2">Benefits with needs:</div>
+                      <div className="text-xs font-semibold text-slate-500 mb-2">Benefits ranked by importance:</div>
                       <div className="space-y-1">
                         {seg.benefits.map((benefit, bidx) => (
                           <div
                             key={bidx}
-                            className={`flex items-center justify-between text-sm px-2 py-1 rounded ${
-                              benefit.text === seg.need
+                            className={`flex items-center gap-2 text-sm px-2 py-1 rounded ${
+                              bidx === 0
                                 ? 'bg-purple-100 text-purple-800 font-medium border border-purple-300'
                                 : 'text-slate-600'
                             }`}
                           >
-                            <span>{benefit.text === seg.need ? '✓ ' : '○ '}{benefit.text}</span>
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                              bidx === 0 ? 'bg-purple-500 text-white' : 'bg-slate-200 text-slate-500'
+                            }`}>{bidx + 1}</span>
+                            <span className="flex-1">{benefit.text}</span>
                             <NeedBadge categoryId={benefit.needCategory} />
                           </div>
                         ))}
@@ -1040,58 +1044,70 @@ export function Step0FirstLook() {
                         </span>
                       </div>
                       <div className="p-4 space-y-4">
-                        {/* Benefits from previous steps with need categories */}
+                        {/* Benefits ranked by priority — top = test first */}
                         {s.benefits.length > 0 && (
                           <div>
                             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                              Select the most important need to focus on:
+                              Rank benefits by importance (drag to reorder — #1 is what you test first):
                             </label>
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                               {s.benefits.map((benefit: Benefit, idx: number) => (
-                                <button
+                                <div
                                   key={idx}
-                                  type="button"
-                                  onClick={() => updateSegmentNeed(s.id, benefit.text)}
-                                  className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-all ${
-                                    s.need === benefit.text
-                                      ? 'border-purple-500 bg-purple-50 text-purple-800 font-medium'
-                                      : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300 hover:bg-purple-50'
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                                    idx === 0
+                                      ? 'border-purple-400 bg-purple-50 text-purple-900 font-medium ring-1 ring-purple-200'
+                                      : 'border-slate-200 bg-white text-slate-700'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                        s.need === benefit.text ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
-                                      }`}>
-                                        {s.need === benefit.text && (
-                                          <span className="w-2 h-2 rounded-full bg-white" />
-                                        )}
-                                      </span>
-                                      <span>{benefit.text}</span>
-                                    </div>
-                                    {benefit.needCategory && <NeedBadge categoryId={benefit.needCategory} />}
+                                  {/* Rank number */}
+                                  <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                    idx === 0 ? 'bg-purple-500 text-white' : 'bg-slate-200 text-slate-500'
+                                  }`}>
+                                    {idx + 1}
+                                  </span>
+
+                                  {/* Benefit text */}
+                                  <span className="flex-1">{benefit.text}</span>
+
+                                  {/* Need badge */}
+                                  {benefit.needCategory && <NeedBadge categoryId={benefit.needCategory} />}
+
+                                  {/* Up/Down arrows */}
+                                  <div className="flex flex-col gap-0.5 flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      disabled={idx === 0}
+                                      onClick={() => reorderSegmentBenefits(s.id, idx, idx - 1)}
+                                      className="p-0.5 rounded hover:bg-slate-200 disabled:opacity-20 disabled:cursor-not-allowed"
+                                      title="Move up"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={idx === s.benefits.length - 1}
+                                      onClick={() => reorderSegmentBenefits(s.id, idx, idx + 1)}
+                                      className="p-0.5 rounded hover:bg-slate-200 disabled:opacity-20 disabled:cursor-not-allowed"
+                                      title="Move down"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </button>
                                   </div>
-                                </button>
+                                </div>
                               ))}
                             </div>
+                            {s.benefits.length > 1 && (
+                              <p className="text-xs text-slate-400 mt-2 italic">
+                                If #1 doesn't hold up in interviews, work down the list. You don't have to start over.
+                              </p>
+                            )}
                           </div>
                         )}
-
-                        {/* Custom need input */}
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                            {s.benefits.length > 0 ? 'Or describe a different need:' : 'What is their most important need?'}
-                          </label>
-                          <textarea
-                            className={`w-full rounded-lg border px-3 py-2 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 ${
-                              s.need && !s.benefits.some(b => b.text === s.need) ? 'border-purple-500 bg-purple-50' : 'border-slate-300'
-                            }`}
-                            rows={2}
-                            value={s.benefits.some(b => b.text === s.need) ? '' : s.need}
-                            onChange={(e) => updateSegmentNeed(s.id, e.target.value)}
-                            placeholder="What problem or desire is most urgent for them?"
-                          />
-                        </div>
 
                         {/* Access Ranking */}
                         <div>

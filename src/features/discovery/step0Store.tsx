@@ -183,6 +183,7 @@ type Step0Actions = {
   syncSegmentsFromCustomers: () => void;
   updateSegmentNeed: (id: number, need: string) => void;
   updateSegmentAccessRank: (id: number, rank: number) => void;
+  reorderSegmentBenefits: (segmentId: number, fromIndex: number, toIndex: number) => void;
   setFocusedSegmentId: (id: number | null) => void;
   // Lifecycle
   reset: () => void;
@@ -350,6 +351,20 @@ export function Step0Provider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const reorderSegmentBenefits = useCallback((segmentId: number, fromIndex: number, toIndex: number) => {
+    setState((prev) => ({
+      ...prev,
+      segments: prev.segments.map((s) => {
+        if (s.id !== segmentId) return s;
+        const benefits = [...s.benefits];
+        const [moved] = benefits.splice(fromIndex, 1);
+        benefits.splice(toIndex, 0, moved);
+        // Top-ranked benefit automatically becomes the segment's "need"
+        return { ...s, benefits, need: benefits[0]?.text || s.need };
+      }),
+    }));
+  }, []);
+
   const setFocusedSegmentId = useCallback((id: number | null) => {
     setState((prev) => ({ ...prev, focusedSegmentId: id }));
   }, []);
@@ -421,6 +436,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       syncSegmentsFromCustomers,
       updateSegmentNeed,
       updateSegmentAccessRank,
+      reorderSegmentBenefits,
       setFocusedSegmentId,
       reset,
       setGraduated,
@@ -432,7 +448,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
       importData,
       exportData,
     }),
-    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, updateCustomerBenefitNeedCategory, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, updateFounderMarketFit, updateWhyNow, updateSchlepAssessment, updateBeachheadQualifiers, importData, exportData]
+    [state, updateIdea, addCustomer, updateCustomer, removeCustomer, addCustomerBenefit, updateCustomerBenefit, updateCustomerBenefitNeedCategory, removeCustomerBenefit, addSegment, syncSegmentsFromCustomers, updateSegmentNeed, updateSegmentAccessRank, reorderSegmentBenefits, setFocusedSegmentId, setPart, reset, setGraduated, getRecommendedBeachhead, updateFounderMarketFit, updateWhyNow, updateSchlepAssessment, updateBeachheadQualifiers, importData, exportData]
   );
 
   return <Step0Context.Provider value={value}>{children}</Step0Context.Provider>;
