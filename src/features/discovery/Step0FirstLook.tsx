@@ -185,7 +185,6 @@ export function Step0FirstLook() {
     segments,
     addSegment,
     syncSegmentsFromCustomers,
-    updateSegmentNeed,
     updateSegmentAccessRank,
     reorderSegmentBenefits,
     focusedSegmentId,
