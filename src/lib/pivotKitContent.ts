@@ -26,6 +26,59 @@ export interface ContentItem {
 export const CONTENT: Record<string, ContentItem> = {
 
   // ─────────────────────────────────────────────
+  // WELCOME SCREEN — Shown before Part 0 on new projects
+  // ─────────────────────────────────────────────
+
+  welcome_headline: {
+    id: "welcome_headline",
+    type: "mentor_voice",
+    location: "Welcome screen — main headline",
+    text: `Welcome to PivotKit`,
+  },
+
+  welcome_intro: {
+    id: "welcome_intro",
+    type: "explainer",
+    location: "Welcome screen — introductory paragraph",
+    text: `This tool is designed to do one thing: help you figure out if your idea is worth pursuing — before you waste months building the wrong thing.\n\nMost startup teams skip the hard part. They jump straight to building a solution without proving anyone actually has the problem. PivotKit won't let you do that.`,
+  },
+
+  welcome_process: {
+    id: "welcome_process",
+    type: "explainer",
+    location: "Welcome screen — process overview",
+    text: `Here's how it works. You'll move through three phases, and each one has to be earned:`,
+  },
+
+  welcome_step0_desc: {
+    id: "welcome_step0_desc",
+    type: "explainer",
+    location: "Welcome screen — Step 0 description",
+    text: `Write down your idea, identify who might have this problem, and pick the smallest, most desperate group to start with. This takes 15–20 minutes.`,
+  },
+
+  welcome_quickcheck_desc: {
+    id: "welcome_quickcheck_desc",
+    type: "explainer",
+    location: "Welcome screen — Quick Check description",
+    text: `Before you talk to anyone, articulate exactly what you're testing. What's the problem? Who has it? What's your hypothesis? This forces clarity before you spend time on interviews.`,
+  },
+
+  welcome_discovery_desc: {
+    id: "welcome_discovery_desc",
+    type: "explainer",
+    location: "Welcome screen — Discovery description",
+    text: `Now the real work. Go talk to people. Log what you learn. The tool tracks your assumptions and won't let you call something "validated" until you've actually done the work. Five real conversations minimum, not five confirmations from friends.`,
+  },
+
+  welcome_cta: {
+    id: "welcome_cta",
+    type: "mentor_voice",
+    location: "Welcome screen — call to action",
+    text: `Ready? Let's find out if this idea is a winner or a loser. Either answer is good — the only bad outcome is not knowing.`,
+  },
+
+  // ─────────────────────────────────────────────
   // STEP 0 · PART 0 — Idea Statement + Framing
   // ─────────────────────────────────────────────
 

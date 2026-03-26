@@ -200,6 +200,10 @@ export function Step0FirstLook() {
     updateBeachheadQualifiers,
   } = useStep0Store();
 
+  // Welcome screen: show for new projects (no idea text yet AND on Part 0)
+  const isNewProject = !idea.building && !idea.helps && !idea.achieve && part === 0;
+  const [showWelcome, setShowWelcome] = useState(isNewProject);
+
   // Auto-focus newly added inputs
   const [focusTarget, setFocusTarget] = useState<{customerId: number, type: 'benefit', index: number} | null>(null);
   const [newSegmentName, setNewSegmentName] = useState('');
@@ -285,6 +289,78 @@ export function Step0FirstLook() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6">
+      {/* Welcome Screen — shown once for new projects */}
+      {showWelcome && (
+        <div className="max-w-2xl mx-auto py-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 mb-4">
+              <span className="text-3xl">🥭</span>
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">{getContent('welcome_headline')}</h1>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+            <p className="text-sm text-slate-700 leading-relaxed mb-6">
+              {getContent('welcome_intro').split('\n\n').map((p, i) => (
+                <span key={i}>{i > 0 && <><br /><br /></>}{p}</span>
+              ))}
+            </p>
+
+            <p className="text-sm font-medium text-slate-800 mb-4">{getContent('welcome_process')}</p>
+
+            <div className="space-y-4">
+              {/* Phase 1: First Look */}
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-sm font-bold text-blue-600">1</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">First Look</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">{getContent('welcome_step0_desc')}</p>
+                </div>
+              </div>
+
+              {/* Phase 2: Quick Check */}
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                  <span className="text-sm font-bold text-purple-600">2</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Quick Check</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">{getContent('welcome_quickcheck_desc')}</p>
+                </div>
+              </div>
+
+              {/* Phase 3: Discovery */}
+              <div className="flex gap-4 items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                  <span className="text-sm font-bold text-green-600">3</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Discovery</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">{getContent('welcome_discovery_desc')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <MentorVoice text={getContent('welcome_cta')} type="mentor_voice" inline className="mb-6" />
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowWelcome(false)}
+              className="px-8 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              Let's Go →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Step 0 content — hidden when welcome screen is showing */}
+      {!showWelcome && (
+      <>
       {/* Header */}
       <div className="mb-6">
         <ProgressBar currentPart={part} totalParts={5} />
@@ -1302,6 +1378,9 @@ export function Step0FirstLook() {
             </div>
           </div>
         </div>
+      )}
+
+      </>
       )}
     </div>
   );
