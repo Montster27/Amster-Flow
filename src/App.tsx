@@ -41,8 +41,16 @@ function App({ projectId }: AppProps = {}) {
 
   const modules = Object.keys(questionsData);
   const currentModuleData = questionsData[currentModule];
-  const isSectorMapModule = currentModuleData?.type === 'sectorMap';
-  const isPivotModule = currentModuleData?.type === 'pivot';
+
+  // If currentModule doesn't exist in questionsData, reset to first available module
+  if (!currentModuleData && modules.length > 0) {
+    setCurrentModule(modules[0]);
+    return null;
+  }
+  if (!currentModuleData) return null;
+
+  const isSectorMapModule = currentModuleData.type === 'sectorMap';
+  const isPivotModule = currentModuleData.type === 'pivot';
   const isStandardModule = !isSectorMapModule && !isPivotModule;
 
   const handleModuleComplete = () => {

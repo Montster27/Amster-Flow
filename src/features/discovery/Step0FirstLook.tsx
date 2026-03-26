@@ -306,6 +306,25 @@ export function Step0FirstLook() {
               ))}
             </p>
 
+            {/* Mentor bio with LinkedIn link */}
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-6">
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 text-lg">💡</span>
+                <div className="text-sm text-slate-700 leading-relaxed">
+                  <p>
+                    {getContent('welcome_mentor_bio').split('Monty Sharma').map((part, i) =>
+                      i === 0 ? part : (
+                        <span key={i}>
+                          <a href="https://www.linkedin.com/in/montysharma/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-medium underline">Monty Sharma</a>
+                          {part}
+                        </span>
+                      )
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <p className="text-sm font-medium text-slate-800 mb-4">{getContent('welcome_process')}</p>
 
             <div className="space-y-4">

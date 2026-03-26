@@ -43,6 +43,13 @@ export const CONTENT: Record<string, ContentItem> = {
     text: `This tool is designed to do one thing: help you figure out if your idea is worth pursuing — before you waste months building the wrong thing.\n\nMost startup teams skip the hard part. They jump straight to building a solution without proving anyone actually has the problem. PivotKit won't let you do that.`,
   },
 
+  welcome_mentor_bio: {
+    id: "welcome_mentor_bio",
+    type: "mentor_voice",
+    location: "Welcome screen — mentor bio, shown after intro",
+    text: `The guidance you'll see throughout PivotKit comes from Monty Sharma — serial entrepreneur and startup mentor with 15+ years advising over 600 startups, from first-time founders to deep-tech teams. Every tip, warning, and nudge in this tool is drawn from real patterns he's seen working with early-stage companies. The same mistakes. The same breakthroughs. The same moments where one honest conversation changed everything. Think of the lightbulb tips as Monty sitting across the table from you, telling you what he'd tell any team he's working with.`,
+  },
+
   welcome_process: {
     id: "welcome_process",
     type: "explainer",
