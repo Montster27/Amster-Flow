@@ -129,8 +129,49 @@ export function StageWarningBanner({
         )}
       </div>
 
-      {/* CTA for locked stages */}
-      {isLocked && previousStage && (
+      {/* Requirements display */}
+      {previousStage && previousStageStatus && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <p className="text-xs font-semibold text-slate-600 mb-2">Requirements to unlock Stage {stage}:</p>
+          <ul className="text-xs text-slate-500 space-y-1 mb-3">
+            <li className="flex items-center gap-1.5">
+              <span className={previousStageStatus.interviewCount >= (VALIDATION_STAGES[previousStage as ValidationStage]?.minimumInterviews || 5) ? 'text-green-500' : 'text-slate-300'}>
+                {previousStageStatus.interviewCount >= (VALIDATION_STAGES[previousStage as ValidationStage]?.minimumInterviews || 5) ? '✓' : '○'}
+              </span>
+              {VALIDATION_STAGES[previousStage as ValidationStage]?.minimumInterviews || 5}+ interviews in Stage {previousStage}
+              ({previousStageStatus.interviewCount} done)
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className={previousStageStatus.validatedCount > 0 ? 'text-green-500' : 'text-slate-300'}>
+                {previousStageStatus.validatedCount > 0 ? '✓' : '○'}
+              </span>
+              Key assumptions validated ({previousStageStatus.validatedCount} of {previousStageStatus.totalAssumptions})
+            </li>
+          </ul>
+          <div className="flex items-center gap-3">
+            {isLocked && (
+              <a
+                href={`#stage-${previousStage}`}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Go to Stage {previousStage} →
+              </a>
+            )}
+            {isLocked && dismissible && (
+              <button
+                onClick={handleDismiss}
+                className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 px-2 py-1 rounded hover:bg-red-50"
+                title="Skip this requirement — use with caution"
+              >
+                Skip anyway (not recommended)
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Fallback CTA for locked stages without status */}
+      {isLocked && previousStage && !previousStageStatus && (
         <div className="mt-3 pt-3 border-t border-gray-200">
           <a
             href={`#stage-${previousStage}`}

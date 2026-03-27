@@ -1,5 +1,6 @@
 import { usePivot } from '../../contexts/PivotContext';
 import { captureException } from '../../lib/sentry';
+import { JargonTerm } from '../ui/JargonTerm';
 
 import { usePivotData } from '../../hooks/usePivotData';
 
@@ -179,11 +180,20 @@ export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
       <div className="max-w-5xl mx-auto p-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Pivot or Proceed Framework
+            Time to Decide: <JargonTerm term="proceed">Proceed</JargonTerm>, <JargonTerm term="patch">Patch</JargonTerm>, or <JargonTerm term="pivot">Pivot</JargonTerm>
           </h1>
           <p className="text-lg text-gray-600">
-            Make evidence-based decisions about your venture's direction using research-backed frameworks.
+            Bring together everything you learned from your interviews and decide what to do next.
           </p>
+        </div>
+
+        {/* Decision tree to help pick mode */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-8">
+          <p className="text-sm font-semibold text-amber-800 mb-2">Which mode should you pick?</p>
+          <div className="text-sm text-amber-700 space-y-1">
+            <p>Choose <strong>Easy Mode</strong> if: you have a clear signal from interviews, this is a low-stakes decision, or you want a quick gut-check with bias protection.</p>
+            <p>Choose <strong>Detailed Mode</strong> if: your evidence is mixed or contradictory, this decision involves significant investment, or you have many invalidated assumptions to work through.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -281,7 +291,7 @@ export function PivotModule({ projectId, onComplete }: PivotModuleProps) {
               <div className="flex items-start gap-2">
                 <span className="text-purple-600">✓</span>
                 <p className="text-sm text-gray-700">
-                  PMF trajectory prediction
+                  <JargonTerm term="pmf">Product-Market Fit</JargonTerm> trajectory prediction
                 </p>
               </div>
               <div className="flex items-start gap-2">

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Segment, useStep0Store, NEED_CATEGORIES, NeedCategoryId, Benefit } from './step0Store';
 import { getContent } from '../../lib/pivotKitContent';
 import { MentorVoice, TooltipText } from '../../components/ui/MentorVoice';
+import { JargonTerm } from '../../components/ui/JargonTerm';
+import { JourneyProgress } from '../../components/ui/JourneyProgress';
 
 // Example data for split-screen teaching
 const EXAMPLE_DATA = {
@@ -288,6 +290,8 @@ export function Step0FirstLook() {
   };
 
   return (
+    <>
+    {!showWelcome && <JourneyProgress currentStep="step0" subLabel={`Part ${part + 1} of 5`} />}
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       {/* Welcome Screen — shown once for new projects */}
       {showWelcome && (
@@ -403,7 +407,7 @@ export function Step0FirstLook() {
             {part === 3 && 'Rank & Focus'}
             {part === 4 && 'Summary'}
           </div>
-          <div className="text-sm text-slate-500">Step 0 · Part {part} of 4</div>
+          <div className="text-sm text-slate-500">Step 0 · Part {part + 1} of 5</div>
         </div>
         {part < 4 ? (
           <button
@@ -547,14 +551,11 @@ export function Step0FirstLook() {
                       </label>
                       <textarea
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                        placeholder="Domain knowledge, professional experience, research background... (min 50 characters)"
+                        placeholder="Domain knowledge, professional experience, research background..."
                         rows={2}
                         value={founderMarketFit.domainCredibility}
                         onChange={(e) => updateFounderMarketFit('domainCredibility', e.target.value)}
                       />
-                      {founderMarketFit.domainCredibility.length > 0 && founderMarketFit.domainCredibility.length < 50 && (
-                        <p className="text-xs text-amber-600 mt-1">{50 - founderMarketFit.domainCredibility.length} more characters needed</p>
-                      )}
                     </div>
 
                     <div>
@@ -587,7 +588,7 @@ export function Step0FirstLook() {
                   </div>
 
                   {/* FMF Score Badge */}
-                  {founderMarketFit.directExperience && founderMarketFit.domainCredibility.length >= 50 && founderMarketFit.accessAdvantage && founderMarketFit.whyNowForYou ? (
+                  {founderMarketFit.directExperience && founderMarketFit.domainCredibility.trim() && founderMarketFit.accessAdvantage && founderMarketFit.whyNowForYou ? (
                     <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
                       <span className="text-xs font-bold text-green-700">Strong Founder-Market Fit</span>
                     </div>
@@ -665,7 +666,7 @@ export function Step0FirstLook() {
                   {schlepAssessment.attractiveness >= 4 && (
                     <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                       <span className="text-xs text-amber-700">
-                        The best ideas often look boring or messy. If this feels too exciting, make sure you're not filtering out harder, more valuable problems. The schlep IS the moat.
+                        The best ideas often look boring or messy. If this feels too exciting, make sure you're not filtering out harder, more valuable problems. The difficulty IS the moat.
                       </span>
                     </div>
                   )}
@@ -777,7 +778,7 @@ export function Step0FirstLook() {
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                            What benefits do they get from your solution?
+                            What specific improvements would they experience?
                           </label>
                           <div className="space-y-2">
                             {c.benefits.map((benefit, idx) => (
@@ -1023,9 +1024,17 @@ export function Step0FirstLook() {
           studentTitle="Select Focus & Rank Access"
           studentContent={
             <div className="space-y-4">
-              <p className="text-sm text-slate-600 mb-4">
+              <p className="text-sm text-slate-600 mb-2">
                 Select the most important need for each group, then rank how easy they are to reach.
               </p>
+              {segments.length > 1 && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-xs text-green-700">
+                    <strong>No pressure:</strong> Pick the group where the problem seems worst and you have the best access.
+                    If it doesn't work out, you have {segments.length - 1} other segment{segments.length > 2 ? 's' : ''} to try. That's valuable optionality.
+                  </p>
+                </div>
+              )}
 
               {segments.length === 0 ? (
                 <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
@@ -1164,7 +1173,7 @@ export function Step0FirstLook() {
                         {/* Beachhead Qualifiers — shown when segment is selected */}
                         {focusedSegmentId === s.id && (
                           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                            <p className="text-xs font-bold text-blue-800">Beachhead Qualifier</p>
+                            <p className="text-xs font-bold text-blue-800"><JargonTerm term="beachhead">Beachhead</JargonTerm> Qualifier</p>
                             <div>
                               <label className="block text-xs text-slate-700 mb-1">How small is this group?</label>
                               <input
@@ -1327,7 +1336,7 @@ export function Step0FirstLook() {
                 onClick={handleGraduateClick}
                 className="px-8 py-3 rounded-xl bg-green-600 text-white text-lg font-semibold hover:bg-green-700 shadow-lg shadow-green-200 transition-all"
               >
-                Graduate to Discovery →
+                Ready to Test →
               </button>
               <p className="text-sm text-slate-500 mt-3">
                 Begin testing your assumptions with real customer interviews
@@ -1347,7 +1356,7 @@ export function Step0FirstLook() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">You've completed your First Look!</h2>
+              <h2 className="text-2xl font-bold text-slate-800">First Look complete — time to get specific.</h2>
               <p className="text-sm text-slate-600 mt-2">
                 Next: a quick check to articulate what you're testing before interviewing anyone.
               </p>
@@ -1356,7 +1365,7 @@ export function Step0FirstLook() {
             {/* Beachhead Summary */}
             {focusedSegment && (
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Your Beachhead Segment</p>
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Your <JargonTerm term="beachhead">Beachhead</JargonTerm> Segment</p>
                 <p className="text-sm font-bold text-blue-900">{focusedSegment.name}</p>
               </div>
             )}
@@ -1417,5 +1426,6 @@ export function Step0FirstLook() {
       </>
       )}
     </div>
+    </>
   );
 }

@@ -4,6 +4,8 @@ import { QuickCheckProvider, useQuickCheckStore, type QuickCheckSegment } from '
 import { useQuickCheckData } from '../../hooks/useQuickCheckData';
 import { graduateToDiscovery } from '../discovery/graduationService';
 import { supabase } from '../../lib/supabase';
+import { MentorVoice } from '../../components/ui/MentorVoice';
+import { JourneyProgress } from '../../components/ui/JourneyProgress';
 
 function SegmentCard({
   segment,
@@ -26,7 +28,7 @@ function SegmentCard({
       >
         <div className="flex items-center gap-3">
           {segment.isBeachhead && (
-            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-600 text-white">BEACHHEAD</span>
+            <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-600 text-white">STARTING POINT</span>
           )}
           {!segment.isBeachhead && (
             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-slate-300 text-slate-700">PARKED</span>
@@ -61,21 +63,28 @@ function SegmentCard({
           {/* Contacts */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">
-              Name 3 real people you could interview this week {segment.isBeachhead && <span className="text-red-500">*</span>}
+              Name up to 3 people you could interview {segment.isBeachhead && <span className="text-red-500">*</span>}
             </label>
-            <p className="text-xs text-slate-500 mb-2">Real names — if you can't name anyone, you may not have access to this segment.</p>
+            <p className="text-xs text-slate-500 mb-2">
+              Start with anyone you know who's close to this problem. Even one name is a start — interview them and ask for intros to others like them.
+            </p>
             <div className="space-y-2">
               {segment.contacts.map((contact, i) => (
                 <input
                   key={i}
                   type="text"
                   className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  placeholder={`Person ${i + 1}`}
+                  placeholder={i === 0 ? 'Someone you know with this problem' : i === 1 ? 'Ask person 1 for an intro' : 'Use LinkedIn to find someone via a mutual connection'}
                   value={contact}
                   onChange={(e) => updateSegmentContact(segment.segmentId, i, e.target.value)}
                 />
               ))}
             </div>
+            <MentorVoice
+              text="Start with anyone you know — even if they're not the perfect customer. Interview them, then ask: 'Who else do you know that deals with this?' Each conversation should open the door to the next one. If you're stuck, search LinkedIn for people in this role and ask a mutual connection for an intro."
+              type="tip"
+              className="mt-2"
+            />
           </div>
 
           {/* Solution */}
@@ -257,6 +266,8 @@ function QuickCheckContent() {
   const parked = getParkedSegments();
 
   return (
+    <>
+    <JourneyProgress currentStep="quickcheck" />
     <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6">
@@ -313,7 +324,7 @@ function QuickCheckContent() {
             {canGraduate() ? (
               <span className="text-green-600 font-medium">Ready to begin Discovery</span>
             ) : (
-              <span>Fill in your beachhead's problem, contacts, and solution to continue</span>
+              <span>Fill in your starting point's problem, contacts, and solution to continue</span>
             )}
           </div>
           <button
@@ -321,11 +332,12 @@ function QuickCheckContent() {
             disabled={!canGraduate() || graduating}
             className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {graduating ? 'Graduating...' : 'Continue to Discovery →'}
+            {graduating ? 'Setting up...' : 'Continue to Discovery →'}
           </button>
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -481,6 +481,28 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
           </div>
         );
       })()}
+
+      {/* Discovery → Pivot transition prompt */}
+      {metrics.totalInterviews >= 5 && metrics.totalAssumptions > 0 && (
+        <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-purple-900 mb-2 flex items-center gap-2">
+            <span className="text-xl">🤔</span>
+            Ready to decide?
+          </h3>
+          <p className="text-sm text-purple-800 mb-3">
+            You've done {metrics.totalInterviews} interviews and tested {metrics.totalAssumptions} assumptions.
+            The next step is to bring together everything you've learned and decide whether to
+            <strong> proceed</strong> with your current approach, <strong>patch</strong> a specific weakness,
+            or <strong>pivot</strong> to follow what your customers are actually telling you.
+          </p>
+          <p className="text-xs text-purple-600 mb-4">
+            This isn't about proving you were right — it's about using what you learned to make the best decision.
+          </p>
+          <div className="text-sm text-purple-700 italic">
+            Navigate to the <strong>Decide</strong> module from the sidebar when you're ready.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

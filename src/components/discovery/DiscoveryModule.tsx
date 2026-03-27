@@ -13,6 +13,8 @@ import { DiscoveryDashboard } from './DiscoveryDashboard';
 import { seedPetFinderData, hasDiscoveryData } from '../../utils/seedPetFinderData';
 import type { Assumption, AssumptionStatus } from '../../types/discovery';
 import { getStageForArea } from '../../types/discovery';
+import { JargonTerm } from '../ui/JargonTerm';
+import { MentorVoice } from '../ui/MentorVoice';
 import { ReportLayout } from '../reports/ReportLayout';
 import { ReportSection } from '../reports/ReportSection';
 import { MetricGrid } from '../reports/MetricGrid';
@@ -210,7 +212,7 @@ export function DiscoveryModule({ projectId, onBack, onGoToStep0 }: DiscoveryMod
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Discovery</h1>
                 <p className="mt-1 text-sm text-gray-500">
-                  Assumptions-driven customer discovery with LBMC integration
+                  Assumptions-driven customer discovery with <JargonTerm term="lbmc">Lean Business Model Canvas</JargonTerm> integration
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -332,6 +334,16 @@ export function DiscoveryModule({ projectId, onBack, onGoToStep0 }: DiscoveryMod
 
       {/* Tab Content with Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Onboarding intro — shown when no assumptions exist */}
+        {assumptions.length === 0 && activeTab === 'assumptions' && (
+          <MentorVoice
+            text="Start slow. You don't need twenty assumptions on day one — you need two or three good ones that came out of your Quick Check. Go talk to people first. Each conversation will reveal new assumptions you hadn't thought of. Add them as you learn, not before."
+            type="mentor_voice"
+            inline
+            className="mb-6"
+          />
+        )}
+
         <div className="flex gap-6">
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">
@@ -340,9 +352,9 @@ export function DiscoveryModule({ projectId, onBack, onGoToStep0 }: DiscoveryMod
                 {/* Header with Create Button */}
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Assumptions Framework</h2>
+                    <h2 className="text-2xl font-bold text-gray-900"><JargonTerm term="assumption">Assumptions</JargonTerm> Framework</h2>
                     <p className="mt-1 text-sm text-gray-500">
-                      Generate and manage assumptions linked to your Lean Business Model Canvas
+                      Generate and manage assumptions linked to your <JargonTerm term="lbmc">Lean Business Model Canvas</JargonTerm>
                     </p>
                   </div>
                   <button
