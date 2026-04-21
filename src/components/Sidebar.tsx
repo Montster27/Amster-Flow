@@ -11,76 +11,188 @@ interface SidebarProps {
   projectId?: string;
 }
 
+function NavChip({ letter, active = false }: { letter: string; active?: boolean }) {
+  return (
+    <div
+      className="inline-flex items-center justify-center flex-shrink-0 font-bold"
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 7,
+        background: active ? 'var(--sky-600)' : 'var(--sky-100)',
+        color: active ? '#fff' : 'var(--sky-600)',
+        fontSize: 12,
+        letterSpacing: '-0.02em',
+      }}
+    >
+      {letter}
+    </div>
+  );
+}
+
+function moduleLetter(module: string): string {
+  return module.charAt(0).toUpperCase();
+}
+
+function moduleLabel(module: string): string {
+  return module.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (c) => c.toUpperCase());
+}
+
 export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: SidebarProps) {
   const navigate = useNavigate();
   const { currentModule, progress } = useGuide();
   const { interviews: enhancedInterviews } = useEnhancedInterviews(projectId);
   const [showAbout, setShowAbout] = useState(false);
 
-  // Check if pivot module should be enabled (requires 3+ interviews)
   const totalInterviews = enhancedInterviews.length;
   const hasMinimumInterviews = totalInterviews >= APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT;
 
+  const displayedModules = modules.filter((m) => !['problem', 'customerSegments', 'solution'].includes(m));
+
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col h-screen">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-blue-600">Pivot Kit</h1>
-        <p className="text-sm text-gray-500 mt-1">Startup Validation Guide</p>
+    <div
+      className="flex flex-col"
+      style={{
+        width: 240,
+        alignSelf: 'stretch',
+        background: 'var(--bg-surface)',
+        borderRight: '1px solid var(--border-soft)',
+      }}
+    >
+      {/* Brand */}
+      <div
+        className="flex items-center gap-3"
+        style={{ padding: '18px 16px', borderBottom: '1px solid var(--border-soft)' }}
+      >
+        <NavChip letter="P" active />
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-1)', lineHeight: 1.2 }}>
+            Pivot Kit
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--fg-4)', lineHeight: 1.3 }}>
+            Startup validation
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto">
-        {/* Step 0: First Look - Top level entry */}
+      <nav className="flex-1 overflow-y-auto" style={{ padding: '16px 12px' }}>
         {projectId && (
-          <button
-            onClick={() => navigate(`/project/${projectId}/discovery/step-0`)}
-            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
-          >
-            <span className="font-medium">Step 0: First Look</span>
-          </button>
+          <>
+            <div className="pk-kicker" style={{ padding: '4px 8px 8px' }}>
+              Start here
+            </div>
+            <button
+              onClick={() => navigate(`/project/${projectId}/discovery/step-0`)}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                color: 'var(--fg-2)',
+                fontSize: 13,
+                fontWeight: 500,
+                marginBottom: 2,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <NavChip letter="0" />
+              <span>Step 0 · First Look</span>
+            </button>
+            <button
+              onClick={() => navigate(`/project/${projectId}/quick-check`)}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                color: 'var(--fg-2)',
+                fontSize: 13,
+                fontWeight: 500,
+                marginBottom: 2,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <NavChip letter="Q" />
+              <span>Quick Check</span>
+            </button>
+          </>
         )}
 
-        {/* Quick Check - between Step 0 and Discovery */}
-        {projectId && (
-          <button
-            onClick={() => navigate(`/project/${projectId}/quick-check`)}
-            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
-          >
-            <span className="font-medium">Quick Check</span>
-          </button>
-        )}
+        <div className="pk-kicker" style={{ padding: '16px 8px 8px' }}>
+          Modules
+        </div>
 
-        {modules.filter((m) => !['problem', 'customerSegments', 'solution'].includes(m)).map((module) => {
+        {displayedModules.map((module) => {
           const isCompleted = progress[module]?.completed;
           const isActive = currentModule === module;
 
-          // Discovery link - appears before Pivot
           if (module === 'pivot' && projectId) {
             return (
               <React.Fragment key="discovery-and-pivot">
                 <button
                   onClick={() => navigate(`/project/${projectId}/discovery`)}
-                  className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                  className="w-full flex items-center gap-3 text-left transition-colors"
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    color: 'var(--fg-2)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    marginBottom: 2,
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <span className="font-medium">Discovery</span>
+                  <NavChip letter="D" />
+                  <span>Discovery</span>
                 </button>
                 <button
-                key={module}
-                onClick={() => hasMinimumInterviews && onModuleClick(module)}
-                disabled={!hasMinimumInterviews}
-                className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between group ${isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : hasMinimumInterviews
-                    ? 'text-gray-600 hover:bg-gray-50'
-                    : 'text-gray-400 cursor-not-allowed opacity-60'
-                  }`}
-              >
-                <span className="font-medium">Pivot or Proceed</span>
-                {!hasMinimumInterviews && (
-                  <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500 group-hover:block hidden absolute left-64 w-48 shadow-lg border border-gray-200 z-50">
-                    Complete {APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT} interviews to unlock
-                  </span>
-                )}
-              </button>
+                  onClick={() => hasMinimumInterviews && onModuleClick(module)}
+                  disabled={!hasMinimumInterviews}
+                  title={
+                    !hasMinimumInterviews
+                      ? `Complete ${APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT} interviews to unlock`
+                      : undefined
+                  }
+                  className="w-full flex items-center gap-3 text-left transition-colors"
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    color: hasMinimumInterviews ? 'var(--fg-2)' : 'var(--fg-4)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    marginBottom: 2,
+                    background: isActive ? 'var(--sky-50)' : 'transparent',
+                    border: 'none',
+                    cursor: hasMinimumInterviews ? 'pointer' : 'not-allowed',
+                    opacity: hasMinimumInterviews ? 1 : 0.6,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasMinimumInterviews && !isActive) {
+                      e.currentTarget.style.background = 'var(--slate-100)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <NavChip letter="P" />
+                  <span style={{ flex: 1 }}>Pivot or Proceed</span>
+                  {!hasMinimumInterviews && (
+                    <span className="pk-pill outline" style={{ fontSize: 10 }}>
+                      Locked
+                    </span>
+                  )}
+                </button>
               </React.Fragment>
             );
           }
@@ -89,71 +201,153 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
             <button
               key={module}
               onClick={() => onModuleClick(module)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${isActive
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50'
-                }`}
               aria-current={isActive ? 'page' : undefined}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                color: isActive ? 'var(--sky-700)' : 'var(--fg-2)',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                marginBottom: 2,
+                background: isActive ? 'var(--sky-50)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) e.currentTarget.style.background = 'var(--slate-100)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.background = 'transparent';
+              }}
             >
-              <span className="font-medium capitalize">
-                {module.replace(/([A-Z])/g, ' $1').trim()}
-              </span>
+              <NavChip letter={moduleLetter(module)} active={isActive} />
+              <span style={{ flex: 1 }}>{moduleLabel(module)}</span>
               {isCompleted && (
-                <span className="text-green-500" aria-label="Completed">
-                  ✓
-                </span>
+                <span
+                  className="pk-dot validated"
+                  aria-label="Completed"
+                  style={{ width: 8, height: 8 }}
+                />
               )}
             </button>
           );
         })}
 
         {onViewSummary && (
-          <button
-            onClick={onViewSummary}
-            className="w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors mt-4 border-t border-gray-100"
-          >
-            <span className="font-medium">View Summary</span>
-          </button>
+          <>
+            <hr className="pk-hair" style={{ margin: '12px 8px' }} />
+            <button
+              onClick={onViewSummary}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                color: 'var(--fg-3)',
+                fontSize: 13,
+                fontWeight: 500,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <NavChip letter="S" />
+              <span>View Summary</span>
+            </button>
+          </>
         )}
       </nav>
 
-      <div className="pt-4 border-t border-gray-200 space-y-2">
+      <div
+        style={{
+          padding: '12px 16px',
+          borderTop: '1px solid var(--border-soft)',
+        }}
+      >
         <button
           onClick={() => setShowAbout(true)}
-          className="flex items-center text-gray-500 hover:text-gray-700 transition-colors text-sm"
+          className="flex items-center gap-2 transition-colors"
+          style={{
+            color: 'var(--fg-4)',
+            fontSize: 12,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--fg-2)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-4)')}
         >
-          <span className="mr-2">ℹ️</span>
-          About / Help
+          About · Help
         </button>
       </div>
 
-      {/* About Modal */}
       {showAbout && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+          <div
+            className="pk-panel relative"
+            style={{ maxWidth: 480, width: '100%', padding: 24 }}
+          >
             <button
               onClick={() => setShowAbout(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
               aria-label="Close"
+              className="absolute"
+              style={{
+                top: 12,
+                right: 12,
+                color: 'var(--fg-4)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 18,
+              }}
             >
               ✕
             </button>
 
-            <h2 className="text-xl font-bold mb-4">About Pivot Kit</h2>
-            <p className="text-gray-600 mb-4">
-              Pivot Kit is a structured guide designed to help entrepreneurs validate their startup ideas through rigorous customer discovery and problem validation.
+            <div className="pk-kicker" style={{ marginBottom: 6 }}>
+              About
+            </div>
+            <h2
+              style={{
+                fontSize: 20,
+                fontWeight: 600,
+                color: 'var(--fg-1)',
+                margin: '0 0 12px',
+              }}
+            >
+              Pivot Kit
+            </h2>
+            <p style={{ color: 'var(--fg-3)', fontSize: 14, lineHeight: 1.55, margin: '0 0 16px' }}>
+              A structured guide to help entrepreneurs validate their startup ideas through rigorous
+              customer discovery and problem validation.
             </p>
 
-            <h3 className="font-semibold mb-2">Need Help?</h3>
-            <p className="text-gray-600 mb-4">
-              If you're stuck or need guidance, please contact:
-              <br />
-              <a href={`mailto:${APP_CONFIG.SUPPORT_EMAIL}`} className="text-blue-600 hover:underline">
+            <hr className="pk-hair" style={{ margin: '16px 0' }} />
+
+            <div className="pk-kicker" style={{ marginBottom: 6 }}>
+              Need help?
+            </div>
+            <p style={{ color: 'var(--fg-3)', fontSize: 13, margin: 0 }}>
+              <a
+                href={`mailto:${APP_CONFIG.SUPPORT_EMAIL}`}
+                style={{ color: 'var(--sky-700)', fontWeight: 500 }}
+              >
                 {APP_CONFIG.SUPPORT_EMAIL}
               </a>
             </p>
 
-            <div className="text-xs text-gray-400 mt-6 pt-4 border-t border-gray-100">
+            <div
+              style={{
+                marginTop: 20,
+                paddingTop: 12,
+                borderTop: '1px solid var(--border-soft)',
+                fontSize: 11,
+                color: 'var(--fg-4)',
+              }}
+            >
               Version 1.0.0
             </div>
           </div>

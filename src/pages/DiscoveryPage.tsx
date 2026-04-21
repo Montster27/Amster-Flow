@@ -8,6 +8,7 @@ import { useGuide } from '../contexts/GuideContext';
 import { useProjectContext } from '../contexts/ProjectDataContext';
 import { Sidebar } from '../components/Sidebar';
 import { ProjectDataProvider } from '../components/ProjectDataProvider';
+import { ProjectHeaderBar } from '../components/ProjectHeaderBar';
 import { supabase } from '../lib/supabase';
 import { captureException } from '../lib/sentry';
 import type { Database } from '../types/database';
@@ -70,10 +71,23 @@ function DiscoveryPageContent() {
 
   if (loading || !gateChecked) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={{ background: 'var(--bg-app)' }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Discovery...</p>
+          <div
+            className="animate-spin rounded-full mx-auto mb-4"
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 2,
+              borderStyle: 'solid',
+              borderColor: 'var(--border-1)',
+              borderBottomColor: 'var(--sky-600)',
+            }}
+          />
+          <p style={{ color: 'var(--fg-3)', fontSize: 14 }}>Loading Discovery…</p>
         </div>
       </div>
     );
@@ -81,16 +95,21 @@ function DiscoveryPageContent() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-red-600 font-medium mb-2">Error loading Discovery</p>
-          <p className="text-gray-600 text-sm mb-4">{error}</p>
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={{ background: 'var(--bg-app)' }}
+      >
+        <div className="pk-panel" style={{ padding: 32, maxWidth: 420, textAlign: 'center' }}>
+          <div className="pk-kicker" style={{ marginBottom: 8, color: 'var(--danger-700)' }}>
+            Error
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--fg-1)', margin: '0 0 8px' }}>
+            Couldn't load Discovery
+          </h2>
+          <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: '0 0 20px' }}>{error}</p>
           <button
             onClick={() => navigate(`/project/${projectId}`)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="pk-btn pk-btn-primary"
           >
             Back to Project
           </button>
@@ -99,23 +118,26 @@ function DiscoveryPageContent() {
     );
   }
 
-  // Gate: redirect to Quick Check if not completed
   if (needsQuickCheck) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
+        <div className="pk-panel" style={{ padding: 32, maxWidth: 460, textAlign: 'center' }}>
+          <div className="pk-kicker" style={{ marginBottom: 8, color: 'var(--warn-800)' }}>
+            Gate
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Complete Quick Check First</h2>
-          <p className="text-gray-600 mb-6">
-            Before starting interviews, articulate what you're testing for each segment. This takes 5 minutes and makes your interviews much more focused.
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fg-1)', margin: '0 0 10px' }}>
+            Complete Quick Check First
+          </h2>
+          <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: '0 0 24px', lineHeight: 1.55 }}>
+            Before starting interviews, articulate what you're testing for each segment. This takes
+            5 minutes and makes your interviews much more focused.
           </p>
           <button
             onClick={() => navigate(`/project/${projectId}/quick-check`)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+            className="pk-btn pk-btn-primary"
           >
             Go to Quick Check
           </button>
@@ -125,9 +147,9 @@ function DiscoveryPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex" style={{ minHeight: 'calc(100vh - 52px)' }}>
       <Sidebar modules={modules} onModuleClick={handleModuleClick} projectId={projectId} />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
         <DiscoveryModule
           projectId={projectId}
           onBack={() => navigate(`/project/${projectId}`)}
@@ -178,10 +200,23 @@ export function DiscoveryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading project...</p>
+          <div
+            className="animate-spin rounded-full mx-auto mb-4"
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 2,
+              borderStyle: 'solid',
+              borderColor: 'var(--border-1)',
+              borderBottomColor: 'var(--sky-600)',
+            }}
+          />
+          <p style={{ color: 'var(--fg-3)', fontSize: 14 }}>Loading project…</p>
         </div>
       </div>
     );
@@ -189,15 +224,19 @@ export function DiscoveryPage() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Project Not Found</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-          >
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
+        <div className="pk-panel" style={{ padding: 32, maxWidth: 420, textAlign: 'center' }}>
+          <div className="pk-kicker" style={{ marginBottom: 8, color: 'var(--danger-700)' }}>
+            Error
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fg-1)', margin: '0 0 8px' }}>
+            Project Not Found
+          </h2>
+          <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: '0 0 20px' }}>{error}</p>
+          <button onClick={() => navigate('/dashboard')} className="pk-btn pk-btn-primary">
             Back to Dashboard
           </button>
         </div>
@@ -206,33 +245,13 @@ export function DiscoveryPage() {
   }
 
   return (
-    <div className="relative">
-      {/* Project Header Bar */}
-      <div className="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 z-10 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
-          >
-            ← Back to Dashboard
-          </button>
-          <div className="border-l border-gray-300 pl-4">
-            <h2 className="font-semibold text-gray-900">{project.name}</h2>
-          </div>
-        </div>
-        <div className="text-sm text-gray-600">
-          {user?.email}
-        </div>
-      </div>
-
-      {/* Main content with padding for header */}
-      <div className="pt-12">
-        <ProjectDataProvider projectId={projectId}>
-          <DiscoveryProvider>
-            <DiscoveryPageContent />
-          </DiscoveryProvider>
-        </ProjectDataProvider>
-      </div>
+    <div className="min-h-screen" style={{ background: 'var(--bg-app)' }}>
+      <ProjectHeaderBar projectName={project.name} section="Discovery" />
+      <ProjectDataProvider projectId={projectId}>
+        <DiscoveryProvider>
+          <DiscoveryPageContent />
+        </DiscoveryProvider>
+      </ProjectDataProvider>
     </div>
   );
 }

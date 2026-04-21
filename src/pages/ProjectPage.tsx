@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import App from '../App';
 
 import { ProjectDataProvider } from '../components/ProjectDataProvider';
+import { ProjectHeaderBar } from '../components/ProjectHeaderBar';
 
 import type { Database } from '../types/database';
 
@@ -53,10 +54,23 @@ export function ProjectPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading project...</p>
+          <div
+            className="animate-spin rounded-full mx-auto mb-4"
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 2,
+              borderStyle: 'solid',
+              borderColor: 'var(--border-1)',
+              borderBottomColor: 'var(--sky-600)',
+            }}
+          />
+          <p style={{ color: 'var(--fg-3)', fontSize: 14 }}>Loading project…</p>
         </div>
       </div>
     );
@@ -64,15 +78,19 @@ export function ProjectPage() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Project Not Found</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-          >
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
+        <div className="pk-panel" style={{ padding: 32, maxWidth: 420, textAlign: 'center' }}>
+          <div className="pk-kicker" style={{ marginBottom: 8, color: 'var(--danger-700)' }}>
+            Error
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fg-1)', margin: '0 0 8px' }}>
+            Project Not Found
+          </h2>
+          <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: '0 0 20px' }}>{error}</p>
+          <button onClick={() => navigate('/dashboard')} className="pk-btn pk-btn-primary">
             Back to Dashboard
           </button>
         </div>
@@ -80,33 +98,12 @@ export function ProjectPage() {
     );
   }
 
-  // Render the existing App with project context
   return (
-    <div className="relative">
-      {/* Project Header Bar */}
-      <div className="absolute top-0 left-0 right-0 bg-white border-b border-gray-200 z-10 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
-          >
-            ← Back to Dashboard
-          </button>
-          <div className="border-l border-gray-300 pl-4">
-            <h2 className="font-semibold text-gray-900">{project.name}</h2>
-          </div>
-        </div>
-        <div className="text-sm text-gray-600">
-          {user?.email}
-        </div>
-      </div>
-
-      {/* Main App - with padding for header and projectId */}
-      <div className="pt-12">
-        <ProjectDataProvider projectId={projectId}>
-          <App projectId={projectId} />
-        </ProjectDataProvider>
-      </div>
+    <div className="min-h-screen" style={{ background: 'var(--bg-app)' }}>
+      <ProjectHeaderBar projectName={project.name} />
+      <ProjectDataProvider projectId={projectId}>
+        <App projectId={projectId} />
+      </ProjectDataProvider>
     </div>
   );
 }

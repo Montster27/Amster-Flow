@@ -8,61 +8,130 @@ interface DiscoveryDashboardProps {
   interviews: EnhancedInterview[];
 }
 
+function MetricCard({
+  kicker,
+  value,
+  trend,
+}: {
+  kicker: string;
+  value: string | number;
+  trend?: string;
+}) {
+  return (
+    <div className="pk-surface-card" style={{ padding: 16 }}>
+      <div className="pk-kicker" style={{ marginBottom: 8 }}>
+        {kicker}
+      </div>
+      <div
+        className="pk-mono"
+        style={{
+          fontSize: 30,
+          fontWeight: 600,
+          color: 'var(--fg-1)',
+          lineHeight: 1.1,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {value}
+      </div>
+      {trend && (
+        <div style={{ fontSize: 12, color: 'var(--fg-4)', marginTop: 6 }}>{trend}</div>
+      )}
+    </div>
+  );
+}
+
+function StatusRow({
+  status,
+  label,
+  count,
+  total,
+}: {
+  status: 'untested' | 'testing' | 'validated' | 'invalidated';
+  label: string;
+  count: number;
+  total: number;
+}) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  const barColor =
+    status === 'validated'
+      ? 'var(--success-600)'
+      : status === 'testing'
+      ? 'var(--warm)'
+      : status === 'invalidated'
+      ? 'var(--danger-600)'
+      : 'var(--slate-400)';
+  return (
+    <div>
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 6, fontSize: 13 }}
+      >
+        <div className="flex items-center gap-2">
+          <span className={`pk-dot ${status}`} />
+          <span style={{ color: 'var(--fg-2)', fontWeight: 500 }}>{label}</span>
+        </div>
+        <span className="pk-mono" style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+          {count}
+        </span>
+      </div>
+      <div
+        style={{
+          height: 6,
+          background: 'var(--slate-100)',
+          borderRadius: 999,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            background: barColor,
+            borderRadius: 999,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboardProps) {
-  // Calculate metrics
   const metrics = useMemo(() => {
     const totalAssumptions = assumptions.length;
     const totalInterviews = interviews.length;
-    const completedInterviews = interviews.filter(i => i.status === 'completed').length;
+    const completedInterviews = interviews.filter((i) => i.status === 'completed').length;
 
-    // Assumption status breakdown
-    const untested = assumptions.filter(a => a.status === 'untested').length;
-    const testing = assumptions.filter(a => a.status === 'testing').length;
-    const validated = assumptions.filter(a => a.status === 'validated').length;
-    const invalidated = assumptions.filter(a => a.status === 'invalidated').length;
+    const untested = assumptions.filter((a) => a.status === 'untested').length;
+    const testing = assumptions.filter((a) => a.status === 'testing').length;
+    const validated = assumptions.filter((a) => a.status === 'validated').length;
+    const invalidated = assumptions.filter((a) => a.status === 'invalidated').length;
 
-    // Priority breakdown
-    const highPriority = assumptions.filter(a => a.priority === 'high').length;
-    const mediumPriority = assumptions.filter(a => a.priority === 'medium').length;
-    const lowPriority = assumptions.filter(a => a.priority === 'low').length;
+    const highPriority = assumptions.filter((a) => a.priority === 'high').length;
 
-    // Canvas area coverage
-    const canvasAreaCounts: Record<string, number> = {};
-    assumptions.forEach(a => {
-      canvasAreaCounts[a.canvasArea] = (canvasAreaCounts[a.canvasArea] || 0) + 1;
-    });
+    const testedAssumptions = assumptions.filter((a) => (a.interviewCount || 0) > 0).length;
+    const coverageRate =
+      totalAssumptions > 0 ? (testedAssumptions / totalAssumptions) * 100 : 0;
 
-    // Interview coverage
-    const testedAssumptions = assumptions.filter(a => (a.interviewCount || 0) > 0).length;
-    const coverageRate = totalAssumptions > 0 ? (testedAssumptions / totalAssumptions) * 100 : 0;
+    const avgConfidence =
+      totalAssumptions > 0
+        ? assumptions.reduce((sum, a) => sum + a.confidence, 0) / totalAssumptions
+        : 0;
 
-    // Average confidence
-    const avgConfidence = totalAssumptions > 0
-      ? assumptions.reduce((sum, a) => sum + a.confidence, 0) / totalAssumptions
-      : 0;
+    const highRisk = assumptions.filter((a) => (a.riskScore || 0) >= 15).length;
+    const mediumRisk = assumptions.filter(
+      (a) => (a.riskScore || 0) >= 8 && (a.riskScore || 0) < 15
+    ).length;
+    const lowRisk = assumptions.filter((a) => (a.riskScore || 0) < 8).length;
 
-    // Risk distribution
-    const highRisk = assumptions.filter(a => (a.riskScore || 0) >= 15).length;
-    const mediumRisk = assumptions.filter(a => (a.riskScore || 0) >= 8 && (a.riskScore || 0) < 15).length;
-    const lowRisk = assumptions.filter(a => (a.riskScore || 0) < 8).length;
+    const validationRate =
+      totalAssumptions > 0 ? ((validated + invalidated) / totalAssumptions) * 100 : 0;
 
-    // Validation rate
-    const validationRate = totalAssumptions > 0
-      ? ((validated + invalidated) / totalAssumptions) * 100
-      : 0;
-
-    // Get most tested assumptions
-    const mostTested = [...assumptions]
-      .sort((a, b) => (b.interviewCount || 0) - (a.interviewCount || 0))
-      .slice(0, 5);
-
-    // Get highest risk untested
     const highRiskUntested = assumptions
-      .filter(a => a.status === 'untested')
+      .filter((a) => a.status === 'untested')
       .sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0))
       .slice(0, 5);
 
-    // Recent interviews
     const recentInterviews = [...interviews]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
@@ -76,16 +145,12 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
       validated,
       invalidated,
       highPriority,
-      mediumPriority,
-      lowPriority,
-      canvasAreaCounts,
       coverageRate,
       avgConfidence,
       highRisk,
       mediumRisk,
       lowRisk,
       validationRate,
-      mostTested,
       highRiskUntested,
       recentInterviews,
     };
@@ -116,273 +181,344 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Discovery Dashboard</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Overview of your discovery progress, insights, and next steps
+    <div style={{ padding: 24 }}>
+      <div style={{ marginBottom: 24 }}>
+        <div className="pk-kicker" style={{ marginBottom: 4 }}>
+          Discovery
+        </div>
+        <h2
+          style={{
+            fontSize: 24,
+            fontWeight: 600,
+            color: 'var(--fg-1)',
+            margin: '0 0 4px',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          Dashboard
+        </h2>
+        <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: 0 }}>
+          Overview of your discovery progress, insights, and next steps.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Assumptions */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Assumptions</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalAssumptions}</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
+      {/* Metric strip */}
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+        style={{ gap: 12, marginBottom: 24 }}
+      >
+        <MetricCard
+          kicker="Assumptions"
+          value={metrics.totalAssumptions}
+          trend={`${metrics.highPriority} high priority`}
+        />
+        <MetricCard
+          kicker="Interviews"
+          value={metrics.totalInterviews}
+          trend={`${metrics.completedInterviews} completed`}
+        />
+        <MetricCard
+          kicker="Validation rate"
+          value={`${metrics.validationRate.toFixed(0)}%`}
+          trend={`${metrics.validated} validated · ${metrics.invalidated} invalidated`}
+        />
+        <MetricCard
+          kicker="Coverage"
+          value={`${metrics.coverageRate.toFixed(0)}%`}
+          trend={`Avg confidence ${metrics.avgConfidence.toFixed(1)}/5`}
+        />
+      </div>
+
+      {/* Status + Risk */}
+      <div
+        className="grid grid-cols-1 lg:grid-cols-2"
+        style={{ gap: 16, marginBottom: 24 }}
+      >
+        <div className="pk-surface-card">
+          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--fg-1)',
+                margin: 0,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              Assumption status
+            </h3>
+            <span className="pk-kicker">{metrics.totalAssumptions} total</span>
           </div>
-          <div className="mt-2 flex items-center text-sm">
-            <span className="text-green-600 font-medium">{metrics.highPriority} high priority</span>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <StatusRow
+              status="untested"
+              label="Untested"
+              count={metrics.untested}
+              total={metrics.totalAssumptions}
+            />
+            <StatusRow
+              status="testing"
+              label="Testing"
+              count={metrics.testing}
+              total={metrics.totalAssumptions}
+            />
+            <StatusRow
+              status="validated"
+              label="Validated"
+              count={metrics.validated}
+              total={metrics.totalAssumptions}
+            />
+            <StatusRow
+              status="invalidated"
+              label="Invalidated"
+              count={metrics.invalidated}
+              total={metrics.totalAssumptions}
+            />
           </div>
         </div>
 
-        {/* Total Interviews */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
+        <div className="pk-surface-card">
+          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--fg-1)',
+                margin: 0,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              Risk distribution
+            </h3>
+            <span className="pk-kicker">Risk = confidence × importance</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14 }}>
             <div>
-              <p className="text-sm font-medium text-gray-600">Interviews</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalInterviews}</p>
+              <div
+                className="flex items-center justify-between"
+                style={{ marginBottom: 6, fontSize: 13 }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="pk-pill rose">High · 15+</span>
+                </div>
+                <span className="pk-mono" style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                  {metrics.highRisk}
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  background: 'var(--slate-100)',
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${
+                      metrics.totalAssumptions > 0
+                        ? (metrics.highRisk / metrics.totalAssumptions) * 100
+                        : 0
+                    }%`,
+                    background: 'var(--danger-600)',
+                  }}
+                />
+              </div>
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center text-sm">
-            <span className="text-green-600 font-medium">{metrics.completedInterviews} completed</span>
-          </div>
-        </div>
-
-        {/* Validation Rate */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Validation Rate</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.validationRate.toFixed(0)}%</p>
+              <div
+                className="flex items-center justify-between"
+                style={{ marginBottom: 6, fontSize: 13 }}
+              >
+                <span className="pk-pill amber">Medium · 8–14</span>
+                <span className="pk-mono" style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                  {metrics.mediumRisk}
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  background: 'var(--slate-100)',
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${
+                      metrics.totalAssumptions > 0
+                        ? (metrics.mediumRisk / metrics.totalAssumptions) * 100
+                        : 0
+                    }%`,
+                    background: 'var(--warm)',
+                  }}
+                />
+              </div>
             </div>
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center text-sm">
-            <span className="text-green-600 font-medium">{metrics.validated} validated</span>
-            <span className="mx-1">·</span>
-            <span className="text-red-600 font-medium">{metrics.invalidated} invalidated</span>
-          </div>
-        </div>
-
-        {/* Coverage Rate */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Interview Coverage</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.coverageRate.toFixed(0)}%</p>
+              <div
+                className="flex items-center justify-between"
+                style={{ marginBottom: 6, fontSize: 13 }}
+              >
+                <span className="pk-pill emerald">Low · &lt;8</span>
+                <span className="pk-mono" style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                  {metrics.lowRisk}
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  background: 'var(--slate-100)',
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${
+                      metrics.totalAssumptions > 0
+                        ? (metrics.lowRisk / metrics.totalAssumptions) * 100
+                        : 0
+                    }%`,
+                    background: 'var(--success-600)',
+                  }}
+                />
+              </div>
             </div>
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center text-sm">
-            <span className="text-gray-600">Avg confidence: {metrics.avgConfidence.toFixed(1)}/5</span>
           </div>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Assumption Status Breakdown */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Assumption Status</h3>
-          <div className="space-y-3">
-            {/* Untested */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Untested</span>
-                <span className="text-sm font-bold text-gray-900">{metrics.untested}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-gray-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.untested / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Testing */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Testing</span>
-                <span className="text-sm font-bold text-gray-900">{metrics.testing}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.testing / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Validated */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Validated</span>
-                <span className="text-sm font-bold text-gray-900">{metrics.validated}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.validated / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Invalidated */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Invalidated</span>
-                <span className="text-sm font-bold text-gray-900">{metrics.invalidated}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-red-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.invalidated / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Risk Distribution */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Risk Distribution</h3>
-          <div className="space-y-3">
-            {/* High Risk */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">High Risk (15+)</span>
-                <span className="text-sm font-bold text-red-600">{metrics.highRisk}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-red-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.highRisk / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Medium Risk */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Medium Risk (8-14)</span>
-                <span className="text-sm font-bold text-yellow-600">{metrics.mediumRisk}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.mediumRisk / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Low Risk */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700">Low Risk (&lt;8)</span>
-                <span className="text-sm font-bold text-blue-600">{metrics.lowRisk}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full"
-                  style={{ width: `${metrics.totalAssumptions > 0 ? (metrics.lowRisk / metrics.totalAssumptions) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* High Priority Untested */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">High-Risk Untested</h3>
-            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
-              Action Required
-            </span>
+      {/* High-risk untested + Recent interviews */}
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
+        <div className="pk-surface-card">
+          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+            <h3
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--fg-1)',
+                margin: 0,
+              }}
+            >
+              High-risk untested
+            </h3>
+            {metrics.highRiskUntested.length > 0 && (
+              <span className="pk-pill rose">Action required</span>
+            )}
           </div>
           {metrics.highRiskUntested.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">
-              🎉 All high-risk assumptions have been tested!
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--fg-4)',
+                textAlign: 'center',
+                padding: '20px 0',
+                margin: 0,
+              }}
+            >
+              All high-risk assumptions have been tested.
             </p>
           ) : (
-            <div className="space-y-3">
-              {metrics.highRiskUntested.map((assumption) => (
-                <div key={assumption.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-red-600">
-                          🎯 {assumption.riskScore}
-                        </span>
-                        <span className="text-xs text-gray-600">
-                          {getCanvasAreaLabel(assumption.canvasArea)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-800 line-clamp-2">
-                        {assumption.description}
-                      </p>
-                    </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {metrics.highRiskUntested.map((a) => (
+                <div
+                  key={a.id}
+                  style={{
+                    padding: 12,
+                    border: '1px solid var(--border-1)',
+                    borderRadius: 10,
+                    background: 'var(--bg-surface)',
+                  }}
+                >
+                  <div
+                    className="flex items-center gap-2"
+                    style={{ marginBottom: 6 }}
+                  >
+                    <span
+                      className="pk-pill rose pk-mono"
+                      style={{ fontSize: 11 }}
+                    >
+                      {a.riskScore}
+                    </span>
+                    <span className="pk-kicker">{getCanvasAreaLabel(a.canvasArea)}</span>
                   </div>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--fg-2)',
+                      margin: 0,
+                      lineHeight: 1.45,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {a.description}
+                  </p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Recent Interviews */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Interviews</h3>
+        <div className="pk-surface-card">
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--fg-1)',
+              margin: '0 0 16px',
+            }}
+          >
+            Recent interviews
+          </h3>
           {metrics.recentInterviews.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">
-              No interviews yet. Start conducting interviews!
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--fg-4)',
+                textAlign: 'center',
+                padding: '20px 0',
+                margin: 0,
+              }}
+            >
+              No interviews yet. Start conducting interviews.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: 'grid', gap: 8 }}>
               {metrics.recentInterviews.map((interview) => (
-                <div key={interview.id} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900 text-sm">
-                          {interview.segmentName}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          interview.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {interview.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600">
-                        {formatDate(interview.date)} · {interview.assumptionTags.length} assumptions tested
-                      </p>
-                    </div>
+                <div
+                  key={interview.id}
+                  style={{
+                    padding: 12,
+                    border: '1px solid var(--border-1)',
+                    borderRadius: 10,
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-between"
+                    style={{ marginBottom: 4 }}
+                  >
+                    <span
+                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-1)' }}
+                    >
+                      {interview.segmentName}
+                    </span>
+                    <span
+                      className={`pk-pill ${
+                        interview.status === 'completed' ? 'emerald' : 'amber'
+                      }`}
+                    >
+                      {interview.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-4)' }}>
+                    {formatDate(interview.date)} · {interview.assumptionTags.length} assumptions tested
                   </div>
                 </div>
               ))}
@@ -391,45 +527,88 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
         </div>
       </div>
 
-      {/* Next Steps Recommendations */}
-      {(metrics.highRiskUntested.length > 0 || metrics.untested > 0 || metrics.totalInterviews < 5) && (
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            Recommended Next Steps
-          </h3>
-          <ul className="space-y-2">
+      {(metrics.highRiskUntested.length > 0 ||
+        metrics.untested > 0 ||
+        metrics.totalInterviews < 5) && (
+        <div
+          className="pk-surface-card"
+          style={{
+            marginTop: 16,
+            background: 'var(--sky-50)',
+            borderColor: 'var(--sky-200)',
+          }}
+        >
+          <div className="pk-kicker" style={{ color: 'var(--sky-700)', marginBottom: 8 }}>
+            Recommended next steps
+          </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {metrics.highRiskUntested.length > 0 && (
-              <li className="flex items-start gap-2 text-sm text-blue-900">
-                <span className="text-blue-600 mt-0.5">→</span>
+              <li
+                style={{
+                  fontSize: 13,
+                  color: 'var(--fg-2)',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <span style={{ color: 'var(--sky-600)', fontWeight: 600 }}>→</span>
                 <span>
-                  <strong>Priority:</strong> Test {metrics.highRiskUntested.length} high-risk untested assumption{metrics.highRiskUntested.length > 1 ? 's' : ''} through customer interviews
+                  <strong>Priority:</strong> Test {metrics.highRiskUntested.length} high-risk
+                  untested assumption{metrics.highRiskUntested.length > 1 ? 's' : ''} through customer
+                  interviews.
                 </span>
               </li>
             )}
             {metrics.totalInterviews < 5 && (
-              <li className="flex items-start gap-2 text-sm text-blue-900">
-                <span className="text-blue-600 mt-0.5">→</span>
+              <li
+                style={{
+                  fontSize: 13,
+                  color: 'var(--fg-2)',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <span style={{ color: 'var(--sky-600)', fontWeight: 600 }}>→</span>
                 <span>
-                  Conduct {5 - metrics.totalInterviews} more interview{5 - metrics.totalInterviews > 1 ? 's' : ''} to reach minimum validation threshold (5 interviews)
+                  Conduct {5 - metrics.totalInterviews} more interview
+                  {5 - metrics.totalInterviews > 1 ? 's' : ''} to reach the minimum validation
+                  threshold.
                 </span>
               </li>
             )}
             {metrics.invalidated > 0 && (
-              <li className="flex items-start gap-2 text-sm text-blue-900">
-                <span className="text-blue-600 mt-0.5">→</span>
+              <li
+                style={{
+                  fontSize: 13,
+                  color: 'var(--fg-2)',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <span style={{ color: 'var(--sky-600)', fontWeight: 600 }}>→</span>
                 <span>
-                  Review {metrics.invalidated} invalidated assumption{metrics.invalidated > 1 ? 's' : ''} and consider pivoting your approach
+                  Review {metrics.invalidated} invalidated assumption
+                  {metrics.invalidated > 1 ? 's' : ''} and consider pivoting your approach.
                 </span>
               </li>
             )}
             {metrics.coverageRate < 80 && metrics.totalAssumptions > 0 && (
-              <li className="flex items-start gap-2 text-sm text-blue-900">
-                <span className="text-blue-600 mt-0.5">→</span>
+              <li
+                style={{
+                  fontSize: 13,
+                  color: 'var(--fg-2)',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <span style={{ color: 'var(--sky-600)', fontWeight: 600 }}>→</span>
                 <span>
-                  Increase interview coverage to 80%+ (currently {metrics.coverageRate.toFixed(0)}%) by testing more assumptions
+                  Increase interview coverage to 80%+ (currently{' '}
+                  {metrics.coverageRate.toFixed(0)}%) by testing more assumptions.
                 </span>
               </li>
             )}
@@ -437,70 +616,114 @@ export function DiscoveryDashboard({ assumptions, interviews }: DiscoveryDashboa
         </div>
       )}
 
-      {/* Pivot Resistance Detection */}
       {(() => {
-        // Check for contradicting interviews vs. unchanged confidence
-        const uvpAssumptions = assumptions.filter(a => a.canvasArea === 'uniqueValueProposition' || a.canvasArea === 'solution');
+        const uvpAssumptions = assumptions.filter(
+          (a) =>
+            a.canvasArea === 'uniqueValueProposition' || a.canvasArea === 'solution'
+        );
         const resistanceSignals: { assumption: Assumption; contradictions: number }[] = [];
 
-        uvpAssumptions.forEach(assumption => {
-          const linkedInterviews = interviews.filter(interview =>
-            interview.assumptionTags.some(tag =>
-              tag.assumptionId === assumption.id && tag.validationEffect === 'contradicts'
+        uvpAssumptions.forEach((assumption) => {
+          const linkedInterviews = interviews.filter((interview) =>
+            interview.assumptionTags.some(
+              (tag) =>
+                tag.assumptionId === assumption.id &&
+                tag.validationEffect === 'contradicts'
             )
           );
           if (linkedInterviews.length >= 3 && assumption.confidence >= 3) {
-            resistanceSignals.push({ assumption, contradictions: linkedInterviews.length });
+            resistanceSignals.push({
+              assumption,
+              contradictions: linkedInterviews.length,
+            });
           }
         });
 
-        const redAssumptions = assumptions.filter(a =>
-          a.status === 'invalidated' || ((a.interviewCount || 0) >= 3 && a.confidence <= 2)
+        const redAssumptions = assumptions.filter(
+          (a) =>
+            a.status === 'invalidated' ||
+            ((a.interviewCount || 0) >= 3 && a.confidence <= 2)
         );
 
         if (resistanceSignals.length === 0 && redAssumptions.length < 2) return null;
 
         return (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.96-.833-2.73 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              Pivot Resistance Check
-            </h3>
-
-            {/* Item 34: Pivot resistance per assumption */}
+          <div
+            className="pk-surface-card"
+            style={{
+              marginTop: 16,
+              background: 'var(--danger-50)',
+              borderColor: 'var(--danger-300)',
+            }}
+          >
+            <div
+              className="pk-kicker"
+              style={{ color: 'var(--danger-700)', marginBottom: 10 }}
+            >
+              Pivot resistance check
+            </div>
             {resistanceSignals.length > 0 && (
-              <MentorVoice text={getContent('assumption_pivot_resistance')} type="mentor_voice_flag" className="mb-3" />
+              <MentorVoice
+                text={getContent('assumption_pivot_resistance')}
+                type="mentor_voice_flag"
+                className="mb-3"
+              />
             )}
-
-            {/* Item 33: Confidence never drops */}
             {redAssumptions.length >= 2 && (
-              <MentorVoice text={getContent('assumption_confidence_never_drops')} type="mentor_voice_flag" />
+              <MentorVoice
+                text={getContent('assumption_confidence_never_drops')}
+                type="mentor_voice_flag"
+              />
             )}
           </div>
         );
       })()}
 
-      {/* Discovery → Pivot transition prompt */}
       {metrics.totalInterviews >= 5 && metrics.totalAssumptions > 0 && (
-        <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-purple-900 mb-2 flex items-center gap-2">
-            <span className="text-xl">🤔</span>
+        <div
+          className="pk-surface-card"
+          style={{
+            marginTop: 16,
+            background: '#f5f3ff',
+            borderColor: '#ddd6fe',
+          }}
+        >
+          <div className="pk-kicker" style={{ color: '#6d28d9', marginBottom: 6 }}>
             Ready to decide?
-          </h3>
-          <p className="text-sm text-purple-800 mb-3">
-            You've done {metrics.totalInterviews} interviews and tested {metrics.totalAssumptions} assumptions.
-            The next step is to bring together everything you've learned and decide whether to
-            <strong> proceed</strong> with your current approach, <strong>patch</strong> a specific weakness,
-            or <strong>pivot</strong> to follow what your customers are actually telling you.
-          </p>
-          <p className="text-xs text-purple-600 mb-4">
-            This isn't about proving you were right — it's about using what you learned to make the best decision.
-          </p>
-          <div className="text-sm text-purple-700 italic">
-            Navigate to the <strong>Decide</strong> module from the sidebar when you're ready.
           </div>
+          <h3
+            style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: 'var(--fg-1)',
+              margin: '0 0 8px',
+            }}
+          >
+            Bring your learning together
+          </h3>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--fg-2)',
+              margin: '0 0 8px',
+              lineHeight: 1.55,
+            }}
+          >
+            You've done {metrics.totalInterviews} interviews and tested{' '}
+            {metrics.totalAssumptions} assumptions. Next, decide whether to{' '}
+            <strong>proceed</strong>, <strong>patch</strong> a specific weakness, or{' '}
+            <strong>pivot</strong> to follow what your customers are telling you.
+          </p>
+          <p
+            style={{
+              fontSize: 12,
+              color: 'var(--fg-4)',
+              margin: 0,
+              fontStyle: 'italic',
+            }}
+          >
+            Navigate to the Decide module from the sidebar when you're ready.
+          </p>
         </div>
       )}
     </div>
