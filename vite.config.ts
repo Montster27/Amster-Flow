@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
-    host: '0.0.0.0',
+    host: 'localhost',
     https: useHttps ? {
       key: fs.readFileSync('./localhost+2-key.pem'),
       cert: fs.readFileSync('./localhost+2.pem'),

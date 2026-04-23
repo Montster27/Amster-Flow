@@ -48,7 +48,7 @@ if (!baseURL) {
 
 console.log(`🌐 Base URL: ${baseURL}`);
 console.log(`🗄️  Supabase: ${process.env.VITE_SUPABASE_URL}`);
-console.log(`👤 Test User: ${process.env.TEST_USER_EMAIL}\n`);
+console.log(`👤 Test User: ${process.env.TEST_USER_EMAIL ? '(configured)' : '(missing!)'}\n`);
 
 // Environment-specific settings
 const isLocal = TEST_ENV === 'local';

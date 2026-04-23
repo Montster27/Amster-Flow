@@ -88,7 +88,7 @@ export const AdminNewsletter: React.FC = () => {
             }
 
             setTestStatus('success');
-            setTestMessage(data.message || 'Test newsletter sent to montys@mit.edu! Check your inbox.');
+            setTestMessage(data.message || 'Test newsletter sent successfully! Check your inbox.');
         } catch (err: any) {
             console.error('Test newsletter error:', err);
             setTestStatus('error');
