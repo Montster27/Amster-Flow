@@ -26,13 +26,15 @@ type SanityCheckActions = {
   importData: (data: SanityCheckState) => void;
   exportData: () => SanityCheckState;
   reset: () => void;
-  /** Counts toward gate: contacts who confirmed problem exists. */
+  /** Contacts who confirmed the problem exists (captured but not gating). */
   problemConfirmedCount: () => number;
-  /** Counts toward gate: contacts actively trying to solve it (rules out latent). */
+  /** Contacts actively trying to solve it (captured but not gating). */
   activelySolvingCount: () => number;
+  /** Completed conversations — this is what the gate counts. */
+  doneCount: () => number;
   /** Counts contacts whose outreach has been resolved (done OR unreachable). */
   resolvedCount: () => number;
-  /** Gate: ≥2 confirmed problem AND ≥2 actively solving. */
+  /** Gate: 3 completed conversations. Outcome is informational, not required. */
   canGraduate: () => boolean;
 };
 
@@ -80,15 +82,17 @@ export function SanityCheckProvider({ children }: { children: ReactNode }) {
     [state.contacts]
   );
 
+  const doneCount = useCallback(
+    () => state.contacts.filter((c) => c.status === 'done').length,
+    [state.contacts]
+  );
+
   const resolvedCount = useCallback(
     () => state.contacts.filter((c) => c.status === 'done' || c.status === 'unreachable').length,
     [state.contacts]
   );
 
-  const canGraduate = useCallback(
-    () => problemConfirmedCount() >= 2 && activelySolvingCount() >= 2,
-    [problemConfirmedCount, activelySolvingCount]
-  );
+  const canGraduate = useCallback(() => doneCount() >= 3, [doneCount]);
 
   const value = useMemo(
     () => ({
@@ -101,6 +105,7 @@ export function SanityCheckProvider({ children }: { children: ReactNode }) {
       reset,
       problemConfirmedCount,
       activelySolvingCount,
+      doneCount,
       resolvedCount,
       canGraduate,
     }),
@@ -114,6 +119,7 @@ export function SanityCheckProvider({ children }: { children: ReactNode }) {
       reset,
       problemConfirmedCount,
       activelySolvingCount,
+      doneCount,
       resolvedCount,
       canGraduate,
     ]

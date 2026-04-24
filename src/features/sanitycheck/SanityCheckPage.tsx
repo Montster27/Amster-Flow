@@ -151,7 +151,7 @@ function ContactCard({ contact, expanded, onToggle }: { contact: SanityContact; 
 
           {contact.status === 'unreachable' && (
             <p className="text-xs text-slate-500 italic">
-              Marked unreachable — one missed contact is fine, but you still need 2 real conversations to move on.
+              Marked unreachable — you still need 3 real conversations to move on.
             </p>
           )}
         </div>
@@ -214,6 +214,7 @@ function SanityCheckContent() {
     setCompleted,
     problemConfirmedCount,
     activelySolvingCount,
+    doneCount,
     canGraduate,
     exportData,
   } = useSanityCheckStore();
@@ -410,6 +411,7 @@ function SanityCheckContent() {
 
   const confirmed = problemConfirmedCount();
   const solving = activelySolvingCount();
+  const done = doneCount();
   const gatePassed = canGraduate();
 
   return (
@@ -534,7 +536,7 @@ function SanityCheckContent() {
           )}
 
           <div className="flex items-center justify-between gap-4">
-            <GateSummary confirmed={confirmed} solving={solving} passed={gatePassed} />
+            <GateSummary done={done} confirmed={confirmed} solving={solving} passed={gatePassed} />
             <button
               onClick={handleGraduate}
               disabled={!gatePassed || graduating}
@@ -550,10 +552,12 @@ function SanityCheckContent() {
 }
 
 function GateSummary({
+  done,
   confirmed,
   solving,
   passed,
 }: {
+  done: number;
   confirmed: number;
   solving: number;
   passed: boolean;
@@ -563,19 +567,16 @@ function GateSummary({
       <div className="text-sm">
         <span className="text-green-600 font-semibold">Ready for Discovery.</span>{' '}
         <span className="text-slate-600">
-          {confirmed} confirmed the problem, {solving} are actively solving it.
+          3 conversations done. {confirmed} confirmed the problem, {solving} are actively solving it.
         </span>
       </div>
     );
   }
 
-  const missing: string[] = [];
-  if (confirmed < 2) missing.push(`${2 - confirmed} more confirming the problem exists`);
-  if (solving < 2) missing.push(`${2 - solving} more actively trying to solve it`);
-
+  const remaining = Math.max(0, 3 - done);
   return (
     <div className="text-sm text-slate-600">
-      Need {missing.join(' and ')} to continue.
+      {done} of 3 conversations done. Need {remaining} more to continue.
     </div>
   );
 }
