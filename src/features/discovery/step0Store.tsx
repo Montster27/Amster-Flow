@@ -316,7 +316,7 @@ export function Step0Provider({ children }: { children: ReactNode }) {
           name: c.text,
           customerId: c.id,
           benefits: [...c.benefits],
-          need: '',
+          need: c.benefits[0]?.text || '',
           accessRank: 3,
         }));
 
@@ -324,7 +324,12 @@ export function Step0Provider({ children }: { children: ReactNode }) {
         if (s.customerId) {
           const customer = prev.customers.find((c) => c.id === s.customerId);
           if (customer) {
-            return { ...s, name: customer.text, benefits: [...customer.benefits] };
+            return {
+              ...s,
+              name: customer.text,
+              benefits: [...customer.benefits],
+              need: customer.benefits[0]?.text || s.need,
+            };
           }
         }
         return s;
