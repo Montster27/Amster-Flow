@@ -65,3 +65,7 @@ node_modules*/
 QUICK_START_EMAILS.md
 EMAIL_SETUP_INSTRUCTIONS.md
 SETUP_PROGRESS.md
+
+# Local dev credentials (not for commit)
+.local-credentials
+.local-credentials.*
