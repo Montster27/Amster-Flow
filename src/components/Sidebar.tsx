@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '../config/constants';
 import { useGuide } from '../contexts/GuideContext';
@@ -148,72 +148,74 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
           Modules
         </div>
 
+        {projectId && (
+          <button
+            onClick={() => navigate(`/project/${projectId}/discovery`)}
+            className="w-full flex items-center gap-3 text-left transition-colors"
+            style={{
+              padding: '8px 10px',
+              borderRadius: 8,
+              color: 'var(--fg-2)',
+              fontSize: 13,
+              fontWeight: 500,
+              marginBottom: 2,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <NavChip letter="D" />
+            <span>Discovery</span>
+          </button>
+        )}
+
         {displayedModules.map((module) => {
           const isCompleted = progress[module]?.completed;
           const isActive = currentModule === module;
 
           if (module === 'pivot' && projectId) {
             return (
-              <React.Fragment key="discovery-and-pivot">
-                <button
-                  onClick={() => navigate(`/project/${projectId}/discovery`)}
-                  className="w-full flex items-center gap-3 text-left transition-colors"
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    color: 'var(--fg-2)',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    marginBottom: 2,
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <NavChip letter="D" />
-                  <span>Discovery</span>
-                </button>
-                <button
-                  onClick={() => hasMinimumInterviews && onModuleClick(module)}
-                  disabled={!hasMinimumInterviews}
-                  title={
-                    !hasMinimumInterviews
-                      ? `Complete ${APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT} interviews to unlock`
-                      : undefined
+              <button
+                key="pivot"
+                onClick={() => hasMinimumInterviews && onModuleClick(module)}
+                disabled={!hasMinimumInterviews}
+                title={
+                  !hasMinimumInterviews
+                    ? `Complete ${APP_CONFIG.THRESHOLDS.MIN_INTERVIEWS_FOR_PIVOT} interviews to unlock`
+                    : undefined
+                }
+                className="w-full flex items-center gap-3 text-left transition-colors"
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  color: hasMinimumInterviews ? 'var(--fg-2)' : 'var(--fg-4)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  marginBottom: 2,
+                  background: isActive ? 'var(--sky-50)' : 'transparent',
+                  border: 'none',
+                  cursor: hasMinimumInterviews ? 'pointer' : 'not-allowed',
+                  opacity: hasMinimumInterviews ? 1 : 0.6,
+                }}
+                onMouseEnter={(e) => {
+                  if (hasMinimumInterviews && !isActive) {
+                    e.currentTarget.style.background = 'var(--slate-100)';
                   }
-                  className="w-full flex items-center gap-3 text-left transition-colors"
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    color: hasMinimumInterviews ? 'var(--fg-2)' : 'var(--fg-4)',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    marginBottom: 2,
-                    background: isActive ? 'var(--sky-50)' : 'transparent',
-                    border: 'none',
-                    cursor: hasMinimumInterviews ? 'pointer' : 'not-allowed',
-                    opacity: hasMinimumInterviews ? 1 : 0.6,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (hasMinimumInterviews && !isActive) {
-                      e.currentTarget.style.background = 'var(--slate-100)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <NavChip letter="P" />
-                  <span style={{ flex: 1 }}>Pivot or Proceed</span>
-                  {!hasMinimumInterviews && (
-                    <span className="pk-pill outline" style={{ fontSize: 10 }}>
-                      Locked
-                    </span>
-                  )}
-                </button>
-              </React.Fragment>
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <NavChip letter="P" />
+                <span style={{ flex: 1 }}>Pivot or Proceed</span>
+                {!hasMinimumInterviews && (
+                  <span className="pk-pill outline" style={{ fontSize: 10 }}>
+                    Locked
+                  </span>
+                )}
+              </button>
             );
           }
 
