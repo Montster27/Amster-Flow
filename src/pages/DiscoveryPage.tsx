@@ -26,15 +26,16 @@ function DiscoveryPageContent() {
   const { questionsData } = useProjectContext();
   const { setCurrentModule, setCurrentQuestionIndex } = useGuide();
   const [gateChecked, setGateChecked] = useState(false);
-  const [needsQuickCheck, setNeedsQuickCheck] = useState(false);
+  const [gateTarget, setGateTarget] = useState<null | 'quickcheck' | 'sanitycheck'>(null);
 
   const modules = questionsData ? Object.keys(questionsData) : [];
 
-  // Check if Quick Check is completed (gate)
+  // Gate: require Quick Check → Sanity Check before Discovery.
+  // Existing assumptions bypass the gate for projects that graduated under the
+  // old flow.
   useEffect(() => {
     if (!projectId) return;
     const checkGate = async () => {
-      // Check if project has existing assumptions (backward compat)
       const { data: assumptions } = await supabase
         .from('project_assumptions')
         .select('id')
@@ -46,19 +47,28 @@ function DiscoveryPageContent() {
         return;
       }
 
-      // Check Quick Check completion
       const { data: qcData } = await (supabase as any)
         .from('project_quick_check')
         .select('beachhead_completed')
         .eq('project_id', projectId)
         .maybeSingle();
 
-      if (qcData && (qcData as any).beachhead_completed) {
+      if (!qcData || !(qcData as any).beachhead_completed) {
+        setGateTarget('quickcheck');
         setGateChecked(true);
-      } else {
-        setNeedsQuickCheck(true);
-        setGateChecked(true);
+        return;
       }
+
+      const { data: scData } = await (supabase as any)
+        .from('project_sanity_check')
+        .select('completed')
+        .eq('project_id', projectId)
+        .maybeSingle();
+
+      if (!scData || !(scData as any).completed) {
+        setGateTarget('sanitycheck');
+      }
+      setGateChecked(true);
     };
     checkGate();
   }, [projectId]);
@@ -118,7 +128,7 @@ function DiscoveryPageContent() {
     );
   }
 
-  if (needsQuickCheck) {
+  if (gateTarget === 'quickcheck') {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -140,6 +150,34 @@ function DiscoveryPageContent() {
             className="pk-btn pk-btn-primary"
           >
             Go to Quick Check
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gateTarget === 'sanitycheck') {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-app)' }}
+      >
+        <div className="pk-panel" style={{ padding: 32, maxWidth: 460, textAlign: 'center' }}>
+          <div className="pk-kicker" style={{ marginBottom: 8, color: 'var(--warn-800)' }}>
+            Gate
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fg-1)', margin: '0 0 10px' }}>
+            Run a Sanity Check First
+          </h2>
+          <p style={{ color: 'var(--fg-3)', fontSize: 14, margin: '0 0 24px', lineHeight: 1.55 }}>
+            Before Discovery, talk to your 3 contacts to confirm the problem is real and they're
+            already trying to solve it. This keeps you from burning weeks on a problem nobody has.
+          </p>
+          <button
+            onClick={() => navigate(`/project/${projectId}/sanity-check`)}
+            className="pk-btn pk-btn-primary"
+          >
+            Go to Sanity Check
           </button>
         </div>
       </div>

@@ -121,6 +121,26 @@ export function Sidebar({ modules, onModuleClick, onViewSummary, projectId }: Si
               <NavChip letter="Q" />
               <span>Quick Check</span>
             </button>
+            <button
+              onClick={() => navigate(`/project/${projectId}/sanity-check`)}
+              className="w-full flex items-center gap-3 text-left transition-colors"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                color: 'var(--fg-2)',
+                fontSize: 13,
+                fontWeight: 500,
+                marginBottom: 2,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--slate-100)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <NavChip letter="S" />
+              <span>Sanity Check</span>
+            </button>
           </>
         )}
 

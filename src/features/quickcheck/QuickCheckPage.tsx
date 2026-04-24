@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { QuickCheckProvider, useQuickCheckStore, type QuickCheckSegment } from './quickCheckStore';
 import { useQuickCheckData } from '../../hooks/useQuickCheckData';
 import { useAuth } from '../../hooks/useAuth';
-import { graduateToDiscovery } from '../discovery/graduationService';
 import { supabase } from '../../lib/supabase';
 import { MentorVoice } from '../../components/ui/MentorVoice';
 import { JourneyProgress } from '../../components/ui/JourneyProgress';
@@ -165,55 +164,9 @@ function QuickCheckContent() {
     setGraduating(true);
     setGraduationError(null);
     try {
-      // Load Step 0 data for graduation service
-      const { data: step0Row, error: step0LoadError } = await supabase
-        .from('project_step0')
-        .select('*')
-        .eq('project_id', projectId)
-        .maybeSingle();
-
-      if (step0LoadError) {
-        setGraduationError(`Could not load Step 0 data: ${step0LoadError.message}`);
-        return;
-      }
-      if (!step0Row) {
-        setGraduationError('No Step 0 data found for this project. Complete Step 0 before continuing.');
-        return;
-      }
-
-      const step0 = step0Row as any;
       const qcData = exportData();
-      const beachheadSeg = qcData.segments.find((s) => s.isBeachhead);
 
-      // IDs are numeric throughout Step 0 (Date.now() based). Pass them through
-      // unchanged — previous code was stringifying them and then doing a strict
-      // equality check against the numeric segment.id, which always failed and
-      // silently aborted the migration.
-      const focusedSegmentId: number | undefined =
-        beachheadSeg?.segmentId ?? (typeof step0.focused_segment_id === 'number' ? step0.focused_segment_id : undefined);
-
-      const result = await graduateToDiscovery(
-        projectId,
-        {
-          ideaStatement: step0.idea || { building: '', helps: '', achieve: '' },
-          customers: step0.customers || [],
-          segments: step0.segments || [],
-          assumptions: [],
-          focusedSegmentId,
-        },
-        focusedSegmentId
-      );
-
-      if (!result.success) {
-        setGraduationError(
-          result.errors.length > 0
-            ? `Graduation failed: ${result.errors.join('; ')}`
-            : 'Graduation failed for an unknown reason.'
-        );
-        return;
-      }
-
-      // Store parked segments in beachhead_data
+      // Store parked segments in beachhead_data for later reference
       const parkedSegments = qcData.segments
         .filter((s) => !s.isBeachhead)
         .map((s) => ({
@@ -224,7 +177,6 @@ function QuickCheckContent() {
           hypothesis: s.hypothesis,
         }));
 
-      // Update beachhead_data to include parked segments
       const { data: projectData, error: projectLoadError } = await supabase
         .from('projects')
         .select('*')
@@ -256,9 +208,8 @@ function QuickCheckContent() {
       }
 
       // Persist `beachhead_completed: true` to project_quick_check BEFORE navigating.
-      // The useQuickCheckData auto-save is debounced 1s and gets cancelled when this
-      // component unmounts, so relying on it would silently drop the flag and cause
-      // the Discovery gate check to bounce the user back here.
+      // Auto-save is debounced 1s and gets cancelled when this component unmounts,
+      // so relying on it would drop the flag and bounce the user back.
       const { error: qcUpdateError } = await (supabase as any)
         .from('project_quick_check')
         .upsert(
@@ -277,15 +228,10 @@ function QuickCheckContent() {
       }
 
       setBeachheadCompleted(true);
-      navigate(`/project/${projectId}/discovery`, {
-        state: {
-          message: 'Quick Check complete. Time to test your hypothesis with real interviews.',
-          fromQuickCheck: true,
-        },
-      });
+      navigate(`/project/${projectId}/sanity-check`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unexpected error during graduation.';
-      console.error('Graduation failed:', err);
+      const message = err instanceof Error ? err.message : 'Unexpected error continuing to Sanity Check.';
+      console.error('Quick Check → Sanity Check failed:', err);
       setGraduationError(message);
     } finally {
       setGraduating(false);
@@ -394,7 +340,7 @@ function QuickCheckContent() {
                 <span aria-hidden="true" className="text-red-600 shrink-0 mt-0.5">⚠️</span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-red-800">
-                    Couldn't continue to Discovery
+                    Couldn't continue to Sanity Check
                   </p>
                   <p className="text-sm text-red-700 mt-0.5 break-words">{graduationError}</p>
                 </div>
@@ -413,7 +359,7 @@ function QuickCheckContent() {
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-500">
             {canGraduate() ? (
-              <span className="text-green-600 font-medium">Ready to begin Discovery</span>
+              <span className="text-green-600 font-medium">Ready for Sanity Check</span>
             ) : (
               <span>Fill in your starting point's problem, contacts, and solution to continue</span>
             )}
@@ -423,7 +369,7 @@ function QuickCheckContent() {
             disabled={!canGraduate() || graduating}
             className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {graduating ? 'Setting up...' : 'Continue to Discovery →'}
+            {graduating ? 'Continuing...' : 'Continue to Sanity Check →'}
           </button>
         </div>
       </div>

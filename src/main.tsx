@@ -19,6 +19,7 @@ import { ProjectPage } from './pages/ProjectPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
 import { Step0Page } from './pages/Step0Page'
 import QuickCheckPage from './features/quickcheck/QuickCheckPage'
+import SanityCheckPage from './features/sanitycheck/SanityCheckPage'
 import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
@@ -88,6 +89,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         <QuickCheckPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/project/:projectId/sanity-check"
+                    element={
+                      <ProtectedRoute>
+                        <SanityCheckPage />
                       </ProtectedRoute>
                     }
                   />
