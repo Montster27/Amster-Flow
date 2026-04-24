@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { QuickCheckProvider, useQuickCheckStore, type QuickCheckSegment } from './quickCheckStore';
 import { useQuickCheckData } from '../../hooks/useQuickCheckData';
+import { useAuth } from '../../hooks/useAuth';
 import { graduateToDiscovery } from '../discovery/graduationService';
 import { supabase } from '../../lib/supabase';
 import { MentorVoice } from '../../components/ui/MentorVoice';
@@ -125,6 +126,7 @@ function SegmentCard({
 function QuickCheckContent() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { loading, error } = useQuickCheckData(projectId);
   const {
     segments,
@@ -141,6 +143,7 @@ function QuickCheckContent() {
     return new Set(beachhead ? [beachhead.segmentId] : []);
   });
   const [graduating, setGraduating] = useState(false);
+  const [graduationError, setGraduationError] = useState<string | null>(null);
 
   // Expand beachhead when segments load
   const beachhead = getBeachhead();
@@ -160,58 +163,117 @@ function QuickCheckContent() {
   const handleGraduate = async () => {
     if (!projectId || !canGraduate()) return;
     setGraduating(true);
+    setGraduationError(null);
     try {
       // Load Step 0 data for graduation service
-      const { data: step0Row } = await supabase
+      const { data: step0Row, error: step0LoadError } = await supabase
         .from('project_step0')
         .select('*')
         .eq('project_id', projectId)
         .maybeSingle();
 
-      if (step0Row) {
-        const step0 = step0Row as any;
-        const qcData = exportData();
-        const beachheadSeg = qcData.segments.find((s) => s.isBeachhead);
+      if (step0LoadError) {
+        setGraduationError(`Could not load Step 0 data: ${step0LoadError.message}`);
+        return;
+      }
+      if (!step0Row) {
+        setGraduationError('No Step 0 data found for this project. Complete Step 0 before continuing.');
+        return;
+      }
 
-        await graduateToDiscovery(projectId, {
+      const step0 = step0Row as any;
+      const qcData = exportData();
+      const beachheadSeg = qcData.segments.find((s) => s.isBeachhead);
+
+      // IDs are numeric throughout Step 0 (Date.now() based). Pass them through
+      // unchanged — previous code was stringifying them and then doing a strict
+      // equality check against the numeric segment.id, which always failed and
+      // silently aborted the migration.
+      const focusedSegmentId: number | undefined =
+        beachheadSeg?.segmentId ?? (typeof step0.focused_segment_id === 'number' ? step0.focused_segment_id : undefined);
+
+      const result = await graduateToDiscovery(
+        projectId,
+        {
           ideaStatement: step0.idea || { building: '', helps: '', achieve: '' },
           customers: step0.customers || [],
           segments: step0.segments || [],
           assumptions: [],
-          focusedSegmentId: beachheadSeg ? String(beachheadSeg.segmentId) : step0.focused_segment_id?.toString(),
-        });
+          focusedSegmentId,
+        },
+        focusedSegmentId
+      );
 
-        // Store parked segments in beachhead_data
-        const parkedSegments = qcData.segments
-          .filter((s) => !s.isBeachhead)
-          .map((s) => ({
-            segmentId: s.segmentId,
-            segmentName: s.segmentName,
-            problem: s.problem,
-            solution: s.solution,
-            hypothesis: s.hypothesis,
-          }));
+      if (!result.success) {
+        setGraduationError(
+          result.errors.length > 0
+            ? `Graduation failed: ${result.errors.join('; ')}`
+            : 'Graduation failed for an unknown reason.'
+        );
+        return;
+      }
 
-        // Update beachhead_data to include parked segments
-        const { data: projectData } = await supabase
+      // Store parked segments in beachhead_data
+      const parkedSegments = qcData.segments
+        .filter((s) => !s.isBeachhead)
+        .map((s) => ({
+          segmentId: s.segmentId,
+          segmentName: s.segmentName,
+          problem: s.problem,
+          solution: s.solution,
+          hypothesis: s.hypothesis,
+        }));
+
+      // Update beachhead_data to include parked segments
+      const { data: projectData, error: projectLoadError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (projectLoadError) {
+        setGraduationError(`Could not update project metadata: ${projectLoadError.message}`);
+        return;
+      }
+
+      if (projectData) {
+        const existingBeachhead = (projectData as any).beachhead_data || {};
+        const { error: projectUpdateError } = await supabase
           .from('projects')
-          .select('*')
-          .eq('id', projectId)
-          .single();
+          .update({
+            beachhead_data: {
+              ...existingBeachhead,
+              parkedSegments,
+              quickCheckCompleted: true,
+            },
+          } as any)
+          .eq('id', projectId);
 
-        if (projectData) {
-          const existingBeachhead = (projectData as any).beachhead_data || {};
-          await supabase
-            .from('projects')
-            .update({
-              beachhead_data: {
-                ...existingBeachhead,
-                parkedSegments,
-                quickCheckCompleted: true,
-              },
-            } as any)
-            .eq('id', projectId);
+        if (projectUpdateError) {
+          setGraduationError(`Could not update project metadata: ${projectUpdateError.message}`);
+          return;
         }
+      }
+
+      // Persist `beachhead_completed: true` to project_quick_check BEFORE navigating.
+      // The useQuickCheckData auto-save is debounced 1s and gets cancelled when this
+      // component unmounts, so relying on it would silently drop the flag and cause
+      // the Discovery gate check to bounce the user back here.
+      const { error: qcUpdateError } = await (supabase as any)
+        .from('project_quick_check')
+        .upsert(
+          {
+            project_id: projectId,
+            segments: qcData.segments,
+            beachhead_completed: true,
+            updated_by: user?.id,
+          },
+          { onConflict: 'project_id' }
+        );
+
+      if (qcUpdateError) {
+        setGraduationError(`Could not mark Quick Check complete: ${qcUpdateError.message}`);
+        return;
       }
 
       setBeachheadCompleted(true);
@@ -222,7 +284,9 @@ function QuickCheckContent() {
         },
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error during graduation.';
       console.error('Graduation failed:', err);
+      setGraduationError(message);
     } finally {
       setGraduating(false);
     }
@@ -319,6 +383,33 @@ function QuickCheckContent() {
 
       {/* Footer */}
       <div className="sticky bottom-0 bg-white border-t border-slate-200 py-4 -mx-6 px-6">
+        {graduationError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <span aria-hidden="true" className="text-red-600 shrink-0 mt-0.5">⚠️</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-red-800">
+                    Couldn't continue to Discovery
+                  </p>
+                  <p className="text-sm text-red-700 mt-0.5 break-words">{graduationError}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGraduationError(null)}
+                className="text-red-600 hover:text-red-800 text-sm font-medium shrink-0"
+                aria-label="Dismiss error"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-500">
             {canGraduate() ? (

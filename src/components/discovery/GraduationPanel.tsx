@@ -8,20 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { graduateToDiscovery, getRecommendedBeachhead } from '../../features/discovery/graduationService';
 import { calculateBeachheadReadiness } from '../../config/validationConfig';
 import type { Step0AssumptionType } from '../../types/discovery';
-
-interface Segment {
-  id: string;
-  name: string;
-  pain: number;
-  access: number;
-  willingness: number;
-}
-
-interface Customer {
-  id: string;
-  text: string;
-  problems: string[];
-}
+import type { Customer, IdeaStatement, Segment } from '../../features/discovery/step0Store';
 
 interface Assumption {
   id: string;
@@ -30,13 +17,7 @@ interface Assumption {
   assumption: string;
   impactIfWrong: string;
   assumptionType?: Step0AssumptionType;
-  segmentId?: string;
-}
-
-interface IdeaStatement {
-  building: string;
-  helps: string;
-  achieve: string;
+  segmentId?: number;
 }
 
 interface GraduationPanelProps {
@@ -45,7 +26,7 @@ interface GraduationPanelProps {
   customers: Customer[];
   segments: Segment[];
   assumptions: Assumption[];
-  focusedSegmentId?: string;
+  focusedSegmentId?: number;
   onGraduationComplete?: () => void;
 }
 
@@ -59,7 +40,9 @@ export function GraduationPanel({
   onGraduationComplete,
 }: GraduationPanelProps) {
   const navigate = useNavigate();
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string>(focusedSegmentId || '');
+  // Segment IDs are numeric; use 0 as the "unselected" sentinel since 0 is not
+  // a valid Date.now()-generated id.
+  const [selectedSegmentId, setSelectedSegmentId] = useState<number>(focusedSegmentId ?? 0);
   const [isGraduating, setIsGraduating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNoBeachheadWarning, setShowNoBeachheadWarning] = useState(false);
@@ -79,9 +62,11 @@ export function GraduationPanel({
     return calculateBeachheadReadiness(selectedSegment);
   }, [selectedSegment]);
 
-  // Count problems
+  // Step 0 v2 captures per-customer benefits (value claims) rather than raw
+  // problems. Count distinct benefit entries across all customers as the
+  // headline summary metric.
   const totalProblems = useMemo(() => {
-    return customers.reduce((sum, c) => sum + c.problems.length, 0);
+    return customers.reduce((sum, c) => sum + c.benefits.length, 0);
   }, [customers]);
 
   // Handle graduation
@@ -105,7 +90,11 @@ export function GraduationPanel({
         focusedSegmentId: selectedSegmentId || undefined,
       };
 
-      const result = await graduateToDiscovery(projectId, step0Data, selectedSegmentId || undefined);
+      const result = await graduateToDiscovery(
+        projectId,
+        step0Data,
+        selectedSegmentId || undefined
+      );
 
       if (result.success) {
         onGraduationComplete?.();
@@ -163,31 +152,32 @@ export function GraduationPanel({
               <span className="font-medium text-blue-800">Recommended:</span>
               <span className="text-blue-700">{recommendedSegment.name}</span>
               <span className="text-blue-600">
-                (Score: {recommendedSegment.pain * 2 + recommendedSegment.access + recommendedSegment.willingness})
+                (Access rank: {recommendedSegment.accessRank}/5)
               </span>
             </div>
             <p className="text-xs text-blue-600 mt-1 ml-7">
-              Highest pain ({recommendedSegment.pain}/5) + Good access ({recommendedSegment.access}/5)
+              Easiest to reach among your segments — a good place to start.
             </p>
           </div>
         )}
 
         <div className="mb-3">
           <select
-            value={selectedSegmentId}
+            value={selectedSegmentId || ''}
             onChange={(e) => {
-              setSelectedSegmentId(e.target.value);
+              const raw = e.target.value;
+              setSelectedSegmentId(raw === '' ? 0 : Number(raw));
               setShowNoBeachheadWarning(false);
             }}
             className="w-full px-4 py-3 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
           >
             <option value="">Select a beachhead segment...</option>
             {segments.map((segment) => {
-              const score = segment.pain * 2 + segment.access + segment.willingness;
               const isRecommended = recommendedSegment?.id === segment.id;
               return (
                 <option key={segment.id} value={segment.id}>
-                  {segment.name} (Score: {score}){isRecommended ? ' ⭐ Recommended' : ''}
+                  {segment.name} (Access: {segment.accessRank}/5)
+                  {isRecommended ? ' ⭐ Recommended' : ''}
                 </option>
               );
             })}

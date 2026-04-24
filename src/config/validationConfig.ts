@@ -113,33 +113,39 @@ export const SCORING_GUIDANCE = {
 } as const;
 
 /**
- * Calculate beachhead readiness score
- * Higher score = better beachhead candidate
+ * Calculate beachhead readiness score.
+ *
+ * The Step 0 v2 schema captures `accessRank` (1-5) per segment — how easy the
+ * segment is to reach — and a ranked list of need-categorized benefits. There
+ * is no separate pain or willingness score on the segment record, so readiness
+ * is driven by accessRank alone. A well-ranked segment has rank >= 4.
  */
 export function calculateBeachheadReadiness(segment: {
-  pain: number;
-  access: number;
-  willingness: number;
+  accessRank: number;
+  benefits?: { text: string }[];
 }): {
   score: number;
   isReady: boolean;
   guidance: string;
 } {
-  // Pain is weighted 2x because acute pain is most important
-  const score = segment.pain * 2 + segment.access + segment.willingness;
-  // maxScore = 5 * 2 + 5 + 5 = 20 (for reference)
+  const accessRank = segment.accessRank ?? 0;
+  const benefitCount = segment.benefits?.length ?? 0;
 
-  const painIsAcute = segment.pain >= 4;
-  const canReachNow = segment.access >= 4;
-  const isReady = painIsAcute && canReachNow;
+  // Score uses a 0-10 range so downstream UI can display it consistently.
+  // Access rank contributes up to 5 points (the rank itself), benefits
+  // contribute up to 5 points (1 per benefit, capped) — having articulated
+  // benefits signals the user has thought through what the segment gets.
+  const score = accessRank + Math.min(benefitCount, 5);
+
+  const isReady = accessRank >= 4 && benefitCount > 0;
 
   let guidance: string;
   if (isReady) {
-    guidance = 'Great beachhead candidate! High pain + good access.';
-  } else if (segment.pain < 4) {
-    guidance = 'Pain may not be acute enough. Look for more desperate customers.';
-  } else if (segment.access < 4) {
-    guidance = 'Good pain level, but hard to reach. Consider how to improve access.';
+    guidance = 'Great beachhead candidate! Easy to reach and benefits articulated.';
+  } else if (accessRank < 4) {
+    guidance = 'Hard to reach this segment. Consider whether you have a direct channel.';
+  } else if (benefitCount === 0) {
+    guidance = 'Good access, but no benefits articulated yet. What does this segment get?';
   } else {
     guidance = 'Moderate candidate. Consider if there\'s a better starting point.';
   }

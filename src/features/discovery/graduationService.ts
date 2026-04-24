@@ -12,23 +12,12 @@ import type {
   BeachheadData,
   PriorityLevel,
 } from '../../types/discovery';
+import type { Customer, Segment, IdeaStatement } from './step0Store';
 
-// Step 0 data structure (from step0Store)
-interface Step0Segment {
-  id: string;
-  name: string;
-  pain: number;
-  access: number;
-  willingness: number;
-  confidenceLevel?: string;
-}
-
-interface Step0Customer {
-  id: string;
-  text: string;
-  problems: string[];
-}
-
+// Internal assumption representation used by the service. Auto-generated
+// assumptions for the migration use this shape before being transformed into
+// Discovery `Assumption` records. It is not persisted to Step 0 — Step 0 has
+// no assumptions table in the v2 schema.
 interface Step0Assumption {
   id: string;
   sourceText: string;
@@ -36,19 +25,15 @@ interface Step0Assumption {
   assumption: string;
   impactIfWrong: string;
   assumptionType?: Step0AssumptionType;
-  segmentId?: string;
+  segmentId?: number;
 }
 
-interface Step0Data {
-  ideaStatement: {
-    building: string;
-    helps: string;
-    achieve: string;
-  };
-  customers: Step0Customer[];
-  segments: Step0Segment[];
+export interface Step0Data {
+  ideaStatement: IdeaStatement;
+  customers: Customer[];
+  segments: Segment[];
   assumptions: Step0Assumption[];
-  focusedSegmentId?: string;
+  focusedSegmentId?: number;
 }
 
 // Migration mapping from Step 0 types to Discovery
@@ -67,29 +52,26 @@ export interface GraduationResult {
 }
 
 /**
- * Calculate the recommended beachhead segment based on scoring
+ * Calculate the recommended beachhead segment based on scoring.
+ * The current Step 0 schema tracks `accessRank` (1-5) per segment and an
+ * importance-ranked list of benefits. Benefits are all sorted with #1 being
+ * the most important, so benefit rank doesn't differentiate between segments;
+ * accessRank is the only meaningful differentiator. This matches the logic in
+ * step0Store.getRecommendedBeachhead.
  */
-export function getRecommendedBeachhead(segments: Step0Segment[]): Step0Segment | null {
+export function getRecommendedBeachhead(segments: Segment[]): Segment | null {
   if (segments.length === 0) return null;
 
-  // Score: Pain is weighted 2x because acute pain is most important
-  const scored = segments.map((s) => ({
-    ...s,
-    score: s.pain * 2 + s.access + s.willingness,
-  }));
-
-  // Sort by score descending
-  scored.sort((a, b) => b.score - a.score);
-
-  return scored[0];
+  const sorted = [...segments].sort((a, b) => (b.accessRank ?? 0) - (a.accessRank ?? 0));
+  return sorted[0] ?? null;
 }
 
 /**
  * Generate customer identity assumptions for a segment
  */
 function generateCustomerIdentityAssumptions(
-  segment: Step0Segment,
-  ideaStatement: Step0Data['ideaStatement']
+  segment: Segment,
+  ideaStatement: IdeaStatement
 ): Partial<Step0Assumption>[] {
   return [
     {
@@ -117,7 +99,7 @@ function generateCustomerIdentityAssumptions(
  * Generate problem severity assumptions from customer problems
  */
 function generateProblemSeverityAssumptions(
-  segment: Step0Segment,
+  segment: Segment,
   problems: string[]
 ): Partial<Step0Assumption>[] {
   return problems.map((problem) => ({
@@ -126,7 +108,7 @@ function generateProblemSeverityAssumptions(
     sourceText: problem,
     assumption: `${segment.name} would pay to solve: "${problem}"`,
     impactIfWrong: 'The problem may not be painful enough to warrant a paid solution',
-    type: 'problemSeverity' as Step0AssumptionType,
+    assumptionType: 'problemSeverity' as Step0AssumptionType,
     segmentId: segment.id,
   }));
 }
@@ -136,7 +118,7 @@ function generateProblemSeverityAssumptions(
  */
 export function transformStep0ToDiscovery(
   step0Data: Step0Data,
-  focusedSegmentId: string,
+  focusedSegmentId: number,
   _projectId: string
 ): Assumption[] {
   const focusedSegment = step0Data.segments.find((s) => s.id === focusedSegmentId);
@@ -147,13 +129,14 @@ export function transformStep0ToDiscovery(
   const discoveryAssumptions: Assumption[] = [];
   const now = new Date().toISOString();
 
-  // Get problems for the focused segment
-  const segmentProblems: string[] = [];
-  step0Data.customers.forEach((customer) => {
-    if (customer.text.toLowerCase().includes(focusedSegment.name.toLowerCase())) {
-      segmentProblems.push(...customer.problems);
-    }
-  });
+  // Problems for the focused segment come directly from its ranked benefits.
+  // In Step 0, each segment is seeded from a customer's benefits list with need
+  // categories. The top-ranked benefit is also the segment's `need`. Every
+  // benefit text represents a value claim that can become a problem-severity
+  // assumption when graduated ("would the customer pay to achieve this?").
+  const segmentProblems: string[] = focusedSegment.benefits
+    .map((b) => b.text.trim())
+    .filter((text) => text.length > 0);
 
   // Generate auto-assumptions if Step 0 doesn't have typed assumptions
   let assumptionsToMigrate = step0Data.assumptions;
@@ -169,7 +152,7 @@ export function transformStep0ToDiscovery(
     // Convert existing assumptions to solution hypotheses
     const solutionHypotheses = assumptionsToMigrate.map((a) => ({
       ...a,
-      type: 'solutionHypothesis' as Step0AssumptionType,
+      assumptionType: 'solutionHypothesis' as Step0AssumptionType,
       segmentId: focusedSegmentId,
     }));
 
@@ -231,13 +214,16 @@ export function transformStep0ToDiscovery(
  */
 async function storeBeachheadSegment(
   projectId: string,
-  segment: Step0Segment
+  segment: Segment
 ): Promise<{ success: boolean; error?: string }> {
   const beachheadData: BeachheadData = {
-    segmentId: segment.id,
+    // BeachheadData.segmentId is a string in the JSONB payload; coerce from numeric id.
+    segmentId: String(segment.id),
     segmentName: segment.name,
     selectedAt: new Date().toISOString(),
-    step0Score: segment.pain * 2 + segment.access + segment.willingness,
+    // Step 0 v2 ranks segments by `accessRank` (1-5) — how easy they are to
+    // reach. That's the only numeric score carried on the segment record.
+    step0Score: segment.accessRank ?? 0,
     focusHistory: [],
   };
 
@@ -304,7 +290,7 @@ async function insertDiscoveryAssumptions(
 export async function graduateToDiscovery(
   projectId: string,
   step0Data: Step0Data,
-  selectedSegmentId?: string
+  selectedSegmentId?: number
 ): Promise<GraduationResult> {
   const errors: string[] = [];
   let assumptionsCreated = 0;
