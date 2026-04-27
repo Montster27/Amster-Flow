@@ -6,13 +6,12 @@ import {
   type SanityContact,
   type SanityContactStatus,
   type SanitySignal,
-} from './sanityCheckStore';
+} from '../sanitycheck/sanityCheckStore';
 import { useSanityCheckData } from '../../hooks/useSanityCheckData';
 import { useAuth } from '../../hooks/useAuth';
 import { graduateToDiscovery } from '../discovery/graduationService';
 import { supabase } from '../../lib/supabase';
 import { captureException } from '../../lib/sentry';
-import { JourneyProgress } from '../../components/ui/JourneyProgress';
 import { MentorVoice } from '../../components/ui/MentorVoice';
 
 type BeachheadSummary = {
@@ -202,7 +201,37 @@ function SignalField({
   );
 }
 
-function SanityCheckContent() {
+function GateSummary({
+  done,
+  confirmed,
+  solving,
+  passed,
+}: {
+  done: number;
+  confirmed: number;
+  solving: number;
+  passed: boolean;
+}) {
+  if (passed) {
+    return (
+      <div className="text-sm">
+        <span className="text-green-600 font-semibold">Ready for Discovery.</span>{' '}
+        <span className="text-slate-600">
+          3 conversations done. {confirmed} confirmed the problem, {solving} are actively solving it.
+        </span>
+      </div>
+    );
+  }
+
+  const remaining = Math.max(0, 3 - done);
+  return (
+    <div className="text-sm text-slate-600">
+      {done} of 3 conversations done. Need {remaining} more to continue.
+    </div>
+  );
+}
+
+function QuickCheckPart2Content({ onBack }: { onBack: () => void }) {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -225,7 +254,6 @@ function SanityCheckContent() {
   const [graduationError, setGraduationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Auto-expand the first un-done contact
     if (contacts.length > 0 && expanded.size === 0) {
       const firstOpen = contacts.find((c) => c.status !== 'done') ?? contacts[0];
       setExpanded(new Set([firstOpen.index]));
@@ -270,7 +298,6 @@ function SanityCheckContent() {
     try {
       const sanity = exportData();
 
-      // Load Step 0 data for beachhead graduation
       const { data: step0Row, error: step0LoadError } = await supabase
         .from('project_step0')
         .select('*')
@@ -310,7 +337,6 @@ function SanityCheckContent() {
         return;
       }
 
-      // Stamp sanity check summary onto beachhead_data
       const { data: projectData } = await supabase
         .from('projects')
         .select('*')
@@ -334,7 +360,6 @@ function SanityCheckContent() {
           .eq('id', projectId);
       }
 
-      // Persist completed flag before navigating (auto-save is debounced)
       const { error: updateErr } = await (supabase as any)
         .from('project_sanity_check')
         .upsert(
@@ -350,21 +375,21 @@ function SanityCheckContent() {
         );
 
       if (updateErr) {
-        setGraduationError(`Could not mark Sanity Check complete: ${updateErr.message}`);
+        setGraduationError(`Could not mark Part 2 complete: ${updateErr.message}`);
         return;
       }
 
       setCompleted(true);
       navigate(`/project/${projectId}/discovery`, {
         state: {
-          message: 'Sanity Check complete. Ready for Discovery.',
+          message: 'Quick Check complete. Ready for Discovery.',
           fromSanityCheck: true,
         },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error during graduation.';
       captureException(err instanceof Error ? err : new Error(message), {
-        extra: { projectId, context: 'SanityCheckPage graduate' },
+        extra: { projectId, context: 'QuickCheckPart2 graduate' },
       });
       setGraduationError(message);
     } finally {
@@ -396,13 +421,13 @@ function SanityCheckContent() {
       <div className="max-w-3xl mx-auto p-6 text-center">
         <div className="py-12">
           <p className="text-lg text-slate-600 mb-4">
-            Complete Quick Check before running a Sanity Check.
+            Complete Part 1 before talking to people.
           </p>
           <button
-            onClick={() => navigate(`/project/${projectId}/quick-check`)}
+            onClick={onBack}
             className="px-6 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
           >
-            Go to Quick Check
+            Back to Part 1
           </button>
         </div>
       </div>
@@ -415,128 +440,144 @@ function SanityCheckContent() {
   const gatePassed = canGraduate();
 
   return (
-    <>
-      <JourneyProgress currentStep="sanitycheck" />
-      <div className="max-w-3xl mx-auto p-6 pb-24">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
+    <div className="max-w-3xl mx-auto p-6 pb-24">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => navigate(`/project/${projectId}/quick-check`)}
-              className="text-slate-400 hover:text-slate-600"
-              aria-label="Back to Quick Check"
+              onClick={onBack}
+              className="text-slate-400 hover:text-slate-600 shrink-0"
+              aria-label="Back to Part 1"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-bold text-slate-800">Sanity Check</h1>
+            <h1 className="text-2xl font-bold text-slate-800 truncate">Quick Check · Part 2: Talk to people</h1>
           </div>
-          <p className="text-sm text-slate-600">
-            Three conversations to confirm the problem is real, more than one person has it, and
-            they're already trying to solve it. Skip this and you risk spending Discovery on a
-            problem nobody actually has.
-          </p>
+          <button
+            onClick={() => navigate(`/project/${projectId}/quick-check/report`)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-300 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            View Report
+          </button>
         </div>
+        <p className="text-sm text-slate-600">
+          Three conversations to confirm the problem is real, more than one person has it, and
+          they're already trying to solve it. Skip this and you risk spending Discovery on a
+          problem nobody actually has.
+        </p>
+      </div>
 
-        {/* Latent-need warning */}
-        <div className="mb-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-xl flex-shrink-0">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-900">
-                  This approach only works for problems people already know they have.
-                </p>
-                <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                  If you're building for a <strong>latent need</strong> — something customers won't
-                  recognize until they see it (e.g. the first iPhone) — interviews won't validate
-                  it. You'll need prototypes or demos instead. Continue only if customers already
-                  feel this pain.
-                </p>
-                <label className="flex items-center gap-2 mt-3 text-sm text-amber-900 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={acknowledgedLatentWarning}
-                    onChange={(e) => setAcknowledgedLatentWarning(e.target.checked)}
-                    className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
-                  />
-                  <span>I understand — my idea is for a known pain, not a latent need.</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Beachhead context */}
-        {beachhead && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
-              Testing this hypothesis
-            </div>
-            <div className="text-sm font-semibold text-slate-800 mb-1">
-              Segment: {beachhead.segmentName}
-            </div>
-            {beachhead.hypothesis && (
-              <p className="text-sm italic text-slate-700 leading-relaxed">
-                {beachhead.hypothesis}
+      {/* Latent-need warning */}
+      <div className="mb-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">⚠️</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                This approach only works for problems people already know they have.
               </p>
-            )}
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
+                If you're building for a <strong>latent need</strong> — something customers won't
+                recognize until they see it (e.g. the first iPhone) — interviews won't validate
+                it. You'll need prototypes or demos instead. Continue only if customers already
+                feel this pain.
+              </p>
+              <label className="flex items-center gap-2 mt-3 text-sm text-amber-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acknowledgedLatentWarning}
+                  onChange={(e) => setAcknowledgedLatentWarning(e.target.checked)}
+                  className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                />
+                <span>I understand — my idea is for a known pain, not a latent need.</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Beachhead context */}
+      {beachhead && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
+            Testing this hypothesis
+          </div>
+          <div className="text-sm font-semibold text-slate-800 mb-1">
+            Segment: {beachhead.segmentName}
+          </div>
+          {beachhead.hypothesis && (
+            <p className="text-sm italic text-slate-700 leading-relaxed">
+              {beachhead.hypothesis}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Mentor tip */}
+      <div className="mb-4">
+        <MentorVoice
+          text="Don't pitch. Ask them to tell you about the last time this problem actually hit them. The more concrete their story, the stronger the signal. If they shrug, the problem isn't painful enough."
+          type="mentor_voice"
+        />
+      </div>
+
+      {/* Contact cards */}
+      <div className="space-y-3 mb-6">
+        {contacts.map((c) => (
+          <ContactCard
+            key={c.index}
+            contact={c}
+            expanded={expanded.has(c.index)}
+            onToggle={() => toggle(c.index)}
+          />
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="sticky bottom-0 bg-white border-t border-slate-200 py-4 -mx-6 px-6">
+        {graduationError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <span aria-hidden="true" className="text-red-600 shrink-0 mt-0.5">⚠️</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-red-800">
+                    Couldn't continue to Discovery
+                  </p>
+                  <p className="text-sm text-red-700 mt-0.5 break-words">{graduationError}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGraduationError(null)}
+                className="text-red-600 hover:text-red-800 text-sm font-medium shrink-0"
+                aria-label="Dismiss error"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Mentor tip */}
-        <div className="mb-4">
-          <MentorVoice
-            text="Don't pitch. Ask them to tell you about the last time this problem actually hit them. The more concrete their story, the stronger the signal. If they shrug, the problem isn't painful enough."
-            type="mentor_voice"
-          />
-        </div>
-
-        {/* Contact cards */}
-        <div className="space-y-3 mb-6">
-          {contacts.map((c) => (
-            <ContactCard
-              key={c.index}
-              contact={c}
-              expanded={expanded.has(c.index)}
-              onToggle={() => toggle(c.index)}
-            />
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-200 py-4 -mx-6 px-6">
-          {graduationError && (
-            <div
-              role="alert"
-              aria-live="assertive"
-              className="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3"
+        <div className="flex items-center justify-between gap-4">
+          <GateSummary done={done} confirmed={confirmed} solving={solving} passed={gatePassed} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBack}
+              className="px-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-2 min-w-0">
-                  <span aria-hidden="true" className="text-red-600 shrink-0 mt-0.5">⚠️</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-red-800">
-                      Couldn't continue to Discovery
-                    </p>
-                    <p className="text-sm text-red-700 mt-0.5 break-words">{graduationError}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setGraduationError(null)}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium shrink-0"
-                  aria-label="Dismiss error"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-4">
-            <GateSummary done={done} confirmed={confirmed} solving={solving} passed={gatePassed} />
+              ← Back
+            </button>
             <button
               onClick={handleGraduate}
               disabled={!gatePassed || graduating}
@@ -547,44 +588,14 @@ function SanityCheckContent() {
           </div>
         </div>
       </div>
-    </>
-  );
-}
-
-function GateSummary({
-  done,
-  confirmed,
-  solving,
-  passed,
-}: {
-  done: number;
-  confirmed: number;
-  solving: number;
-  passed: boolean;
-}) {
-  if (passed) {
-    return (
-      <div className="text-sm">
-        <span className="text-green-600 font-semibold">Ready for Discovery.</span>{' '}
-        <span className="text-slate-600">
-          3 conversations done. {confirmed} confirmed the problem, {solving} are actively solving it.
-        </span>
-      </div>
-    );
-  }
-
-  const remaining = Math.max(0, 3 - done);
-  return (
-    <div className="text-sm text-slate-600">
-      {done} of 3 conversations done. Need {remaining} more to continue.
     </div>
   );
 }
 
-export default function SanityCheckPage() {
+export function QuickCheckPart2({ onBack }: { onBack: () => void }) {
   return (
     <SanityCheckProvider>
-      <SanityCheckContent />
+      <QuickCheckPart2Content onBack={onBack} />
     </SanityCheckProvider>
   );
 }

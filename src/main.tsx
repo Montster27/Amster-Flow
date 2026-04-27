@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { GuideProvider } from './contexts/GuideContext'
 import { SectorMapProvider } from './contexts/SectorMapContext'
@@ -19,7 +19,7 @@ import { ProjectPage } from './pages/ProjectPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
 import { Step0Page } from './pages/Step0Page'
 import QuickCheckPage from './features/quickcheck/QuickCheckPage'
-import SanityCheckPage from './features/sanitycheck/SanityCheckPage'
+import { QuickCheckReportPage } from './pages/QuickCheckReportPage'
 import { SectorMapPage } from './pages/SectorMapPage'
 import { UserSettingsPage } from './pages/UserSettingsPage'
 import { AdminPage } from './pages/AdminPage'
@@ -33,6 +33,12 @@ import './index.css'
 
 // Initialize Sentry error tracking
 initSentry();
+
+// Sanity Check is now Part 2 of Quick Check; redirect any old links.
+function SanityCheckRedirect() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return <Navigate to={`/project/${projectId}/quick-check`} replace />;
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -93,10 +99,18 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     }
                   />
                   <Route
+                    path="/project/:projectId/quick-check/report"
+                    element={
+                      <ProtectedRoute>
+                        <QuickCheckReportPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/project/:projectId/sanity-check"
                     element={
                       <ProtectedRoute>
-                        <SanityCheckPage />
+                        <SanityCheckRedirect />
                       </ProtectedRoute>
                     }
                   />

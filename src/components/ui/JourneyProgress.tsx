@@ -12,14 +12,13 @@ interface Step {
 const STEPS: Step[] = [
   { key: 'step0', label: 'First Look', shortLabel: 'First Look' },
   { key: 'quickcheck', label: 'Quick Check', shortLabel: 'Quick Check' },
-  { key: 'sanitycheck', label: 'Sanity Check', shortLabel: 'Sanity Check' },
   { key: 'discovery', label: 'Discovery', shortLabel: 'Discovery' },
   { key: 'pivot', label: 'Decide', shortLabel: 'Decide' },
 ];
 
 interface JourneyProgressProps {
   /** Which step is currently active */
-  currentStep: 'step0' | 'quickcheck' | 'sanitycheck' | 'discovery' | 'pivot';
+  currentStep: 'step0' | 'quickcheck' | 'discovery' | 'pivot';
   /** Optional: sub-label under the current step (e.g. "Stage 1") */
   subLabel?: string;
   className?: string;
