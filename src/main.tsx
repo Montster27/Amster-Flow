@@ -31,8 +31,20 @@ import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
-// V3 design canvas — public route, lazy-loaded so it doesn't bloat the main bundle.
+// V3 design canvas (mocks) — public route, lazy-loaded.
 const V3CanvasPage = lazy(() => import('./features/v3-canvas/V3CanvasPage'))
+
+// V3 functional app — auth-gated, lazy-loaded.
+const V3EntryPage      = lazy(() => import('./features/v3/pages/EntryPage'))
+const V3OnboardingPage = lazy(() => import('./features/v3/pages/OnboardingPage'))
+const V3DoorAPage      = lazy(() => import('./features/v3/pages/DoorAPage'))
+const V3DoorBPage      = lazy(() => import('./features/v3/pages/DoorBPage'))
+const V3DashboardPage  = lazy(() => import('./features/v3/pages/DashboardPage'))
+const V3PitchPage      = lazy(() => import('./features/v3/pages/PitchPage'))
+
+const v3Suspense = (el: React.ReactNode) => (
+  <Suspense fallback={<div style={{padding:40}}>Loading…</div>}>{el}</Suspense>
+)
 
 // Initialize Sentry error tracking
 initSentry();
@@ -60,13 +72,59 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/terms" element={<TermsOfServicePage />} />
 
-                  {/* V3 design canvas — public, no auth gate (exploration UI) */}
+                  {/* V3 design canvas (mocks) — public */}
+                  <Route
+                    path="/v3/canvas"
+                    element={v3Suspense(<V3CanvasPage />)}
+                  />
+
+                  {/* V3 functional app — auth-gated */}
                   <Route
                     path="/v3"
                     element={
-                      <Suspense fallback={<div style={{padding:40}}>Loading canvas…</div>}>
-                        <V3CanvasPage />
-                      </Suspense>
+                      <ProtectedRoute>
+                        {v3Suspense(<V3EntryPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/onboarding/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3OnboardingPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/door-a/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DoorAPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/door-b/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DoorBPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/dashboard/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DashboardPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/pitch/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3PitchPage />)}
+                      </ProtectedRoute>
                     }
                   />
 
