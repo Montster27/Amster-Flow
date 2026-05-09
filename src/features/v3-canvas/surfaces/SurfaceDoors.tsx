@@ -639,8 +639,8 @@ function CompetitiveMapRow({
 }
 
 function MiniRow({
-  L, cell, idx, mode = 'editorial',
-}: { L: PkLayer; cell?: StackCell; idx: number; mode?: 'editorial' | 'strata' }) {
+  L, cell, mode = 'editorial',
+}: { L: PkLayer; cell?: StackCell; mode?: 'editorial' | 'strata' }) {
   const tier = cell?.tier || 0;
   const isCrit = L.cat === 'critical';
   return (
@@ -713,11 +713,11 @@ export function DoorBEditorial({
         }}>— MONTY</div>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
-        {PK_LAYERS.map((L, i) =>
+        {PK_LAYERS.map((L) =>
           L.id === 'competitiveMarket' ? (
             <CompetitiveMapRow key={L.id} L={L} cell={stack[L.id]} industry={industry} />
           ) : (
-            <MiniRow key={L.id} L={L} cell={stack[L.id]} idx={i} mode="editorial" />
+            <MiniRow key={L.id} L={L} cell={stack[L.id]} mode="editorial" />
           ),
         )}
       </div>
@@ -750,8 +750,8 @@ export function DoorBStrata({
         }}>Strategy halo · L01–L03, L05–L07</div>
         {PK_LAYERS
           .filter((L) => L.cat === 'thoughtful' && L.band !== 'execution')
-          .map((L, i) => (
-            <MiniRow key={L.id} L={L} cell={stack[L.id]} idx={i} mode="editorial" />
+          .map((L) => (
+            <MiniRow key={L.id} L={L} cell={stack[L.id]} mode="editorial" />
           ))}
 
         <div style={{
@@ -761,8 +761,8 @@ export function DoorBStrata({
           textTransform: 'uppercase', color: '#92400e', fontWeight: 700,
         }}>Critical band · investors press here</div>
         <div style={{ background: '#fffaf0' }}>
-          {PK_LAYERS.filter((L) => L.cat === 'critical').map((L, i) => (
-            <MiniRow key={L.id} L={L} cell={stack[L.id]} idx={i} mode="strata" />
+          {PK_LAYERS.filter((L) => L.cat === 'critical').map((L) => (
+            <MiniRow key={L.id} L={L} cell={stack[L.id]} mode="strata" />
           ))}
         </div>
 
@@ -771,8 +771,8 @@ export function DoorBStrata({
           fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: '0.14em',
           textTransform: 'uppercase', color: '#94a3b8',
         }}>Execution halo · L13–L16</div>
-        {PK_LAYERS.filter((L) => L.band === 'execution').map((L, i) => (
-          <MiniRow key={L.id} L={L} cell={stack[L.id]} idx={i} mode="editorial" />
+        {PK_LAYERS.filter((L) => L.band === 'execution').map((L) => (
+          <MiniRow key={L.id} L={L} cell={stack[L.id]} mode="editorial" />
         ))}
       </div>
     </div>

@@ -57,7 +57,6 @@ interface OptionT<T> {
 export function TweaksPanel({
   title = 'Tweaks', children,
 }: { title?: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true);
   const [hidden, setHidden] = useState(false);
   const dragRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef({ x: 16, y: 16 });
@@ -79,11 +78,11 @@ export function TweaksPanel({
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (hidden) return;
     clampToViewport();
     window.addEventListener('resize', clampToViewport);
     return () => window.removeEventListener('resize', clampToViewport);
-  }, [open]);
+  }, [hidden]);
 
   const onDragStart = (e: React.MouseEvent) => {
     const panel = dragRef.current;
@@ -108,7 +107,6 @@ export function TweaksPanel({
     window.addEventListener('mouseup', up);
   };
 
-  if (!open) return null;
   if (hidden) {
     return (
       <>
