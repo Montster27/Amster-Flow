@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
@@ -31,6 +31,9 @@ import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
+// V3 design canvas — public route, lazy-loaded so it doesn't bloat the main bundle.
+const V3CanvasPage = lazy(() => import('./features/v3-canvas/V3CanvasPage'))
+
 // Initialize Sentry error tracking
 initSentry();
 
@@ -56,6 +59,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/terms" element={<TermsOfServicePage />} />
+
+                  {/* V3 design canvas — public, no auth gate (exploration UI) */}
+                  <Route
+                    path="/v3"
+                    element={
+                      <Suspense fallback={<div style={{padding:40}}>Loading canvas…</div>}>
+                        <V3CanvasPage />
+                      </Suspense>
+                    }
+                  />
 
                   {/* Protected routes */}
                   <Route
