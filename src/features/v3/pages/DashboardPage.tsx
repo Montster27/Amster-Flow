@@ -2,11 +2,17 @@
 // driven by real layer_state rows. HEAT pills surface on critical layers
 // below tier 3.
 
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayerStack, useVenture } from '../hooks/useVenture';
 import { GateBadge, PageShell, TierLadder, VentureHeader } from '../components/atoms';
-import { PK_LAYERS, pkTier } from '../lib/layers';
+import { PromptsPanel } from '../components/PromptsPanel';
+import { IndustrySwitcher } from '../components/IndustrySwitcher';
+import { layersFor } from '../lib/industryVariants';
+import { pkTier } from '../lib/layers';
 import { lookupPushback } from '../lib/voice';
+import { deriveAllPrompts } from '../lib/prompts';
+import type { Industry } from '../lib/layers';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
@@ -14,8 +20,14 @@ const FONT_SERIF = '"Instrument Serif", Georgia, serif';
 export default function V3DashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { venture, loading: vLoading } = useVenture(projectId);
-  const { stack, loading, error, gates, stage, filled, totalLayers } = useLayerStack(projectId);
+  const { venture, loading: vLoading, updateVenture } = useVenture(projectId);
+  const { rows, stack, loading, error, gates, stage, filled, totalLayers } = useLayerStack(projectId);
+  const industry: Industry = (venture?.industry_variant ?? 'software') as Industry;
+  const layers = useMemo(() => layersFor(industry), [industry]);
+  const prompts = useMemo(
+    () => deriveAllPrompts({ stack, rows, stage }),
+    [stack, rows, stage],
+  );
 
   if (!projectId) return <PageShell><div style={{ padding: 40 }}>Missing project id.</div></PageShell>;
   if (loading || vLoading) return <PageShell><div style={{ padding: 40 }}>Loading…</div></PageShell>;
@@ -30,7 +42,7 @@ export default function V3DashboardPage() {
     .map((id) => ({ id, tier: pkTier(id, stack[id]?.source_value) }))
     .filter((x) => x.tier < 3)
     .sort((a, b) => a.tier - b.tier)[0];
-  const pressLayer = press ? PK_LAYERS.find((L) => L.id === press.id) : null;
+  const pressLayer = press ? layers.find((L) => L.id === press.id) : null;
   const pressLine = press
     ? lookupPushback(press.id, press.tier, venture?.evaluator ?? 'investor')
     : null;
@@ -43,7 +55,11 @@ export default function V3DashboardPage() {
         evaluator={venture?.evaluator}
         gates={gates}
         right={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IndustrySwitcher
+              current={industry}
+              onChange={(next) => { void updateVenture({ industry_variant: next }); }}
+            />
             <button
               type="button"
               onClick={() => navigate(`/v3/door-b/${projectId}`)}
@@ -53,6 +69,24 @@ export default function V3DashboardPage() {
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
             >Edit stack</button>
+            <button
+              type="button"
+              onClick={() => navigate(`/v3/assumptions/${projectId}`)}
+              style={{
+                padding: '7px 12px', background: 'transparent', color: '#475569',
+                border: '1px solid #d6cfb8', borderRadius: 6, fontSize: 12,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >Assumptions</button>
+            <button
+              type="button"
+              onClick={() => navigate(`/v3/mini-process/${projectId}`)}
+              style={{
+                padding: '7px 12px', background: 'transparent', color: '#475569',
+                border: '1px solid #d6cfb8', borderRadius: 6, fontSize: 12,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >Mini-processes</button>
             <button
               type="button"
               onClick={() => navigate(`/v3/pitch/${projectId}`)}
@@ -67,6 +101,11 @@ export default function V3DashboardPage() {
       />
 
       <div style={{ padding: '20px 28px' }}>
+        <PromptsPanel
+          prompts={prompts}
+          onOpenLayer={(layerId) => navigate(`/v3/door-b/${projectId}#${layerId}`)}
+        />
+
         <div style={{
           display: 'flex', gap: 18, alignItems: 'baseline', marginBottom: 18,
         }}>
@@ -127,7 +166,7 @@ export default function V3DashboardPage() {
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 12,
         }}>
-          {PK_LAYERS.map((L) => {
+          {layers.map((L) => {
             const cell = stack[L.id];
             const isCrit = L.cat === 'critical';
             const tier = pkTier(L.id, cell?.source_value);

@@ -41,6 +41,8 @@ const V3DoorAPage      = lazy(() => import('./features/v3/pages/DoorAPage'))
 const V3DoorBPage      = lazy(() => import('./features/v3/pages/DoorBPage'))
 const V3DashboardPage  = lazy(() => import('./features/v3/pages/DashboardPage'))
 const V3PitchPage      = lazy(() => import('./features/v3/pages/PitchPage'))
+const V3AssumptionsPage = lazy(() => import('./features/v3/pages/AssumptionsPage'))
+const V3MiniProcessPage = lazy(() => import('./features/v3/pages/MiniProcessPage'))
 
 const v3Suspense = (el: React.ReactNode) => (
   <Suspense fallback={<div style={{padding:40}}>Loading…</div>}>{el}</Suspense>
@@ -124,6 +126,22 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         {v3Suspense(<V3PitchPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/assumptions/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3AssumptionsPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/mini-process/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3MiniProcessPage />)}
                       </ProtectedRoute>
                     }
                   />
