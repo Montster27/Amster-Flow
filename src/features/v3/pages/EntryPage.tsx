@@ -121,6 +121,31 @@ export default function EntryPage() {
     }
   };
 
+  // Soft-delete a project — matches the legacy DashboardPage pattern.
+  // Sets projects.deleted_at; pivotkit_* rows are left in place (their
+  // RLS goes through projects so they become unreachable from the UI).
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const onConfirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    setDeleting(true); setDeleteError(null);
+    try {
+      const { error: dErr } = await supabase
+        .from('projects')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', pendingDeleteId);
+      if (dErr) throw dErr;
+      setItems((prev) => prev.filter((i) => i.id !== pendingDeleteId));
+      setPendingDeleteId(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const myRole = memberships.find((m) => m.organization_id === orgId)?.role ?? null;
   const canCreate = myRole === 'owner' || myRole === 'editor' || myRole === 'admin';
 
@@ -350,52 +375,157 @@ export default function EntryPage() {
               : p.door_choice === 'B' ? 'Resume Door B'
               : 'Start onboarding';
             return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => enter(p)}
+              <div key={p.id} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => enter(p)}
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    padding: '16px 20px',
+                    paddingRight: canCreate ? 56 : 20,
+                    background: '#fff',
+                    border: '1px solid #e8dfc9', borderRadius: 10,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 14,
+                    alignItems: 'center',
+                    transition: 'border-color .12s, transform .12s, box-shadow .12s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#0f766e';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(15,118,110,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e8dfc9';
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                >
+                  <div>
+                    <div style={{
+                      fontSize: 16, color: '#0b1220', fontWeight: 600, lineHeight: 1.2,
+                    }}>{p.name}</div>
+                    {p.description && (
+                      <div style={{
+                        fontSize: 12.5, color: '#64748b', marginTop: 4, lineHeight: 1.5,
+                      }}>{p.description}</div>
+                    )}
+                    {!p.has_venture && (
+                      <div style={{
+                        fontSize: 11, color: '#94a3b8', marginTop: 4,
+                        fontFamily: FONT_MONO, letterSpacing: '0.06em',
+                      }}>NEW · NOT YET ENROLLED</div>
+                    )}
+                  </div>
+                  <span style={{
+                    fontFamily: FONT_MONO, fontSize: 10.5, color: '#0f766e',
+                    letterSpacing: '0.08em', fontWeight: 700,
+                  }}>{stateLabel.toUpperCase()} →</span>
+                </button>
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setPendingDeleteId(p.id); }}
+                    title={`Delete "${p.name}"`}
+                    aria-label={`Delete "${p.name}"`}
+                    style={{
+                      position: 'absolute', top: 12, right: 12,
+                      width: 28, height: 28, borderRadius: 6,
+                      background: 'transparent', border: '1px solid transparent',
+                      color: '#94a3b8', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, lineHeight: 1, fontFamily: 'inherit',
+                      transition: 'background .12s, color .12s, border-color .12s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#fef2f2';
+                      e.currentTarget.style.borderColor = '#fda4af';
+                      e.currentTarget.style.color = '#9f1239';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.color = '#94a3b8';
+                    }}
+                  >×</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Delete-confirm modal */}
+        {pendingDeleteId && (() => {
+          const target = items.find((i) => i.id === pendingDeleteId);
+          return (
+            <div
+              onClick={() => { if (!deleting) { setPendingDeleteId(null); setDeleteError(null); } }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 50,
+                background: 'rgba(11,18,32,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
                 style={{
-                  textAlign: 'left',
-                  padding: '16px 20px', background: '#fff',
-                  border: '1px solid #e8dfc9', borderRadius: 10,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'grid', gridTemplateColumns: '1fr auto', gap: 14,
-                  alignItems: 'center',
-                  transition: 'border-color .12s, transform .12s, box-shadow .12s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#0f766e';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(15,118,110,0.06)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e8dfc9';
-                  e.currentTarget.style.boxShadow = '';
+                  width: 460, maxWidth: '92vw',
+                  background: '#fff', borderRadius: 12, padding: '20px 22px',
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                  boxShadow: '0 12px 60px rgba(11,18,32,0.25)',
                 }}
               >
                 <div>
                   <div style={{
-                    fontSize: 16, color: '#0b1220', fontWeight: 600, lineHeight: 1.2,
-                  }}>{p.name}</div>
-                  {p.description && (
-                    <div style={{
-                      fontSize: 12.5, color: '#64748b', marginTop: 4, lineHeight: 1.5,
-                    }}>{p.description}</div>
-                  )}
-                  {!p.has_venture && (
-                    <div style={{
-                      fontSize: 11, color: '#94a3b8', marginTop: 4,
-                      fontFamily: FONT_MONO, letterSpacing: '0.06em',
-                    }}>NEW · NOT YET ENROLLED</div>
-                  )}
+                    fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: '#9f1239', fontWeight: 600,
+                  }}>Delete venture</div>
+                  <div style={{
+                    fontFamily: FONT_SERIF, fontSize: 22,
+                    color: '#0b1220', letterSpacing: '-0.01em', marginTop: 4,
+                  }}>{target?.name ?? 'this venture'}</div>
                 </div>
-                <span style={{
-                  fontFamily: FONT_MONO, fontSize: 10.5, color: '#0f766e',
-                  letterSpacing: '0.08em', fontWeight: 700,
-                }}>{stateLabel.toUpperCase()} →</span>
-              </button>
-            );
-          })}
-        </div>
+
+                <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.55 }}>
+                  This is a soft delete — the project is hidden from PivotKit but the
+                  underlying data (layer claims, sources, assumptions, mini-process runs,
+                  audit log) is retained. You can ask an admin to restore it later if needed.
+                </div>
+
+                {deleteError && (
+                  <div role="alert" style={{
+                    padding: '8px 12px', background: '#fef2f2',
+                    border: '1px solid #fda4af', borderRadius: 6,
+                    color: '#9f1239', fontSize: 12.5,
+                  }}>{deleteError}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                  <button
+                    type="button"
+                    onClick={() => { void onConfirmDelete(); }}
+                    disabled={deleting}
+                    style={{
+                      padding: '9px 16px',
+                      background: deleting ? '#fda4af' : '#9f1239',
+                      color: '#fff',
+                      border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                      cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                    }}
+                  >{deleting ? 'Deleting…' : 'Delete venture'}</button>
+                  <button
+                    type="button"
+                    onClick={() => { setPendingDeleteId(null); setDeleteError(null); }}
+                    disabled={deleting}
+                    style={{
+                      padding: '9px 14px', background: 'transparent', color: '#64748b',
+                      border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13,
+                      cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                    }}
+                  >Cancel</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div style={{
           marginTop: 28, paddingTop: 18, borderTop: '1px solid #ece6d6',
