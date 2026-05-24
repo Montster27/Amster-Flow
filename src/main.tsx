@@ -34,6 +34,9 @@ import './index.css'
 // V3 design canvas (mocks) — public route, lazy-loaded.
 const V3CanvasPage = lazy(() => import('./features/v3-canvas/V3CanvasPage'))
 
+// Door A L8.3 + L10.1 wireframes — public mock route, lazy-loaded.
+const WireframesPage = lazy(() => import('../WireframeReview'))
+
 // V3 functional app — auth-gated, lazy-loaded.
 const V3EntryPage      = lazy(() => import('./features/v3/pages/EntryPage'))
 const V3OnboardingPage = lazy(() => import('./features/v3/pages/OnboardingPage'))
@@ -78,6 +81,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route
                     path="/v3/canvas"
                     element={v3Suspense(<V3CanvasPage />)}
+                  />
+
+                  {/* Door A L8.3 + L10.1 wireframes — public mock */}
+                  <Route
+                    path="/v3/wireframes"
+                    element={v3Suspense(<WireframesPage />)}
                   />
 
                   {/* V3 functional app — auth-gated */}
