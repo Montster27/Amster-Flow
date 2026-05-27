@@ -12,6 +12,8 @@ import type {
 import type {
   AssumptionChannel, AssumptionRow, AssumptionState,
 } from './assumptions';
+import type { DoorAState } from './doorAState';
+import { hydrate as hydrateDoorAState } from './doorAState';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -106,6 +108,48 @@ export async function upsertLayerState(args: {
     .single();
   if (error) throw error;
   return data as LayerStateRow;
+}
+
+// ── pivotkit_door_a_state ──
+//
+// One row per project, JSONB blob. Shape defined in lib/doorAState.ts. We
+// run the payload through `hydrate()` on read so a row written by an older
+// client still parses cleanly.
+
+interface DoorAStateRow {
+  project_id: string;
+  data: unknown;
+  updated_at?: string;
+  updated_by?: string | null;
+}
+
+/** Fetch the Door A blob for a project. Returns null when no row exists yet
+ *  (e.g. founder hasn't started the L8 flow). */
+export async function fetchDoorAState(projectId: string): Promise<DoorAState | null> {
+  const { data, error } = await sb
+    .from('pivotkit_door_a_state')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as DoorAStateRow;
+  return hydrateDoorAState(row.data);
+}
+
+/** Upsert the full Door A blob. Resolves the unique conflict on project_id. */
+export async function upsertDoorAState(
+  projectId: string, next: DoorAState,
+): Promise<DoorAState> {
+  const payload = { project_id: projectId, data: next };
+  const { data, error } = await sb
+    .from('pivotkit_door_a_state')
+    .upsert(payload, { onConflict: 'project_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  const row = data as DoorAStateRow;
+  return hydrateDoorAState(row.data);
 }
 
 // ── pivotkit_assumptions ──

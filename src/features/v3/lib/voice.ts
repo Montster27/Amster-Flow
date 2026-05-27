@@ -152,3 +152,45 @@ export function pushbackOver(
   }
   return out.sort((a, b) => a.tier - b.tier);
 }
+
+// ── Step-level voice (Door A L8.1–L10.4) ──
+//
+// Keyed by step id (matches the ids the step state machine uses). Body is a
+// single paragraph the founder reads on entry to that step. Kept as data so
+// content can move to a CMS later without code changes.
+
+export type StepId =
+  | 'l8.1' | 'l8.2' | 'l8.3' | 'l8.4'
+  | 'l9.1' | 'l9.2' | 'l9.3' | 'l9.4'
+  | 'l10.1' | 'l10.2' | 'l10.3' | 'l10.4';
+
+export const STEP_VOICE: Readonly<Record<StepId, string>> = Object.freeze({
+  'l8.1': "This is the part most founders skip. You picked the first group you thought of in the shower. Force yourself to list five. The third and fourth are usually the most interesting.",
+  'l8.2': "'18–40 year olds' is a category. '18–23 year olds I can reach on campus' is a beachhead. The channel you have access to is itself a way to narrow — not a check you do at the end.",
+  'l8.3': "You're ranking sub-groups by how much pain they have, how easy they are to reach, and how big they are. We weight pain heaviest because a painless market is a hobby, and reachability second because an unreachable market is a dream. Size is third because founders systematically overweight it.",
+  'l8.4': "The instinct is to pick the biggest market. The right move is the most acute pain you can actually reach. Big markets are where you end up; tiny desperate groups you can put your hands on are where you start.",
+  'l9.1': "'Small business owners struggle with onboarding' is a category, not a problem statement. What does the founder of a 6-person consulting firm in Austin actually do on Monday morning that makes onboarding suck for them?",
+  'l9.2': "Everybody rates their problem Critical the first time. About one in twenty actually has a Critical problem. If you say Critical, the next thing this tool is going to ask you to do is talk to five people in your beachhead who'll tell you whether you're right.",
+  'l9.3': "Describe the solution specifically for this beachhead. The assumption queue is listening — every claim you make here that starts with 'they will' or 'users want' becomes something Discovery has to prove.",
+  'l9.4': "I can save you five minutes, but it takes you four minutes to learn how. That's the kind of math that kills products. The benefit has to be obviously bigger than the cost, in the user's head, in the first 30 seconds. Otherwise they don't switch.",
+  'l10.1': "Every customer is a consumer eventually. The question is how many people are between you and them. Every link takes a margin and has an opinion about your price. The further left you sit, the more people have to agree before you make a sale.",
+  'l10.2': "These numbers are starting estimates, not gospel. Every margin you see here is something you need to verify. Industries vary wildly, and the only way to know is to ask someone in the chain. Add the ones you accepted to your Discovery list.",
+  'l10.3': "Don't get clever yet. Pick the model your industry uses by default. If 90% of your space is subscription, your job is not to be the snowflake — your job is to be subscription that's better. Snowflake business models are a third pivot, not a first one.",
+  'l10.4': "The most common competitor is 'they live with it.' If your beachhead's current answer is to suck it up and complain, your job is not to beat a competitor — it's to convince them the suck is solvable. Different problem.",
+});
+
+// ── Specific in-step warnings ──
+
+export const STEP_WARNING: Readonly<Record<string, string>> = Object.freeze({
+  'l9.4.close_call': "Close-call benefits almost never drive switching. Humans don't make small upgrades — they make obvious ones or they stay put. If your honest answer is close call, you have two choices: strengthen the solution until the benefit is obvious, or find a sub-group where the same solution is a clear win because their pain is bigger.",
+  'l10.1.direct_b2c': "Most B2B products have intermediate links. Sure you're direct to consumer? You can always come back.",
+  'l8.1.few_groups': "You listed two. That's the shower-thought answer. Most of the interesting beachheads are hiding in the third, fourth, and fifth group you'd think of. Want to try a couple more?",
+});
+
+export function lookupStepVoice(stepId: StepId): string {
+  return STEP_VOICE[stepId];
+}
+
+export function lookupStepWarning(key: string): string | null {
+  return STEP_WARNING[key] ?? null;
+}

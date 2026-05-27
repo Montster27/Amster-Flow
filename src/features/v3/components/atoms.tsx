@@ -1,10 +1,14 @@
 // Functional v3 atoms — reusable across Door A, Door B, dashboard, pitch.
 // These are the persistence-aware versions of the design-canvas atoms.
 
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { PK_LAYER_BY_ID, PK_SOURCES, pkTier } from '../lib/layers';
 import type { LayerCategory, SourceId } from '../lib/layers';
 import type { GateProgress } from '../lib/gates';
+import {
+  AMBER_FG, AMBER_LINE, AMBER_SOFT, GOLD, HAIR, INK, MUTED,
+  SLATE_FG, STONE, TAN, TEAL,
+} from '../lib/tokens';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
@@ -280,3 +284,203 @@ export function VentureHeader({
     </header>
   );
 }
+
+// ── MentorCallout — coral/amber-accented "Monty voice" block ──
+//
+// Replaces the inline pushback styling that's been copy-pasted into DoorAPage
+// and DashboardPage. Keep tone direct, not corporate.
+
+export function MentorCallout({
+  kicker = 'Monty · mentor voice',
+  body,
+  italic = false,
+  tone = 'gold',
+}: {
+  kicker?: string;
+  body: ReactNode;
+  italic?: boolean;
+  tone?: 'gold' | 'amber';
+}) {
+  const isAmber = tone === 'amber';
+  return (
+    <div style={{
+      padding: '14px 16px',
+      background: isAmber ? AMBER_SOFT : '#fff',
+      border: `1px solid ${isAmber ? AMBER_LINE : TAN}`,
+      borderLeft: `3px solid ${isAmber ? AMBER_FG : GOLD}`,
+      borderRadius: 8,
+      display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        fontFamily: FONT_MONO, fontSize: 9.5,
+        color: isAmber ? '#92400e' : AMBER_FG,
+        letterSpacing: '0.12em', fontWeight: 700, textTransform: 'uppercase',
+      }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: isAmber ? AMBER_FG : GOLD,
+        }} />
+        {kicker}
+      </div>
+      <div style={{
+        fontFamily: italic ? FONT_SERIF : 'inherit',
+        fontSize: italic ? 15.5 : 13.5,
+        lineHeight: 1.45, color: INK,
+        fontStyle: italic ? 'italic' : 'normal',
+      }}>{italic && typeof body === 'string' ? <>&ldquo;{body}&rdquo;</> : body}</div>
+    </div>
+  );
+}
+
+// ── PillOption — selectable pill with hover/focus tooltip ──
+//
+// Used by L8.3 (triple-filter scoring) and L10.3 (business model picker).
+// The visible tooltip is supplemented by a native `title` so screen readers
+// get the same content.
+
+export function PillOption({
+  selected, label, tip, onClick, disabled,
+}: {
+  selected: boolean;
+  label: string;
+  tip: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        title={tip}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        style={{
+          padding: '5px 11px', borderRadius: 999,
+          fontSize: 11.5, fontWeight: 500,
+          border: `1px solid ${selected ? INK : TAN}`,
+          background: selected ? INK : '#fff',
+          color: selected ? '#fff' : SLATE_FG,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.55 : 1,
+          fontFamily: 'inherit',
+          transition: 'background .12s, color .12s, border-color .12s',
+        }}
+      >{label}</button>
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute', left: '50%', top: '100%',
+            transform: 'translate(-50%, 8px)',
+            zIndex: 30, width: 240,
+            padding: '8px 10px', borderRadius: 6,
+            background: INK, color: '#f8fafc',
+            fontSize: 11.5, lineHeight: 1.4,
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none',
+          }}
+        >{tip}</span>
+      )}
+    </span>
+  );
+}
+
+// ── ScoreBar — normalized horizontal bar with numeric readout ──
+//
+// Used by L8.3 to visualize the per-sub-group beachhead score (range 6-18,
+// normalized 0-1 for the bar). Null raw → empty bar + em dash.
+
+export function ScoreBar({
+  raw, normalized,
+}: {
+  /** Raw score (6–18) or null when unscored. */
+  raw: number | null;
+  /** Pre-normalized 0–1 fill. */
+  normalized: number;
+}) {
+  const isHigh = normalized >= 0.7;
+  const isLow = normalized > 0 && normalized < 0.4;
+  const barColor = raw == null ? 'transparent' : isHigh ? TEAL : isLow ? MUTED : '#94a3b8';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        flex: 1, height: 6, borderRadius: 3, background: HAIR, overflow: 'hidden',
+      }}>
+        <div style={{
+          width: `${Math.max(0, Math.min(1, normalized)) * 100}%`,
+          height: '100%', background: barColor,
+          transition: 'width .25s ease',
+        }} />
+      </div>
+      <span style={{
+        fontFamily: FONT_MONO, fontSize: 11.5,
+        color: raw == null ? MUTED : isHigh ? TEAL : INK,
+        fontWeight: isHigh ? 700 : 500,
+        fontVariantNumeric: 'tabular-nums',
+        minWidth: 22, textAlign: 'right',
+      }}>{raw == null ? '—' : raw}</span>
+    </div>
+  );
+}
+
+// ── BeachheadRadio — single-select toggle visualized as a radio dot ──
+//
+// A button under the hood; aria-pressed conveys state. Only one is selected
+// at a time across the grid (parent owns the selection).
+
+export function BeachheadRadio({
+  selected, label, onToggle,
+}: {
+  selected: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Select ${label} as beachhead`}
+      aria-pressed={selected}
+      onClick={onToggle}
+      style={{
+        width: 20, height: 20, borderRadius: '50%',
+        border: `2px solid ${selected ? TEAL : STONE}`,
+        background: selected ? TEAL : '#fff',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', padding: 0,
+        transition: 'border-color .12s, background .12s',
+      }}
+    >
+      {selected && (
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%', background: GOLD,
+        }} />
+      )}
+    </button>
+  );
+}
+
+// ── ParentChip — small chip used for parent-group listings ──
+
+export function ParentChip({ name, count }: { name: string; count: number }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '4px 10px', borderRadius: 999,
+      border: `1px solid ${TAN}`, background: '#fff',
+      fontFamily: FONT_MONO, fontSize: 10.5,
+      letterSpacing: '0.06em', textTransform: 'uppercase',
+      color: SLATE_FG, fontWeight: 600,
+    }}>
+      <span style={{ color: INK, fontWeight: 700 }}>{name}</span>
+      <span style={{ color: MUTED }}>· {count}</span>
+    </span>
+  );
+}
+
+
