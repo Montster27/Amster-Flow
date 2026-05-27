@@ -16,6 +16,7 @@ import { useDoorAState } from '../hooks/useDoorAState';
 import { useLayerStack, useVenture } from '../hooks/useVenture';
 import { PageShell, VentureHeader } from '../components/atoms';
 import { FOUNDATION_QUEUE, PK_LAYER_BY_ID, pkTier } from '../lib/layers';
+import type { SourceId } from '../lib/layers';
 import {
   FONT_MONO, FONT_SERIF, HAIR, INK, MUTED, PAPER, SLATE_FG, TAN, TEAL, TEAL_LITE,
 } from '../lib/tokens';
@@ -47,21 +48,43 @@ function setHash(step: StepId) {
 //
 // Lists all 12 steps with done / current / locked status. Click to jump.
 
+function renderStars(tier: number): string {
+  const filled = Math.max(0, Math.min(5, tier));
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+}
+
 function StepRail({
-  currentStep, onJump, stack,
+  currentStep, onJump, stack, draftSources,
 }: {
   currentStep: StepId;
   onJump: (s: StepId) => void;
   stack: Record<string, { claim_text?: string | null; source_value?: string | null } | undefined>;
+  /** In-flight per-layer source picks from DoorAState. Lets the rail render
+   *  the live star count for the layer the founder is currently editing,
+   *  before they click Continue. */
+  draftSources: Partial<Record<string, string>>;
 }) {
   // A step is "done" when its target layer has any claim_text.
   const isDone = (s: StepMeta) => Boolean(stack[s.layerId]?.claim_text);
 
-  const stepsBySection: { title: string; steps: StepMeta[] }[] = [
-    { title: 'L8 · Customer Segment', steps: STEPS.filter((s) => s.id.startsWith('l8.')) },
-    { title: 'L9 · Problem & Solution', steps: STEPS.filter((s) => s.id.startsWith('l9.')) },
-    { title: 'L10 · Business Model',  steps: STEPS.filter((s) => s.id.startsWith('l10.')) },
-  ];
+  // Group steps by the canonical layer they contribute to, preserving STEPS order.
+  // Sub-step numbers (l8.1, l9.3, etc.) are not user-facing.
+  const stepsBySection: { title: string; steps: StepMeta[] }[] = (() => {
+    const out: { layerId: string; title: string; steps: StepMeta[] }[] = [];
+    for (const s of STEPS) {
+      const layer = PK_LAYER_BY_ID[s.layerId];
+      const title = layer
+        ? `L${String(layer.n).padStart(2, '0')} · ${layer.name}`
+        : s.layerId;
+      let section = out.find((sec) => sec.layerId === s.layerId);
+      if (!section) {
+        section = { layerId: s.layerId, title, steps: [] };
+        out.push(section);
+      }
+      section.steps.push(s);
+    }
+    return out.map(({ title, steps }) => ({ title, steps }));
+  })();
 
   return (
     <aside style={{
@@ -75,19 +98,39 @@ function StepRail({
           marginBottom: 8,
         }}>Door A · Step graph</div>
         <div style={{ fontSize: 11.5, color: SLATE_FG, lineHeight: 1.45 }}>
-          12 steps across L8 → L10. Nudge, don't block — you can skip ahead
-          and come back. Each step contributes a claim to the underlying layer
-          so your gates keep moving.
+          12 steps that fill the six foundation layers. Nudge, don't block — you
+          can skip ahead and come back. Each step contributes a claim to the
+          underlying layer so your gates keep moving.
         </div>
       </div>
 
-      {stepsBySection.map((section) => (
+      {stepsBySection.map((section) => {
+        // After T6, each section maps to one canonical layer.
+        const sectionLayerId = section.steps[0]?.layerId;
+        const liveSrc = sectionLayerId
+          ? (draftSources[sectionLayerId] ?? stack[sectionLayerId]?.source_value ?? null)
+          : null;
+        const tier = sectionLayerId
+          ? pkTier(sectionLayerId, liveSrc as SourceId | null)
+          : 0;
+        return (
         <div key={section.title}>
           <div style={{
-            fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
-            textTransform: 'uppercase', color: MUTED, fontWeight: 700,
-            marginBottom: 6,
-          }}>{section.title}</div>
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            gap: 6, marginBottom: 6,
+          }}>
+            <span style={{
+              fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: MUTED, fontWeight: 700,
+            }}>{section.title}</span>
+            <span
+              aria-label={`${tier} of 5 stars`}
+              style={{
+                fontFamily: FONT_MONO, fontSize: 11,
+                color: tier >= 2 ? TEAL : MUTED, letterSpacing: '0.04em',
+              }}
+            >{renderStars(tier)}</span>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {section.steps.map((s) => {
               const done = isDone(s);
@@ -98,7 +141,7 @@ function StepRail({
                   type="button"
                   onClick={() => onJump(s.id)}
                   style={{
-                    display: 'grid', gridTemplateColumns: '40px 1fr 16px',
+                    display: 'grid', gridTemplateColumns: '1fr 16px',
                     alignItems: 'center', gap: 8,
                     padding: '7px 10px',
                     textAlign: 'left', cursor: 'pointer',
@@ -108,11 +151,6 @@ function StepRail({
                     borderRadius: 6,
                   }}
                 >
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 10,
-                    color: isCurrent ? TEAL : MUTED,
-                    fontWeight: 700, letterSpacing: '0.04em',
-                  }}>{s.id.toUpperCase().replace('L', '')}</span>
                   <span style={{
                     fontSize: 12.5,
                     color: isCurrent ? INK : SLATE_FG,
@@ -129,7 +167,8 @@ function StepRail({
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <div style={{
         padding: '10px 12px', borderRadius: 6,
@@ -245,24 +284,47 @@ export default function DoorAPage() {
       }}>
         <div style={{ borderRight: `1px solid ${HAIR}`, background: PAPER }}>
           {/* Page title rail */}
-          <div style={{
-            padding: '14px 40px 0', display: 'flex',
-            alignItems: 'baseline', gap: 12,
-          }}>
-            <span style={{
-              fontFamily: FONT_MONO, fontSize: 10.5, color: MUTED,
-              letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600,
-            }}>You are here</span>
-            <span style={{
-              fontFamily: FONT_SERIF, fontSize: 17, color: INK,
-              letterSpacing: '-0.005em',
-            }}>{PK_LAYER_BY_ID[STEPS.find((s) => s.id === step)?.layerId ?? 'customerSegment']?.name}</span>
-            <span style={{ color: MUTED, fontSize: 12 }}>·</span>
-            <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: SLATE_FG, letterSpacing: '0.06em' }}>{step.toUpperCase()}</span>
-          </div>
+          {(() => {
+            const meta = STEPS.find((s) => s.id === step);
+            const layer = meta ? PK_LAYER_BY_ID[meta.layerId] : null;
+            return (
+              <div style={{
+                padding: '14px 40px 0', display: 'flex',
+                alignItems: 'baseline', gap: 12,
+              }}>
+                <span style={{
+                  fontFamily: FONT_MONO, fontSize: 10.5, color: MUTED,
+                  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600,
+                }}>You are here</span>
+                {layer && (
+                  <span style={{
+                    fontFamily: FONT_MONO, fontSize: 11, color: TEAL,
+                    letterSpacing: '0.08em', fontWeight: 700,
+                  }}>L{String(layer.n).padStart(2, '0')}</span>
+                )}
+                <span style={{
+                  fontFamily: FONT_SERIF, fontSize: 17, color: INK,
+                  letterSpacing: '-0.005em',
+                }}>{layer?.name ?? meta?.layerId}</span>
+                {meta && (
+                  <>
+                    <span style={{ color: MUTED, fontSize: 12 }}>·</span>
+                    <span style={{
+                      fontSize: 13, color: SLATE_FG,
+                    }}>{meta.label}</span>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <StepView stepId={step} {...stepProps} />
         </div>
-        <StepRail currentStep={step} onJump={goTo} stack={stack} />
+        <StepRail
+          currentStep={step}
+          onJump={goTo}
+          stack={stack}
+          draftSources={state.draftSources}
+        />
       </div>
     </PageShell>
   );

@@ -10,21 +10,21 @@
 // the founder's lived sense of the problem). They can upgrade the source
 // on the dashboard later.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BeachheadRadio, CategoryBadge, MentorCallout,
-  ParentChip, PillOption, ScoreBar,
+  ParentChip, PillOption, ScoreBar, SourcePicker,
 } from '../components/atoms';
 import {
   ChainArrow, ChainNode, TemplateMini, CHAIN_TEMPLATES,
   type ChainTemplate,
 } from '../components/valueChain';
 import {
-  computeBeachheadScore, extractAssumptions, isCloseCall,
+  computeBeachheadScore, isCloseCall,
   nodesOrdered as nodesOrderedFn, normalizedScore, topRankedSubgroup,
   type AdoptionVerdict, type BusinessModelId, type ChainNode as ChainNodeT,
   type ChainRole, type Competitor, type CompetitorTag,
-  type DoorAState, type ExtractedAssumption, type PainValue,
+  type DoorAState, type DoorASourceId, type PainValue,
   type ParentGroup, type ReachValue, type SizeValue, type SubGroup,
   type ValueChain,
 } from '../lib/doorAState';
@@ -79,9 +79,12 @@ const SIZE_OPTIONS: { value: SizeValue; label: string; tip: string }[] = [
 // ── Layout helpers ──
 
 function StepFrame({
-  stepId, title, children,
+  stepId, title, children, suppressVoice = false,
 }: {
   stepId: StepId; title: string; children: React.ReactNode;
+  /** When true, hide the static voice callout — a reactive card is showing
+   *  in the main column and we render at most one card at a time. */
+  suppressVoice?: boolean;
 }) {
   const voice = lookupStepVoice(stepId);
   return (
@@ -92,10 +95,6 @@ function StepFrame({
       <main style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <CategoryBadge cat="critical" />
-          <span style={{
-            fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: '0.12em',
-            color: MUTED, fontWeight: 600, textTransform: 'uppercase',
-          }}>Step {stepId.toUpperCase().replace('L', 'L')}</span>
         </div>
         <h2 style={{
           fontFamily: FONT_SERIF, fontSize: 30, lineHeight: 1.15,
@@ -104,8 +103,56 @@ function StepFrame({
         {children}
       </main>
       <aside style={{ alignSelf: 'start', position: 'sticky', top: 88 }}>
-        <MentorCallout body={voice} italic />
+        {!suppressVoice && <MentorCallout body={voice} italic />}
       </aside>
+    </div>
+  );
+}
+
+// Source picker for the contributing Door A steps. Pre-selects 'experience'
+// visually; the underlying state lives in `state.draftSources[layerId]` and
+// is flushed to pivotkit_layer_states.source_value when the founder clicks
+// Continue past the step.
+function StepSourcePicker({
+  layerId, state, update,
+}: {
+  layerId: string;
+  state: DoorAState;
+  update: StepProps['update'];
+}) {
+  const current: SourceId = (state.draftSources[layerId] as SourceId | undefined) ?? 'experience';
+  // First time the founder lands on this contributing step, stamp the
+  // pre-selected default into draftSources so the picker, the right-rail
+  // star count, and saveLayer's source_value all agree without the user
+  // having to click. Later visits keep whatever the user picked.
+  const draft = state.draftSources[layerId];
+  useEffect(() => {
+    if (draft === undefined) {
+      update((prev) => ({
+        ...prev,
+        draftSources: { ...prev.draftSources, [layerId]: 'experience' },
+      }));
+    }
+  }, [layerId, draft, update]);
+
+  return (
+    <div style={{
+      marginBottom: 20, paddingTop: 14,
+      borderTop: `1px dashed ${TAN}`,
+    }}>
+      <SourcePicker
+        value={current}
+        layerId={layerId}
+        onChange={(id) => {
+          update((prev) => ({
+            ...prev,
+            draftSources: {
+              ...prev.draftSources,
+              [layerId]: (id ?? 'experience') as DoorASourceId,
+            },
+          }));
+        }}
+      />
     </div>
   );
 }
@@ -162,9 +209,10 @@ export function Step8_1({ state, update, goTo }: StepProps) {
   };
 
   const tooFew = groups.length < 3;
+  const reactiveShowing = tooFew && groups.length > 0;
 
   return (
-    <StepFrame stepId="l8.1" title="List all the groups who might need this product.">
+    <StepFrame stepId="l8.1" title="List all the groups who might need this product." suppressVoice={reactiveShowing}>
       <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0 }}>
         Cast wide — we'll narrow later. Three or more is the minimum that's worth scoring;
         five or more usually surfaces a beachhead you wouldn't have guessed.
@@ -623,7 +671,7 @@ export function Step8_4({ state, update, goTo, saveLayer }: StepProps) {
     // machinery picks it up unchanged.
     await saveLayer('customerSegment', {
       claim_text: beach.name,
-      source_value: 'experience',
+      source_value: state.draftSources.customerSegment ?? 'experience',
     });
     goTo('l9.1');
   };
@@ -661,6 +709,7 @@ export function Step8_4({ state, update, goTo, saveLayer }: StepProps) {
               marginBottom: 16,
             }}
           />
+          <StepSourcePicker layerId="customerSegment" state={state} update={update} />
           <NavRow
             onBack={() => goTo('l8.3')}
             onNext={lockAndContinue}
@@ -686,7 +735,7 @@ export function Step9_1({ state, update, goTo, saveLayer }: StepProps) {
     if (state.l9.problemRestated.trim()) {
       await saveLayer('problem', {
         claim_text: state.l9.problemRestated.trim(),
-        source_value: 'experience',
+        source_value: state.draftSources.problem ?? 'experience',
       });
     }
     goTo('l9.2');
@@ -708,9 +757,10 @@ export function Step9_1({ state, update, goTo, saveLayer }: StepProps) {
           border: `1px solid ${TAN}`, borderRadius: 6,
           fontSize: 14, lineHeight: 1.55, fontFamily: 'inherit',
           color: INK, background: '#fff', resize: 'vertical', outline: 'none',
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       />
+      <StepSourcePicker layerId="problem" state={state} update={update} />
       <NavRow onBack={() => goTo('l8.4')} onNext={onNext} nextLabel="Continue → pain scale" />
     </StepFrame>
   );
@@ -726,7 +776,7 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
     if (rating) {
       await saveLayer('painScale', {
         claim_text: `${rating} — ${state.l9.painJustification.trim()}`.slice(0, 500),
-        source_value: 'experience',
+        source_value: state.draftSources.painScale ?? 'experience',
       });
       // Critical claims become explicit Discovery targets.
       if (rating === 'critical' && state.l9.painJustification.trim().length > 0) {
@@ -747,7 +797,7 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
   const tooStrong = state.l9.painRating === 'critical';
 
   return (
-    <StepFrame stepId="l9.2" title="How acute is this pain — really?">
+    <StepFrame stepId="l9.2" title="How acute is this pain — really?" suppressVoice={tooStrong}>
       <BeachheadFixedHeader state={state} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
         {PAIN_OPTIONS.map((o) => {
@@ -802,6 +852,7 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
         </div>
       )}
 
+      <StepSourcePicker layerId="painScale" state={state} update={update} />
       <NavRow onBack={() => goTo('l9.1')} onNext={onNext} nextLabel="Continue → solution" />
     </StepFrame>
   );
@@ -811,57 +862,14 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
 // L9.3 — Solution + extracted assumptions
 // ──────────────────────────────────────────────────────────────────
 
-export function Step9_3({ state, update, goTo, saveLayer, createDirectAssumption }: StepProps) {
+export function Step9_3({ state, update, goTo, saveLayer }: StepProps) {
   const solution = state.l9.solution;
-
-  const refreshExtraction = () => {
-    const sentences = extractAssumptions(solution);
-    // Preserve already-promoted assumptions; mark new candidates as not promoted.
-    update((prev) => {
-      const existing = new Map(prev.l9.extractedAssumptions.map((a) => [a.text, a]));
-      const next: ExtractedAssumption[] = sentences.map((text) =>
-        existing.get(text) ?? { id: uid('a'), text, promoted: false },
-      );
-      return { ...prev, l9: { ...prev.l9, extractedAssumptions: next } };
-    });
-  };
-
-  const promote = async (a: ExtractedAssumption) => {
-    if (a.promoted) return;
-    try {
-      await createDirectAssumption({
-        layerId: 'solution',
-        text: a.text,
-        notes: 'Auto-extracted from L9.3 solution text.',
-      });
-      update((prev) => ({
-        ...prev,
-        l9: {
-          ...prev.l9,
-          extractedAssumptions: prev.l9.extractedAssumptions.map((x) =>
-            x.id === a.id ? { ...x, promoted: true } : x,
-          ),
-        },
-      }));
-    } catch {
-      // Surface as inline error in a future polish pass; swallowed here.
-    }
-  };
-
-  const dismiss = (id: string) =>
-    update((prev) => ({
-      ...prev,
-      l9: {
-        ...prev.l9,
-        extractedAssumptions: prev.l9.extractedAssumptions.filter((x) => x.id !== id),
-      },
-    }));
 
   const onNext = async () => {
     if (state.l9.solution.trim()) {
       await saveLayer('solution', {
         claim_text: state.l9.solution.trim(),
-        source_value: 'experience',
+        source_value: state.draftSources.solution ?? 'experience',
       });
     }
     goTo('l9.4');
@@ -873,7 +881,6 @@ export function Step9_3({ state, update, goTo, saveLayer, createDirectAssumption
       <textarea
         value={solution}
         onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, solution: e.target.value } }))}
-        onBlur={refreshExtraction}
         placeholder="1–3 sentences. What does the product actually do for this person?"
         style={{
           width: '100%', minHeight: 120, padding: '12px 14px',
@@ -883,70 +890,15 @@ export function Step9_3({ state, update, goTo, saveLayer, createDirectAssumption
           marginBottom: 12,
         }}
       />
-      <button
-        type="button"
-        onClick={refreshExtraction}
-        disabled={!solution.trim()}
-        style={{
-          padding: '6px 12px', background: 'transparent',
-          border: `1px solid ${TAN}`, borderRadius: 4,
-          fontSize: 12, color: INK, fontFamily: 'inherit',
-          cursor: solution.trim() ? 'pointer' : 'not-allowed',
-          opacity: solution.trim() ? 1 : 0.5, marginBottom: 16,
-        }}
-      >Extract candidate assumptions</button>
-
-      {state.l9.extractedAssumptions.length > 0 && (
-        <div style={{
-          padding: 14, borderRadius: 8, background: PAPER,
-          border: `1px solid ${TAN}`, marginBottom: 20,
-        }}>
-          <div style={{
-            fontFamily: FONT_MONO, fontSize: 10, color: SLATE_FG,
-            letterSpacing: '0.12em', textTransform: 'uppercase',
-            fontWeight: 600, marginBottom: 8,
-          }}>Candidate assumptions ({state.l9.extractedAssumptions.length})</div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {state.l9.extractedAssumptions.map((a) => (
-              <li key={a.id} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                padding: '8px 0', borderTop: `1px solid ${HAIR}`,
-                fontSize: 13, color: INK, lineHeight: 1.45,
-              }}>
-                <span style={{ flex: 1 }}>{a.text}</span>
-                {a.promoted ? (
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 10, color: TEAL,
-                    letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
-                  }}>queued ✓</span>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => promote(a)}
-                      style={{
-                        background: 'transparent', border: `1px solid ${TEAL}`,
-                        color: TEAL, borderRadius: 4, padding: '2px 8px',
-                        fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
-                      }}
-                    >Queue</button>
-                    <button
-                      type="button"
-                      onClick={() => dismiss(a.id)}
-                      style={{
-                        background: 'transparent', border: 'none', color: MUTED,
-                        cursor: 'pointer', fontSize: 14,
-                      }}
-                      aria-label="Dismiss"
-                    >×</button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+      <div style={{
+        padding: '10px 12px', marginBottom: 16, borderRadius: 6,
+        background: PAPER, border: `1px solid ${TAN}`,
+        fontSize: 12.5, color: SLATE_FG, lineHeight: 1.5,
+      }}>
+        We&apos;ll generate assumption candidates from your stack on the next screen —
+        review them on the <strong style={{ color: INK }}>Assumption stack</strong> when you graduate.
+      </div>
+      <StepSourcePicker layerId="solution" state={state} update={update} />
       <NavRow onBack={() => goTo('l9.2')} onNext={onNext} nextLabel="Continue → adoption cost" />
     </StepFrame>
   );
@@ -965,9 +917,10 @@ const VERDICT_OPTIONS: { value: AdoptionVerdict; label: string }[] = [
 export function Step9_4({ state, update, goTo }: StepProps) {
   const closeCall = isCloseCall(state.l9);
   const warning = lookupStepWarning('l9.4.close_call');
+  const reactiveShowing = closeCall && Boolean(warning);
 
   return (
-    <StepFrame stepId="l9.4" title="What does the user have to give up to use this?">
+    <StepFrame stepId="l9.4" title="What does the user have to give up to use this?" suppressVoice={reactiveShowing}>
       <BeachheadFixedHeader state={state} />
       <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0 }}>
         Time, money, learning curve, switching from what they use now, telling their team — anything beyond paying.
@@ -1080,6 +1033,7 @@ export function Step10_1({ state, update, goTo }: StepProps) {
   const nodes = nodesOrderedFn(chain);
   const isDirectB2C = nodes.length === 2;
   const warning = lookupStepWarning('l10.1.direct_b2c');
+  const reactiveShowing = isDirectB2C && Boolean(warning);
 
   const setChain = (next: ValueChain) => update((prev) => ({ ...prev, l10: { ...prev.l10, chain: next } }));
 
@@ -1165,7 +1119,7 @@ export function Step10_1({ state, update, goTo }: StepProps) {
   };
 
   return (
-    <StepFrame stepId="l10.1" title="Where are you in the value chain?">
+    <StepFrame stepId="l10.1" title="Where are you in the value chain?" suppressVoice={reactiveShowing}>
       <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0, marginBottom: 16 }}>
         Between you and the person who ultimately uses what you make, how many steps are there?
         Add a node for each link in the chain.
@@ -1424,7 +1378,7 @@ export function Step10_3({ state, update, goTo, saveLayer }: StepProps) {
     if (names.length > 0) {
       await saveLayer('businessModel', {
         claim_text: names.join(', '),
-        source_value: 'experience',
+        source_value: state.draftSources.businessModel ?? 'experience',
       });
     }
     goTo('l10.4');
@@ -1473,6 +1427,7 @@ export function Step10_3({ state, update, goTo, saveLayer }: StepProps) {
         }}
       />
 
+      <StepSourcePicker layerId="businessModel" state={state} update={update} />
       <NavRow onBack={() => goTo('l10.2')} onNext={onNext} nextLabel="Continue → competitors" />
     </StepFrame>
   );
@@ -1539,7 +1494,7 @@ export function Step10_4({ state, update, goTo, saveLayer, onGraduate }: StepPro
         .join(', ');
       await saveLayer('competitiveMarket', {
         claim_text: summary,
-        source_value: 'experience',
+        source_value: state.draftSources.competitiveMarket ?? 'experience',
       });
     }
     await onGraduate();
@@ -1618,6 +1573,7 @@ export function Step10_4({ state, update, goTo, saveLayer, onGraduate }: StepPro
         ))}
       </ul>
 
+      <StepSourcePicker layerId="competitiveMarket" state={state} update={update} />
       <NavRow
         onBack={() => goTo('l10.3')}
         onNext={finalize}

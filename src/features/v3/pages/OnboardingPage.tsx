@@ -179,7 +179,7 @@ export default function OnboardingPage() {
             <DoorButton
               letter="A"
               title="Walk me through it"
-              desc="Step-by-step. Starts at Customer Segment — that's where investors press first. Six foundation questions, then the full stack."
+              desc="Step-by-step. Starts at Customer Segment — that's where investors press first. Six foundation questions over ~20 minutes. You finish with: your full 16-layer stack, a heat map of where your evidence is thinnest, and an investor pressure test of your weakest claims."
               tag="DOOR A · GUIDED"
               minutes="≈ 20 min"
               onClick={() => { void pickDoor('A'); }}
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
             <DoorButton
               letter="B"
               title="I'll dump what I have"
-              desc="All 16 layers visible at once. Fill in what you know. Leave blanks where you don't. Pick a source — that's how I score you."
+              desc="All 16 layers visible at once. Fill in what you know. Leave blanks where you don't. Pick a source — that's how I score you. You finish with: a heat-flagged dashboard and an investor pressure test, same as Door A."
               tag="DOOR B · SNAPSHOT"
               minutes="≈ 15 min"
               dark

@@ -130,6 +130,11 @@ export interface L10State {
 
 // ── Top-level state ──
 
+/** SourceId mirror — kept local so we don't pull the layers module into
+ *  this types-and-pure-helpers file. Stays in sync with `lib/layers.ts`. */
+export type DoorASourceId =
+  | 'logical' | 'experience' | 'research' | 'interviews' | 'prototype';
+
 export interface DoorAState {
   /** Schema version — bump if shape changes incompatibly. */
   v: 1;
@@ -139,6 +144,12 @@ export interface DoorAState {
   beachheadJustification: string;
   l9: L9State;
   l10: L10State;
+  /** Per-layer source the founder has staged for the contributing Door A
+   *  steps. Pre-selects 'experience' on the relevant steps via the picker UI;
+   *  flushed to `pivotkit_layer_states.source_value` when the founder clicks
+   *  Continue past the step. Layers the founder never visited are absent —
+   *  the dashboard reveal must not silently default them. */
+  draftSources: Partial<Record<string, DoorASourceId>>;
 }
 
 // ── Defaults / constructors ──
@@ -174,6 +185,7 @@ export function emptyDoorAState(): DoorAState {
       businessModelOther: '',
       competitors: [],
     },
+    draftSources: {},
   };
 }
 
@@ -197,6 +209,9 @@ export function hydrate(raw: unknown): DoorAState {
       chain: r.l10?.chain ?? seed.l10.chain,
       margins: { ...seed.l10.margins, ...(r.l10?.margins ?? {}) },
     },
+    draftSources: (r.draftSources && typeof r.draftSources === 'object')
+      ? r.draftSources as Partial<Record<string, DoorASourceId>>
+      : seed.draftSources,
   };
 }
 
