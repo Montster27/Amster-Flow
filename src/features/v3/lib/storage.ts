@@ -1,11 +1,12 @@
 // Supabase CRUD for pivotkit_ventures + pivotkit_layer_states.
 //
 // These tables are added in migration 20260509134755_pivotkit_v3_layer_states.sql
-// but aren't yet in the generated Database type — until `supabase gen types`
-// is rerun, we cast at the supabase boundary and keep typing strict at the
-// public API surface.
+// but aren't yet in the generated Database type. Rather than cast away all
+// typing with `supabase as any`, we use the locally-typed `sb` client from
+// pivotkitDb.ts, which restores compile-time checks on table names and
+// insert/update/upsert payloads at this storage boundary.
 
-import { supabase } from '../../../lib/supabase';
+import { sb } from './pivotkitDb';
 import type {
   DoorChoice, Evaluator, Industry, Intensity, LayerStateRow, SourceId,
 } from './layers';
@@ -14,9 +15,6 @@ import type {
 } from './assumptions';
 import type { DoorAState } from './doorAState';
 import { hydrate as hydrateDoorAState } from './doorAState';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
 
 export interface VentureRow {
   project_id: string;
@@ -95,12 +93,23 @@ export async function upsertLayerState(args: {
   claim_text?: string | null;
   source_value?: SourceId | null;
 }): Promise<LayerStateRow> {
-  const payload = {
+  // Only include columns the caller explicitly provided. A Supabase upsert
+  // writes every column present in the payload on the ON CONFLICT update path,
+  // so unconditionally sending `claim_text: null` here wipes an existing claim
+  // whenever a caller only meant to change the source (e.g. mini-process
+  // completion upgrading source_value) — and vice-versa. `undefined` means
+  // "leave as-is"; `null` means "explicitly clear".
+  const payload: {
+    project_id: string;
+    layer_id: string;
+    claim_text?: string | null;
+    source_value?: SourceId | null;
+  } = {
     project_id: args.projectId,
     layer_id: args.layerId,
-    claim_text: args.claim_text ?? null,
-    source_value: args.source_value ?? null,
   };
+  if (args.claim_text !== undefined) payload.claim_text = args.claim_text;
+  if (args.source_value !== undefined) payload.source_value = args.source_value;
   const { data, error } = await sb
     .from('pivotkit_layer_states')
     .upsert(payload, { onConflict: 'project_id,layer_id' })
@@ -200,6 +209,20 @@ export async function insertAssumption(input: InsertAssumptionInput): Promise<As
   return data as AssumptionRow;
 }
 
+/**
+ * Classify a thrown error as a Postgres unique-violation (i.e. a duplicate
+ * row hitting one of the partial unique indexes). Used by the bulk insert
+ * below to decide whether a failed insert is a benign duplicate to swallow
+ * or a real error to rethrow. Extracted + exported as a pure function so that
+ * swallow-vs-rethrow decision is unit-testable without a live database.
+ * Matches Postgres' "duplicate key value violates unique constraint …" text
+ * (and the shorter "unique constraint" fragment), case-insensitively.
+ */
+export function isDuplicateKeyError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /duplicate key|unique constraint/i.test(msg);
+}
+
 /** Best-effort bulk insert for spawned/cross_layer candidates. Conflicts
  *  on the unique partial index are silently swallowed (returning the
  *  rows that did insert). */
@@ -215,9 +238,8 @@ export async function insertAssumptionsIgnoringDuplicates(
       const row = await insertAssumption(input);
       inserted.push(row);
     } catch (e: unknown) {
-      // Postgres unique violation = duplicate; ignore.
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!/duplicate key|unique constraint/i.test(msg)) throw e;
+      // Postgres unique violation = duplicate; ignore. Anything else rethrows.
+      if (!isDuplicateKeyError(e)) throw e;
     }
   }
   return inserted;

@@ -17,6 +17,7 @@ import { useLayerStack, useVenture } from '../hooks/useVenture';
 import { PageShell, VentureHeader } from '../components/atoms';
 import { FOUNDATION_QUEUE, PK_LAYER_BY_ID, pkTier } from '../lib/layers';
 import type { SourceId } from '../lib/layers';
+import { stepHasDraft, type DoorAState } from '../lib/doorAState';
 import {
   FONT_MONO, FONT_SERIF, HAIR, INK, MUTED, PAPER, SLATE_FG, TAN, TEAL, TEAL_LITE,
 } from '../lib/tokens';
@@ -28,6 +29,20 @@ import {
 // ── Hash <-> step helpers ──
 
 const VALID_STEPS: Set<StepId> = new Set(STEPS.map((s) => s.id));
+
+// Sprint 3 T14 — coarse-grained relative time. Compact phrasings; "saved · 12s
+// ago" reassures the founder without competing with the page content. Updates
+// at most once per minute past the first minute, so a parent re-render every
+// 30s is plenty.
+function relativeAgo(date: Date, now: number): string {
+  const seconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
 
 function stepFromHash(): StepId {
   if (typeof window === 'undefined') return 'l8.1';
@@ -53,19 +68,63 @@ function renderStars(tier: number): string {
   return '★'.repeat(filled) + '☆'.repeat(5 - filled);
 }
 
+type SubStepState = 'empty' | 'in-progress' | 'complete';
+
+function StepStateMark({ state }: { state: SubStepState }) {
+  // Three visually distinct shapes so the state reads in monochrome:
+  //   empty       → bare ring
+  //   in-progress → ring with a small filled center dot
+  //   complete    → solid disk
+  if (state === 'complete') {
+    return (
+      <span style={{
+        width: 10, height: 10, borderRadius: '50%',
+        background: TEAL, border: 'none',
+        justifySelf: 'end',
+      }} />
+    );
+  }
+  if (state === 'in-progress') {
+    return (
+      <span style={{
+        width: 10, height: 10, borderRadius: '50%',
+        background: 'transparent', border: `1.5px solid ${TEAL}`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        justifySelf: 'end',
+      }}>
+        <span style={{
+          width: 3, height: 3, borderRadius: '50%', background: TEAL,
+        }} />
+      </span>
+    );
+  }
+  return (
+    <span style={{
+      width: 10, height: 10, borderRadius: '50%',
+      background: 'transparent', border: `1px solid ${TAN}`,
+      justifySelf: 'end',
+    }} />
+  );
+}
+
 function StepRail({
-  currentStep, onJump, stack, draftSources,
+  currentStep, onJump, stack, state,
 }: {
   currentStep: StepId;
   onJump: (s: StepId) => void;
   stack: Record<string, { claim_text?: string | null; source_value?: string | null } | undefined>;
-  /** In-flight per-layer source picks from DoorAState. Lets the rail render
-   *  the live star count for the layer the founder is currently editing,
-   *  before they click Continue. */
-  draftSources: Partial<Record<string, string>>;
+  /** Full Door A state. The rail needs `draftSources` (for live source tier
+   *  on the section the founder is editing) and the rest of the blob (for
+   *  per-sub-step in-progress detection — Sprint 2 T1). */
+  state: DoorAState;
 }) {
   // A step is "done" when its target layer has any claim_text.
   const isDone = (s: StepMeta) => Boolean(stack[s.layerId]?.claim_text);
+  const subStepState = (s: StepMeta): SubStepState => {
+    if (isDone(s)) return 'complete';
+    if (stepHasDraft(s.id, state)) return 'in-progress';
+    return 'empty';
+  };
 
   // Group steps by the canonical layer they contribute to, preserving STEPS order.
   // Sub-step numbers (l8.1, l9.3, etc.) are not user-facing.
@@ -108,7 +167,7 @@ function StepRail({
         // After T6, each section maps to one canonical layer.
         const sectionLayerId = section.steps[0]?.layerId;
         const liveSrc = sectionLayerId
-          ? (draftSources[sectionLayerId] ?? stack[sectionLayerId]?.source_value ?? null)
+          ? (state.draftSources[sectionLayerId] ?? stack[sectionLayerId]?.source_value ?? null)
           : null;
         const tier = sectionLayerId
           ? pkTier(sectionLayerId, liveSrc as SourceId | null)
@@ -133,13 +192,24 @@ function StepRail({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {section.steps.map((s) => {
-              const done = isDone(s);
+              const subState = subStepState(s);
               const isCurrent = s.id === currentStep;
+              const sectionLayer = PK_LAYER_BY_ID[s.layerId];
+              const layerStr = sectionLayer
+                ? `L${String(sectionLayer.n).padStart(2, '0')} ${sectionLayer.name}`
+                : s.layerId;
+              const stateStr = subState === 'complete' ? 'complete'
+                : subState === 'in-progress' ? 'in progress'
+                : 'not yet started';
+              const ariaLabel = `${layerStr}, ${s.label}, ${stateStr}${isCurrent ? ', current step' : ''}`;
               return (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => onJump(s.id)}
+                  aria-label={ariaLabel}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  data-step-state={subState}
                   style={{
                     display: 'grid', gridTemplateColumns: '1fr 16px',
                     alignItems: 'center', gap: 8,
@@ -156,12 +226,7 @@ function StepRail({
                     color: isCurrent ? INK : SLATE_FG,
                     fontWeight: isCurrent ? 600 : 500,
                   }}>{s.label}</span>
-                  <span style={{
-                    width: 10, height: 10, borderRadius: '50%',
-                    background: done ? TEAL : 'transparent',
-                    border: done ? 'none' : `1px solid ${TAN}`,
-                    justifySelf: 'end',
-                  }} />
+                  <StepStateMark state={subState} />
                 </button>
               );
             })}
@@ -184,6 +249,154 @@ function StepRail({
   );
 }
 
+// ── SwitchToDashboardButton ──
+//
+// Tooltip-on-hover/focus version of the mode-switch escape hatch. Tooltip
+// copy is plain UX explanation (not Monty voice) — it surfaces what happens
+// to the work-in-progress so founders aren't afraid to click.
+//
+// Mobile/touch tooltip behavior is deferred (Sprint 3); native `title`
+// attribute is the fallback for non-hover environments.
+
+// Sprint 3 T14 — "saving" → "saved · {time} ago" companion state. Ticks
+// internally on a 30s interval so the relative time stays current without
+// re-rendering the entire header on every keystroke. Falls back to a quiet
+// dash when there's nothing to report (fresh page, no edits, no saves).
+function SaveStatePill({ saving, lastSavedAt }: { saving: boolean; lastSavedAt: Date | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(t);
+  }, []);
+  if (saving) {
+    return <span style={{ marginLeft: 8, color: MUTED }}>· saving…</span>;
+  }
+  if (lastSavedAt) {
+    return (
+      <span
+        style={{ marginLeft: 8, color: MUTED }}
+        title={`Last saved ${lastSavedAt.toLocaleTimeString()}`}
+      >· saved · {relativeAgo(lastSavedAt, now)}</span>
+    );
+  }
+  return null;
+}
+
+// Sprint 3 T10 — foundation star counter with hover/focus tooltip that names
+// each contributing layer and shows its current tier. The Stage Gates panel
+// on the dashboard is the fuller reference — this is the in-flow nudge.
+function FoundationCounter({
+  cleared, total, stack, draftSources,
+}: {
+  cleared: number;
+  total: number;
+  stack: Record<string, { source_value?: string | null } | undefined>;
+  draftSources: Partial<Record<string, string>>;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', isolation: 'isolate' }}>
+      <span
+        tabIndex={0}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        style={{
+          cursor: 'help', borderBottom: `1px dotted ${MUTED}`,
+          outline: 'none',
+        }}
+      >
+        <span style={{ color: TEAL, fontWeight: 700 }}>{cleared}</span>
+        {' / '}{total} layers ≥ 2★
+      </span>
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute', right: 0, top: '100%',
+            marginTop: 6, zIndex: 200, width: 280,
+            padding: '10px 12px', borderRadius: 6,
+            background: INK, color: '#f8fafc',
+            fontSize: 11.5, lineHeight: 1.45, textAlign: 'left',
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none', textTransform: 'none', letterSpacing: 0,
+            fontWeight: 400,
+          }}
+        >
+          <div style={{
+            fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+            color: '#fcd34d', fontWeight: 700, textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>Foundation · {cleared}/{total}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {FOUNDATION_QUEUE.map((id) => {
+              const layer = PK_LAYER_BY_ID[id];
+              const src = (draftSources[id] ?? stack[id]?.source_value ?? null) as SourceId | null;
+              const tier = pkTier(id, src);
+              const ok = tier >= 2;
+              return (
+                <div key={id} style={{
+                  display: 'flex', justifyContent: 'space-between', gap: 10,
+                }}>
+                  <span style={{ color: ok ? '#86efac' : '#cbd5e1' }}>
+                    {ok ? '✓' : '·'} {layer?.name ?? id}
+                  </span>
+                  <span style={{
+                    fontFamily: FONT_MONO, fontSize: 10.5,
+                    color: ok ? '#86efac' : '#94a3b8',
+                  }}>{tier}/5★</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{
+            marginTop: 6, paddingTop: 6, borderTop: '1px solid #334155',
+            color: '#cbd5e1', fontSize: 11,
+          }}>Door A graduates when every layer here clears 2★.</div>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function SwitchToDashboardButton({ onClick }: { onClick: () => void }) {
+  const [open, setOpen] = useState(false);
+  const tooltip = 'See your full 16-layer stack now. Your work is saved — you can come back to the guided flow any time.';
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={tooltip}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        style={{
+          padding: '7px 12px', background: 'transparent', color: SLATE_FG,
+          border: `1px solid ${TAN}`, borderRadius: 6, fontSize: 12,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >Switch to dashboard →</button>
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute', right: 0, top: '100%',
+            marginTop: 8, zIndex: 30, width: 280,
+            padding: '10px 12px', borderRadius: 6,
+            background: INK, color: '#f8fafc',
+            fontSize: 12, lineHeight: 1.45,
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none',
+          }}
+        >{tooltip}</span>
+      )}
+    </span>
+  );
+}
+
 // ── Main page ──
 
 export default function DoorAPage() {
@@ -191,7 +404,7 @@ export default function DoorAPage() {
   const navigate = useNavigate();
   const { venture, loading: vLoading, updateVenture } = useVenture(projectId);
   const { stack, rows, gates, saveLayer, refetch } = useLayerStack(projectId);
-  const { state, loading: dLoading, hydrated, saving, update, flush } =
+  const { state, loading: dLoading, hydrated, saving, lastSavedAt, update, flush } =
     useDoorAState(projectId);
   const { createDirect } = useAssumptions(projectId, rows);
 
@@ -261,19 +474,17 @@ export default function DoorAPage() {
               fontFamily: FONT_MONO, fontSize: 11, color: SLATE_FG,
               letterSpacing: '0.06em',
             }}>
-              <span style={{ color: TEAL, fontWeight: 700 }}>{cleared}</span>
-              {' / '}{FOUNDATION_QUEUE.length} layers ≥ 2★
-              {saving && <span style={{ marginLeft: 8, color: MUTED }}>· saving</span>}
+              <FoundationCounter
+                cleared={cleared}
+                total={FOUNDATION_QUEUE.length}
+                stack={stack}
+                draftSources={state.draftSources}
+              />
+              <SaveStatePill saving={saving} lastSavedAt={lastSavedAt} />
             </span>
-            <button
-              type="button"
-              onClick={() => navigate(`/v3/door-b/${projectId}`)}
-              style={{
-                padding: '7px 12px', background: 'transparent', color: SLATE_FG,
-                border: `1px solid ${TAN}`, borderRadius: 6, fontSize: 12,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >Drop into full stack →</button>
+            <SwitchToDashboardButton
+              onClick={() => navigate(`/v3/dashboard/${projectId}`)}
+            />
           </div>
         }
       />
@@ -323,7 +534,7 @@ export default function DoorAPage() {
           currentStep={step}
           onJump={goTo}
           stack={stack}
-          draftSources={state.draftSources}
+          state={state}
         />
       </div>
     </PageShell>

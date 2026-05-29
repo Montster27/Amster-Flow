@@ -13,11 +13,65 @@ import type { DoorChoice, Intensity } from '../lib/layers';
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
 
-const INTENSITIES: { value: Intensity; label: string }[] = [
-  { value: 'direct', label: 'Direct' },
-  { value: 'warmer', label: 'Warmer' },
-  { value: 'sharp',  label: 'Sharp' },
+const INTENSITIES: { value: Intensity; label: string; tip: string }[] = [
+  { value: 'direct', label: 'Direct', tip: "Monty's default voice." },
+  { value: 'warmer', label: 'Warmer', tip: 'Same content, more encouragement.' },
+  { value: 'sharp',  label: 'Sharp',  tip: 'More challenge, less softening.' },
 ];
+
+// Sprint 3 T9 — voice-option pill with hover/focus tooltip. Selected state is
+// the visually heaviest (dark fill, white text, bold weight). Tooltip is plain
+// UX copy, not mentor voice.
+function VoiceOption({
+  active, label, tip, onClick,
+}: {
+  active: boolean;
+  label: string;
+  tip: string;
+  onClick: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', isolation: 'isolate' }}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={tip}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-pressed={active}
+        style={{
+          padding: '4px 10px', borderRadius: 999,
+          border: active ? '1px solid #0b1220' : '1px solid #d6cfb8',
+          background: active ? '#0b1220' : 'transparent',
+          color: active ? '#fff' : '#64748b',
+          fontWeight: active ? 700 : 500,
+          fontSize: 10.5, cursor: 'pointer', fontFamily: 'inherit',
+          letterSpacing: '0.06em',
+          transition: 'background .12s, color .12s, border-color .12s',
+        }}
+      >{label.toUpperCase()}</button>
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute', left: '50%', top: '100%',
+            transform: 'translate(-50%, 8px)',
+            zIndex: 200, width: 220,
+            padding: '8px 10px', borderRadius: 6,
+            background: '#0b1220', color: '#f8fafc',
+            fontSize: 11.5, lineHeight: 1.4, textAlign: 'left',
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none', textTransform: 'none',
+            letterSpacing: 0,
+          }}
+        >{tip}</span>
+      )}
+    </span>
+  );
+}
 
 interface DoorButtonProps {
   letter: 'A' | 'B';
@@ -83,6 +137,7 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const { venture, loading, updateVenture } = useVenture(projectId);
   const [chosen, setChosen] = useState<DoorChoice | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
 
   if (!projectId) {
     return <PageShell><div style={{ padding: 40 }}>Missing project id.</div></PageShell>;
@@ -94,10 +149,17 @@ export default function OnboardingPage() {
 
   const pickDoor = async (door: DoorChoice) => {
     setChosen(door);
+    setPickError(null);
     try {
       await updateVenture({ door_choice: door });
-    } finally {
+      // Navigate only after the choice persists. Previously this lived in a
+      // `finally`, so a failed write still forwarded the founder into a door
+      // whose choice never saved.
       navigate(door === 'A' ? `/v3/door-a/${projectId}` : `/v3/door-b/${projectId}`);
+    } catch (e) {
+      // Re-enable the doors and surface the error so the founder can retry.
+      setChosen(null);
+      setPickError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -122,19 +184,13 @@ export default function OnboardingPage() {
           }}>
             <span>VOICE</span>
             {INTENSITIES.map((it) => (
-              <button
+              <VoiceOption
                 key={it.value}
-                type="button"
+                active={it.value === intensity}
+                label={it.label}
+                tip={it.tip}
                 onClick={() => { void updateVenture({ intensity: it.value }); }}
-                style={{
-                  padding: '4px 10px', borderRadius: 999,
-                  border: it.value === intensity ? '1px solid #0b1220' : '1px solid #d6cfb8',
-                  background: it.value === intensity ? '#0b1220' : 'transparent',
-                  color: it.value === intensity ? '#fff' : '#64748b',
-                  fontSize: 10.5, cursor: 'pointer', fontFamily: 'inherit',
-                  letterSpacing: '0.06em',
-                }}
-              >{it.label.toUpperCase()}</button>
+              />
             ))}
           </div>
         </div>
@@ -144,11 +200,13 @@ export default function OnboardingPage() {
           alignItems: 'flex-start',
         }}>
           <div>
-            <div style={{
-              fontFamily: FONT_MONO, fontSize: 10.5,
-              letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0f766e',
-              fontWeight: 700, marginBottom: 14,
-            }}>{v.kicker}</div>
+            {v.kicker && (
+              <div style={{
+                fontFamily: FONT_MONO, fontSize: 10.5,
+                letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0f766e',
+                fontWeight: 700, marginBottom: 14,
+              }}>{v.kicker}</div>
+            )}
             <div style={{
               fontFamily: FONT_SERIF, fontSize: 110,
               lineHeight: 0.95, color: '#0b1220',
@@ -176,6 +234,15 @@ export default function OnboardingPage() {
             display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 100,
             opacity: chosen ? 0.6 : 1, pointerEvents: chosen ? 'none' : 'auto',
           }}>
+            {pickError && (
+              <div role="alert" style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: '#fef2f2', border: '1px solid #fecaca',
+                color: '#be123c', fontSize: 12.5, lineHeight: 1.45,
+              }}>
+                Couldn&apos;t save your choice: {pickError}. Try again.
+              </div>
+            )}
             <DoorButton
               letter="A"
               title="Walk me through it"

@@ -31,18 +31,13 @@ import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
-// V3 design canvas (mocks) — public route, lazy-loaded.
-const V3CanvasPage = lazy(() => import('./features/v3-canvas/V3CanvasPage'))
-
-// Door A L8.3 + L10.1 wireframes — public mock route, lazy-loaded.
-const WireframesPage = lazy(() => import('../WireframeReview'))
-
 // V3 functional app — auth-gated, lazy-loaded.
 const V3EntryPage      = lazy(() => import('./features/v3/pages/EntryPage'))
 const V3OnboardingPage = lazy(() => import('./features/v3/pages/OnboardingPage'))
 const V3DoorAPage      = lazy(() => import('./features/v3/pages/DoorAPage'))
 const V3DoorBPage      = lazy(() => import('./features/v3/pages/DoorBPage'))
 const V3DashboardPage  = lazy(() => import('./features/v3/pages/DashboardPage'))
+const V3LayerDetailPage = lazy(() => import('./features/v3/pages/LayerDetailPage'))
 const V3PitchPage      = lazy(() => import('./features/v3/pages/PitchPage'))
 const V3AssumptionsPage = lazy(() => import('./features/v3/pages/AssumptionsPage'))
 const V3MiniProcessPage = lazy(() => import('./features/v3/pages/MiniProcessPage'))
@@ -76,18 +71,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/terms" element={<TermsOfServicePage />} />
-
-                  {/* V3 design canvas (mocks) — public */}
-                  <Route
-                    path="/v3/canvas"
-                    element={v3Suspense(<V3CanvasPage />)}
-                  />
-
-                  {/* Door A L8.3 + L10.1 wireframes — public mock */}
-                  <Route
-                    path="/v3/wireframes"
-                    element={v3Suspense(<WireframesPage />)}
-                  />
 
                   {/* V3 functional app — auth-gated */}
                   <Route
@@ -127,6 +110,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     element={
                       <ProtectedRoute>
                         {v3Suspense(<V3DashboardPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/layer/:projectId/:layerId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3LayerDetailPage />)}
                       </ProtectedRoute>
                     }
                   />

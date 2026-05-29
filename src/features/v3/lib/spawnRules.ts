@@ -11,6 +11,7 @@
 //
 // New rules are pure config — adding one is a code-side rows change.
 
+import { dedupKey } from './assumptions';
 import type { AssumptionCandidate } from './assumptions';
 import type { RuleStackSnapshot } from './assumptions';
 
@@ -192,14 +193,17 @@ const SPAWN_RULES: SpawnRule[] = [
 
 /**
  * Run all rules against the trigger layer and emit candidates not already
- * promoted (i.e. de-duped by rule_id against the existing assumption rows).
+ * promoted. De-duped via `existingKeys`, whose entries are composite dedup
+ * keys (source_layer_id + rule_id) matching the DB partial unique index — see
+ * dedupKey() in assumptions.ts. A spawn rule's source_layer_id is always its
+ * own layerId, so the key is built from (layerId, rule.id).
  */
 export function deriveSpawnCandidates(args: {
   layerId: string;
   stack: RuleStackSnapshot;
-  existingRuleIds: ReadonlySet<string>;
+  existingKeys: ReadonlySet<string>;
 }): AssumptionCandidate[] {
-  const { layerId, stack, existingRuleIds } = args;
+  const { layerId, stack, existingKeys } = args;
   const cell = stack[layerId];
   if (!cell) return [];
   const claim = cell.text ?? '';
@@ -207,7 +211,8 @@ export function deriveSpawnCandidates(args: {
   const out: AssumptionCandidate[] = [];
   for (const rule of SPAWN_RULES) {
     if (rule.layerId !== layerId) continue;
-    if (existingRuleIds.has(rule.id)) continue;
+    const key = dedupKey({ channel: 'spawned', source_layer_id: layerId, rule_id: rule.id });
+    if (key && existingKeys.has(key)) continue;
     const cs = rule.generate(claim, stack);
     for (const c of cs) out.push(c);
   }

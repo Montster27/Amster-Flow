@@ -15,7 +15,7 @@ import type {
   AssumptionCandidate, AssumptionRow, AssumptionState,
 } from '../lib/assumptions';
 import {
-  candidateToInsert, projectStackForRules,
+  candidateToInsert, canTransition, dedupKey, projectStackForRules,
 } from '../lib/assumptions';
 import { deriveSpawnCandidates } from '../lib/spawnRules';
 import { deriveCrossLayerCandidates } from '../lib/crossLayerRules';
@@ -42,8 +42,11 @@ interface UseAssumptionsResult {
   setSource: (id: string, src: SourceId | null) => Promise<void>;
   /** Edit text/notes (used for "Reframe" channel-3 action). */
   edit: (id: string, patch: { text?: string; notes?: string | null }) => Promise<void>;
-  /** Dismiss a candidate without persisting it. Records an audit event so
-   *  it doesn't re-spawn the same rule for a configurable cooldown. */
+  /** Dismiss a candidate without persisting it. Suppression is in-memory and
+   *  session-only: the candidate's dedup key is added to a local set so it
+   *  won't re-appear until the page reloads (a fresh fetch has no record of
+   *  the dismissal). An audit event is logged for the activity trail but does
+   *  NOT drive suppression. */
   dismissCandidate: (c: AssumptionCandidate) => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -55,7 +58,7 @@ export function useAssumptions(
   const [rows, setRows] = useState<AssumptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dismissedRuleIds, setDismissedRuleIds] = useState<Set<string>>(() => new Set());
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(() => new Set());
 
   const refetch = useCallback(async () => {
     if (!projectId) return;
@@ -78,16 +81,19 @@ export function useAssumptions(
     return () => { cancelled = true; };
   }, [projectId]);
 
-  // Existing rule_ids — used to dedupe candidates against already-promoted
-  // assumptions (matches the partial unique index on the DB side).
-  const existingRuleIds = useMemo(() => {
+  // Existing dedup keys — used to filter candidates against already-promoted
+  // (and session-dismissed) assumptions. Keys are composite (source_layer_id
+  // [+ cross_source_layer_id] + rule_id) to mirror the DB partial unique
+  // indexes — see dedupKey() in assumptions.ts.
+  const existingKeys = useMemo(() => {
     const s = new Set<string>();
     for (const r of rows) {
-      if (r.rule_id) s.add(r.rule_id);
+      const k = dedupKey(r);
+      if (k) s.add(k);
     }
-    for (const r of dismissedRuleIds) s.add(r);
+    for (const k of dismissedKeys) s.add(k);
     return s;
-  }, [rows, dismissedRuleIds]);
+  }, [rows, dismissedKeys]);
 
   const stackSnapshot = useMemo(() => projectStackForRules(layerRows), [layerRows]);
 
@@ -97,16 +103,16 @@ export function useAssumptions(
       const cs = deriveSpawnCandidates({
         layerId: L.id,
         stack: stackSnapshot,
-        existingRuleIds,
+        existingKeys,
       });
       if (cs.length > 0) spawned[L.id] = cs;
     }
     const crossLayer = deriveCrossLayerCandidates({
       stack: stackSnapshot,
-      existingRuleIds,
+      existingKeys,
     });
     return { spawned, crossLayer };
-  }, [stackSnapshot, existingRuleIds]);
+  }, [stackSnapshot, existingKeys]);
 
   const createDirect = useCallback(async (args: {
     layerId: string | null; text: string; notes?: string;
@@ -151,6 +157,13 @@ export function useAssumptions(
     if (!projectId) return;
     const prev = rows.find((r) => r.id === id);
     if (!prev) return;
+    // Enforce the state machine. The UI only surfaces legal transitions
+    // (buttons are gated by canTransition), so reaching this branch means a
+    // stray/programmatic call — block the write rather than corrupt state.
+    if (!canTransition(prev.state, next)) {
+      console.warn(`[useAssumptions] illegal transition ${prev.state} → ${next} for ${id}; ignored.`);
+      return;
+    }
     const patch: Parameters<typeof svcUpdate>[1] = { state: next };
     if (next === 'killed' || next === 'dismissed' || next === 'validated') {
       patch.resolved_at = new Date().toISOString();
@@ -199,7 +212,8 @@ export function useAssumptions(
   }, [rows, projectId]);
 
   const dismissCandidate = useCallback(async (c: AssumptionCandidate) => {
-    setDismissedRuleIds((prev) => new Set(prev).add(c.rule_id));
+    const key = dedupKey(c);
+    if (key) setDismissedKeys((prev) => new Set(prev).add(key));
     if (projectId) {
       void logAuditEvent({
         projectId, action: 'candidate_dismissed',

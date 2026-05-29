@@ -7,7 +7,7 @@ import {
   SCORE_MAX, SCORE_MIN,
   chainDepth, computeBeachheadScore, emptyDoorAState,
   extractAssumptions, findEdge, hydrate, isCloseCall, nodesOrdered,
-  normalizedScore, topRankedSubgroup,
+  normalizedScore, stepHasDraft, topRankedSubgroup,
   type SubGroup, type ValueChain,
 } from '../lib/doorAState';
 
@@ -195,6 +195,61 @@ describe('emptyDoorAState', () => {
     expect(s.l10.chain.nodes[0]).toMatchObject({ id: 'n-you', locked: true, position: 0 });
     expect(s.l10.chain.nodes[1]).toMatchObject({ id: 'n-end', locked: true, position: 1 });
     expect(s.l10.chain.edges).toEqual([{ fromNodeId: 'n-you', toNodeId: 'n-end' }]);
+  });
+});
+
+describe('stepHasDraft', () => {
+  it('is false on a fresh empty state for every sub-step', () => {
+    const s = emptyDoorAState();
+    const ids = ['l8.1','l8.2','l8.3','l8.4','l9.1','l9.2','l9.3','l9.4','l10.1','l10.2','l10.3','l10.4'];
+    for (const id of ids) expect(stepHasDraft(id, s)).toBe(false);
+  });
+
+  it('l8.1 flips true when optionSpace has at least one parent group', () => {
+    const s = emptyDoorAState();
+    expect(stepHasDraft('l8.1', s)).toBe(false);
+    s.optionSpace = [{ id: 'p1', name: 'consults' }];
+    expect(stepHasDraft('l8.1', s)).toBe(true);
+  });
+
+  it('l8.3 flips true only when at least one sub-group has all three axes scored', () => {
+    const s = emptyDoorAState();
+    s.subgroups = [{
+      id: 's1', parentGroupId: 'p1', name: 'partial',
+      pain: 'critical', reachability: null, size: null,
+    }];
+    expect(stepHasDraft('l8.3', s)).toBe(false);
+    s.subgroups[0].reachability = 'know-personally';
+    s.subgroups[0].size = 'real-market';
+    expect(stepHasDraft('l8.3', s)).toBe(true);
+  });
+
+  it('l9.2 reflects painRating selection only', () => {
+    const s = emptyDoorAState();
+    expect(stepHasDraft('l9.2', s)).toBe(false);
+    s.l9.painRating = 'critical';
+    expect(stepHasDraft('l9.2', s)).toBe(true);
+  });
+
+  it('l10.1 ignores the locked endpoint nodes and the default empty edge', () => {
+    // Fresh state has 2 endpoint nodes + 1 empty edge — must read as no draft.
+    expect(stepHasDraft('l10.1', emptyDoorAState())).toBe(false);
+  });
+
+  it('l10.1 flips true when the founder adds an edge note', () => {
+    const s = emptyDoorAState();
+    s.l10.chain.edges[0].notes = 'license $1.20/unit';
+    expect(stepHasDraft('l10.1', s)).toBe(true);
+  });
+
+  it('l10.3 flips true on either business-model selection or other-text', () => {
+    const s = emptyDoorAState();
+    s.l10.businessModelOther = 'tip jar';
+    expect(stepHasDraft('l10.3', s)).toBe(true);
+  });
+
+  it('returns false for an unknown step id', () => {
+    expect(stepHasDraft('l99.9', emptyDoorAState())).toBe(false);
   });
 });
 

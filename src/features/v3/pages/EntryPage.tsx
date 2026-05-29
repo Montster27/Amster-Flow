@@ -2,11 +2,12 @@
 // onboarding or the dashboard depending on whether the venture has been
 // started yet.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { supabase } from '../../../lib/supabase';
-import { PageShell } from '../components/atoms';
+import { sb } from '../lib/pivotkitDb';
+import { ModalShell, PageShell } from '../components/atoms';
 import { ensureVenture, updateVenture } from '../lib/storage';
 import { INDUSTRIES, industryLabel } from '../lib/industryVariants';
 import type { Industry } from '../lib/layers';
@@ -71,8 +72,6 @@ export default function EntryPage() {
     if (pErr) throw pErr;
 
     const projectIds = (projects ?? []).map((p) => p.id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = supabase as any;
     const { data: ventures, error: vErr } = projectIds.length
       ? await sb
         .from('pivotkit_ventures')
@@ -81,8 +80,7 @@ export default function EntryPage() {
       : { data: [], error: null };
     if (vErr) throw vErr;
     const vMap = new Map<string, { has_completed_onboarding: boolean; door_choice: string | null }>(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (ventures ?? []).map((v: any) => [v.project_id, {
+      (ventures ?? []).map((v) => [v.project_id, {
         has_completed_onboarding: !!v.has_completed_onboarding,
         door_choice: v.door_choice ?? null,
       }]),
@@ -127,6 +125,7 @@ export default function EntryPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteTitleId = useId();
 
   const onConfirmDelete = async () => {
     if (!pendingDeleteId) return;
@@ -230,9 +229,8 @@ export default function EntryPage() {
           )}
         </div>
         <div style={{ fontSize: 16, color: '#475569', lineHeight: 1.55, marginBottom: 24, maxWidth: 600 }}>
-          PivotKit v3 enrolls your existing projects as ventures. Pick one to start the
-          16-layer flow, or spin up a new one. The legacy modules stay where they were —
-          this lives in parallel.
+          PivotKit v3 treats each project as a venture. Pick one to start the
+          16-layer flow, or spin up a new one.
         </div>
 
         {loading && <div style={{ color: '#64748b' }}>Loading…</div>}
@@ -312,7 +310,7 @@ export default function EntryPage() {
               </div>
               <div style={{
                 fontSize: 11, color: '#94a3b8', marginTop: 2, lineHeight: 1.4,
-              }}>The 16-layer ontology is shared; variants reword the layer names and core questions to fit the domain. You can switch later from the dashboard.</div>
+              }}>The 16-layer framework is shared, with terms tuned to each industry. You can switch later from the dashboard.</div>
             </div>
 
             {createError && (
@@ -336,7 +334,7 @@ export default function EntryPage() {
                   cursor: !draft.name.trim() || !orgId ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
                 }}
-              >{creating ? 'Creating…' : 'Create & start onboarding →'}</button>
+              >{creating ? 'Creating…' : 'Create venture →'}</button>
               <button
                 type="button"
                 onClick={() => { setFormOpen(false); setCreateError(null); }}
@@ -370,10 +368,10 @@ export default function EntryPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map((p) => {
-            const stateLabel = p.has_completed_onboarding ? 'Dashboard'
-              : p.door_choice === 'A' ? 'Resume Door A'
-              : p.door_choice === 'B' ? 'Resume Door B'
-              : 'Start onboarding';
+            // Sprint 3 T8 — unified action label. The destination depends on
+            // state (dashboard vs. resume-door vs. fresh onboarding) but the
+            // CTA the founder reads is always the same.
+            const stateLabel = 'Continue';
             return (
               <div key={p.id} style={{ position: 'relative' }}>
                 <button
@@ -455,84 +453,70 @@ export default function EntryPage() {
         {/* Delete-confirm modal */}
         {pendingDeleteId && (() => {
           const target = items.find((i) => i.id === pendingDeleteId);
+          // Single close path — guards against closing mid-delete. Both the
+          // Escape key and backdrop click route through here.
+          const closeDelete = () => {
+            if (!deleting) { setPendingDeleteId(null); setDeleteError(null); }
+          };
           return (
-            <div
-              onClick={() => { if (!deleting) { setPendingDeleteId(null); setDeleteError(null); } }}
-              style={{
-                position: 'fixed', inset: 0, zIndex: 50,
-                background: 'rgba(11,18,32,0.45)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+            <ModalShell
+              onClose={closeDelete}
+              labelledById={deleteTitleId}
+              panelStyle={{ width: 460, maxWidth: '92vw' }}
             >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: 460, maxWidth: '92vw',
-                  background: '#fff', borderRadius: 12, padding: '20px 22px',
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                  boxShadow: '0 12px 60px rgba(11,18,32,0.25)',
-                }}
-              >
-                <div>
-                  <div style={{
-                    fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
-                    textTransform: 'uppercase', color: '#9f1239', fontWeight: 600,
-                  }}>Delete venture</div>
-                  <div style={{
-                    fontFamily: FONT_SERIF, fontSize: 22,
-                    color: '#0b1220', letterSpacing: '-0.01em', marginTop: 4,
-                  }}>{target?.name ?? 'this venture'}</div>
-                </div>
-
-                <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.55 }}>
-                  This is a soft delete — the project is hidden from PivotKit but the
-                  underlying data (layer claims, sources, assumptions, mini-process runs,
-                  audit log) is retained. You can ask an admin to restore it later if needed.
-                </div>
-
-                {deleteError && (
-                  <div role="alert" style={{
-                    padding: '8px 12px', background: '#fef2f2',
-                    border: '1px solid #fda4af', borderRadius: 6,
-                    color: '#9f1239', fontSize: 12.5,
-                  }}>{deleteError}</div>
-                )}
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-                  <button
-                    type="button"
-                    onClick={() => { void onConfirmDelete(); }}
-                    disabled={deleting}
-                    style={{
-                      padding: '9px 16px',
-                      background: deleting ? '#fda4af' : '#9f1239',
-                      color: '#fff',
-                      border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
-                      cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
-                    }}
-                  >{deleting ? 'Deleting…' : 'Delete venture'}</button>
-                  <button
-                    type="button"
-                    onClick={() => { setPendingDeleteId(null); setDeleteError(null); }}
-                    disabled={deleting}
-                    style={{
-                      padding: '9px 14px', background: 'transparent', color: '#64748b',
-                      border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13,
-                      cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
-                    }}
-                  >Cancel</button>
-                </div>
+              <div>
+                <div style={{
+                  fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+                  textTransform: 'uppercase', color: '#9f1239', fontWeight: 600,
+                }}>Delete venture</div>
+                <div id={deleteTitleId} style={{
+                  fontFamily: FONT_SERIF, fontSize: 22,
+                  color: '#0b1220', letterSpacing: '-0.01em', marginTop: 4,
+                }}>{target?.name ?? 'this venture'}</div>
               </div>
-            </div>
+
+              <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.55 }}>
+                This is a soft delete — the project is hidden from PivotKit but the
+                underlying data (layer claims, sources, assumptions, mini-process runs,
+                audit log) is retained. You can ask an admin to restore it later if needed.
+              </div>
+
+              {deleteError && (
+                <div role="alert" style={{
+                  padding: '8px 12px', background: '#fef2f2',
+                  border: '1px solid #fda4af', borderRadius: 6,
+                  color: '#9f1239', fontSize: 12.5,
+                }}>{deleteError}</div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => { void onConfirmDelete(); }}
+                  disabled={deleting}
+                  style={{
+                    padding: '9px 16px',
+                    background: deleting ? '#fda4af' : '#9f1239',
+                    color: '#fff',
+                    border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                    cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                  }}
+                >{deleting ? 'Deleting…' : 'Delete venture'}</button>
+                <button
+                  type="button"
+                  onClick={closeDelete}
+                  disabled={deleting}
+                  style={{
+                    padding: '9px 14px', background: 'transparent', color: '#64748b',
+                    border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13,
+                    cursor: deleting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                  }}
+                >Cancel</button>
+              </div>
+            </ModalShell>
           );
         })()}
 
-        <div style={{
-          marginTop: 28, paddingTop: 18, borderTop: '1px solid #ece6d6',
-          fontSize: 12.5, color: '#64748b', lineHeight: 1.55,
-        }}>
-          The design canvas (mocks of all 8 surfaces) is at <a href="/v3/canvas" style={{ color: '#0f766e' }}>/v3/canvas</a>.
-        </div>
       </div>
     </PageShell>
   );

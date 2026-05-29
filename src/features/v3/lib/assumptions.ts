@@ -104,6 +104,30 @@ export interface AssumptionCandidate {
   rule_id: string;
 }
 
+/** Build the client-side dedup key that mirrors the DB partial unique indexes
+ *  on pivotkit_assumptions:
+ *    spawned:     (project_id, source_layer_id, rule_id)
+ *    cross_layer: (project_id, source_layer_id, cross_source_layer_id, rule_id)
+ *  project_id is implicit (the candidate set is built per project). Returns
+ *  null for rows without a rule_id (direct assumptions) — those are never
+ *  rule-deduped.
+ *
+ *  Today every rule_id is globally unique and encodes its own layer(s), so a
+ *  rule_id-only key would be equivalent. Keying by the full tuple keeps the
+ *  client-side filter from ever diverging from the DB index if a future rule
+ *  reuses a rule_id across layers/channels. */
+export function dedupKey(a: {
+  channel: AssumptionChannel;
+  source_layer_id: string | null;
+  cross_source_layer_id?: string | null;
+  rule_id: string | null;
+}): string | null {
+  if (!a.rule_id) return null;
+  return a.channel === 'cross_layer'
+    ? `cl|${a.source_layer_id ?? ''}|${a.cross_source_layer_id ?? ''}|${a.rule_id}`
+    : `sp|${a.source_layer_id ?? ''}|${a.rule_id}`;
+}
+
 /** Convert the partial candidate shape into the values needed for an INSERT. */
 export function candidateToInsert(c: AssumptionCandidate, projectId: string) {
   return {

@@ -1,16 +1,13 @@
 // Mini-process run lifecycle: start, advance, complete, abandon.
 // On completion, the linked layer's source_value is auto-upgraded.
 
-import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { sb } from '../lib/pivotkitDb';
 import {
   findMiniProcess, isMiniProcessDone, type MiniProcessDefinition,
 } from '../lib/miniProcesses';
 import { logAuditEvent, upsertLayerState } from '../lib/storage';
 import type { SourceId } from '../lib/layers';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sb = supabase as any;
 
 export interface MiniProcessRunRow {
   id: string;
@@ -61,7 +58,9 @@ export async function patchMiniProcessRun(
   id: string,
   patch: Partial<Pick<MiniProcessRunRow, 'state' | 'progress' | 'notes'>>,
 ): Promise<MiniProcessRunRow> {
-  const dbPatch: Record<string, unknown> = { ...patch };
+  const dbPatch: Partial<Pick<MiniProcessRunRow, 'state' | 'progress' | 'notes'>> & {
+    completed_at?: string;
+  } = { ...patch };
   if (patch.state === 'completed' || patch.state === 'abandoned') {
     dbPatch.completed_at = new Date().toISOString();
   }
@@ -90,6 +89,10 @@ interface UseMiniProcessRunsResult {
 
 export function useMiniProcessRuns(projectId: string | null | undefined): UseMiniProcessRunsResult {
   const [runs, setRuns] = useState<MiniProcessRunRow[]>([]);
+  // Mirror of `runs` so async mutations read the latest committed list rather
+  // than a stale render snapshot (which could silently no-op a complete/abandon).
+  const runsRef = useRef<MiniProcessRunRow[]>(runs);
+  runsRef.current = runs;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,12 +127,12 @@ export function useMiniProcessRuns(projectId: string | null | undefined): UseMin
     runId: string,
     fn: (run: MiniProcessRunRow) => Partial<Pick<MiniProcessRunRow, 'state' | 'progress' | 'notes'>>,
   ) => {
-    const run = runs.find((r) => r.id === runId);
+    const run = runsRef.current.find((r) => r.id === runId);
     if (!run) return;
     const patch = fn(run);
     const next = await patchMiniProcessRun(runId, patch);
     setRuns((rs) => rs.map((r) => r.id === runId ? next : r));
-  }, [runs]);
+  }, []);
 
   const toggleStepDone = useCallback(async (runId: string, stepIdx: number) => {
     await updateRun(runId, (run) => {
@@ -150,7 +153,7 @@ export function useMiniProcessRuns(projectId: string | null | undefined): UseMin
 
   const complete = useCallback(async (runId: string) => {
     if (!projectId) return;
-    const run = runs.find((r) => r.id === runId);
+    const run = runsRef.current.find((r) => r.id === runId);
     if (!run) return;
     const def = findMiniProcess(run.kind);
     if (!def) return;
@@ -178,18 +181,18 @@ export function useMiniProcessRuns(projectId: string | null | undefined): UseMin
       // eslint-disable-next-line no-console
       console.warn('[v3 mini-process] source upgrade failed:', e);
     }
-  }, [projectId, runs, updateRun]);
+  }, [projectId, updateRun]);
 
   const abandon = useCallback(async (runId: string) => {
     if (!projectId) return;
-    const run = runs.find((r) => r.id === runId);
+    const run = runsRef.current.find((r) => r.id === runId);
     if (!run) return;
     await updateRun(runId, () => ({ state: 'abandoned' }));
     void logAuditEvent({
       projectId, action: 'mini_process_abandoned',
       payload: { run_id: runId, kind: run.kind },
     });
-  }, [projectId, runs, updateRun]);
+  }, [projectId, updateRun]);
 
   return { runs, loading, error, start, toggleStepDone, setCapturedN, setNotes, complete, abandon, refetch };
 }

@@ -1,7 +1,6 @@
 // PivotKit + QU&D — shared static config.
 // 16 layers, 5 sources, per-layer source→tier map, stage gates.
-// This is the canonical home for the ontology; the design canvas
-// (v3-canvas/data.ts) re-exports from here so there's one source of truth.
+// This is the canonical home for the layer/source/gate definitions.
 
 export type LayerCategory = 'critical' | 'thoughtful';
 export type LayerBand = 'strategy' | 'critical' | 'execution';

@@ -294,6 +294,51 @@ export function isCloseCall(l9: Pick<L9State, 'verdict'>): boolean {
   return l9.verdict === 'close-call';
 }
 
+/** True when the founder has filled the primary input of a Door A sub-step,
+ *  even if they haven't clicked Continue yet. Drives the right-rail
+ *  "in-progress" sub-step state in the StepRail (Sprint 2 T1).
+ *
+ *  Pure / defensive — safe to call with a partially-hydrated state blob. */
+export function stepHasDraft(stepId: string, state: DoorAState): boolean {
+  switch (stepId) {
+    case 'l8.1':
+      return state.optionSpace.length > 0;
+    case 'l8.2':
+      return state.subgroups.length > 0;
+    case 'l8.3':
+      return state.subgroups.some((sg) => computeBeachheadScore(sg) !== null);
+    case 'l8.4':
+      return Boolean(state.beachheadId)
+        || state.beachheadJustification.trim().length > 0;
+    case 'l9.1':
+      return state.l9.problemRestated.trim().length > 0;
+    case 'l9.2':
+      return state.l9.painRating !== null;
+    case 'l9.3':
+      return state.l9.solution.trim().length > 0;
+    case 'l9.4':
+      return state.l9.adoptionCostNotes.trim().length > 0
+        || state.l9.verdict !== null
+        || state.l9.benefitOneLine.trim().length > 0
+        || state.l9.costOneLine.trim().length > 0;
+    case 'l10.1':
+      // Default chain has the two endpoint nodes; any extra node or any edge
+      // note counts as draft.
+      return state.l10.chain.nodes.length > 2
+        || state.l10.chain.edges.some((e) => (e.notes ?? '').trim().length > 0);
+    case 'l10.2':
+      return state.l10.margins.priceUnits !== null
+        || state.l10.margins.estimates.length > 0;
+    case 'l10.3':
+      return state.l10.businessModelIds.length > 0
+        || state.l10.businessModelOther.trim().length > 0;
+    case 'l10.4':
+      return state.l10.competitors.length > 0;
+    default:
+      return false;
+  }
+}
+
 /** Lightweight assumption extractor for L9.3 solution text.
  *  MVP: split on sentence boundaries, take first 4 non-trivial sentences as
  *  candidate assumptions. Founder edits/promotes/dismisses each. */

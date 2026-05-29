@@ -1,17 +1,28 @@
 // Spawn + cross-layer rule engines — make sure rules fire on the expected
-// states and dedupe correctly against existing rule_ids.
+// states and dedupe correctly against existing composite dedup keys
+// (source_layer_id [+ cross_source_layer_id] + rule_id).
+//
+// Assertions check the EXACT candidate set (sorted rule_ids), not just
+// membership. That way an *unexpected extra* rule firing — e.g. the always-on
+// businessModel:switchAttention, or pricingPain piggy-backing on a businessModel
+// claim — fails the test instead of slipping through a `toContain`.
 
 import { describe, expect, it } from 'vitest';
 import { deriveSpawnCandidates } from '../lib/spawnRules';
 import { deriveCrossLayerCandidates } from '../lib/crossLayerRules';
-import { projectStackForRules } from '../lib/assumptions';
+import { dedupKey, projectStackForRules } from '../lib/assumptions';
+import type { AssumptionCandidate } from '../lib/assumptions';
 import type { LayerStateRow } from '../lib/layers';
 
 const cell = (layer_id: string, claim_text: string | null, source_value: 'logical' | 'experience' | 'research' | 'interviews' | 'prototype' | null = 'logical'): LayerStateRow =>
   ({ layer_id, claim_text, source_value });
 
+/** Sorted rule_ids of a candidate list — used for exact-set equality. */
+const sortedIds = (cs: AssumptionCandidate[]): string[] =>
+  cs.map((c) => c.rule_id).sort();
+
 describe('deriveSpawnCandidates: businessModel', () => {
-  it('emits the 4 BM rules when claim and pain context align', () => {
+  it('emits exactly the 4 BM rules when claim and pain context align', () => {
     const stack = projectStackForRules([
       cell('businessModel', '$80/month SaaS subscription per user'),
       cell('painScale',     'Moderate', 'experience'), // tier 2 — triggers painThreshold
@@ -19,111 +30,133 @@ describe('deriveSpawnCandidates: businessModel', () => {
     const cs = deriveSpawnCandidates({
       layerId: 'businessModel',
       stack,
-      existingRuleIds: new Set(),
+      existingKeys: new Set(),
     });
-    const ruleIds = cs.map((c) => c.rule_id);
-    expect(ruleIds).toContain('businessModel:budget');
-    expect(ruleIds).toContain('businessModel:procurement');
-    expect(ruleIds).toContain('businessModel:painThreshold');
-    expect(ruleIds).toContain('businessModel:switchAttention');
+    expect(sortedIds(cs)).toEqual([
+      'businessModel:budget',
+      'businessModel:painThreshold',
+      'businessModel:procurement',
+      'businessModel:switchAttention',
+    ]);
   });
 
-  it('skips painThreshold once painScale tier is high enough', () => {
+  it('drops painThreshold once painScale tier is high enough', () => {
     const stack = projectStackForRules([
       cell('businessModel', '$80/month SaaS'),
-      cell('painScale',     'High', 'interviews'), // tier 4 — suppresses
+      cell('painScale',     'High', 'interviews'), // tier 4 — suppresses painThreshold
     ]);
     const cs = deriveSpawnCandidates({
       layerId: 'businessModel',
       stack,
-      existingRuleIds: new Set(),
+      existingKeys: new Set(),
     });
-    expect(cs.map((c) => c.rule_id)).not.toContain('businessModel:painThreshold');
+    expect(sortedIds(cs)).toEqual([
+      'businessModel:budget',
+      'businessModel:procurement',
+      'businessModel:switchAttention',
+    ]);
   });
 
-  it('skips procurement when claim has no SaaS/subscription keyword', () => {
+  it('drops procurement when the claim has no SaaS/subscription keyword', () => {
     const stack = projectStackForRules([
       cell('businessModel', 'One-time purchase, hardware unit'),
     ]);
     const cs = deriveSpawnCandidates({
       layerId: 'businessModel',
       stack,
-      existingRuleIds: new Set(),
+      existingKeys: new Set(),
     });
-    expect(cs.map((c) => c.rule_id)).not.toContain('businessModel:procurement');
+    // No painScale in the stack → painThreshold also stays out.
+    expect(sortedIds(cs)).toEqual([
+      'businessModel:budget',
+      'businessModel:switchAttention',
+    ]);
   });
 
-  it('dedupes against already-promoted rule_ids', () => {
+  it('omits already-promoted rule_ids (dedup) but still emits the rest', () => {
     const stack = projectStackForRules([
       cell('businessModel', '$80/month SaaS'),
     ]);
     const cs = deriveSpawnCandidates({
       layerId: 'businessModel',
       stack,
-      existingRuleIds: new Set(['businessModel:budget']),
+      existingKeys: new Set([
+        dedupKey({ channel: 'spawned', source_layer_id: 'businessModel', rule_id: 'businessModel:budget' })!,
+      ]),
     });
-    expect(cs.map((c) => c.rule_id)).not.toContain('businessModel:budget');
+    // budget is deduped away; procurement (keyword match) + always-on
+    // switchAttention remain (no painScale → no painThreshold).
+    expect(sortedIds(cs)).toEqual([
+      'businessModel:procurement',
+      'businessModel:switchAttention',
+    ]);
   });
 
-  it('does nothing when the trigger layer has no claim', () => {
+  it('emits only the always-on switchAttention rule when the trigger has no claim', () => {
     const stack = projectStackForRules([
       cell('businessModel', '', null),
     ]);
     const cs = deriveSpawnCandidates({
       layerId: 'businessModel',
       stack,
-      existingRuleIds: new Set(),
+      existingKeys: new Set(),
     });
-    // Some rules don't gate on claim emptiness (switchAttention always fires
-    // when bm has any value — but here null/'' should still skip those that
-    // explicitly check `claim.trim()`); make sure budget skips at least.
-    expect(cs.map((c) => c.rule_id)).not.toContain('businessModel:budget');
+    // budget/procurement gate on a non-empty claim and painThreshold needs a
+    // painScale; only switchAttention fires unconditionally.
+    expect(sortedIds(cs)).toEqual(['businessModel:switchAttention']);
   });
 });
 
 describe('deriveCrossLayerCandidates', () => {
-  it('fires cs × bm budget rule when both layers have claims', () => {
+  it('fires segmentBudget AND pricingPain when customerSegment + businessModel are set', () => {
     const stack = projectStackForRules([
       cell('customerSegment', 'Solo-practice rural vets'),
       cell('businessModel',   '$80/month SaaS'),
     ]);
     const cs = deriveCrossLayerCandidates({
-      stack, existingRuleIds: new Set(),
+      stack, existingKeys: new Set(),
     });
-    const ids = cs.map((c) => c.rule_id);
-    expect(ids).toContain('segmentBudget:cs-bm');
+    // pricingPain:bm-ps also fires here: a priced model with an *absent*
+    // painScale is itself flagged. The old toContain check silently missed it.
+    expect(sortedIds(cs)).toEqual([
+      'pricingPain:bm-ps',
+      'segmentBudget:cs-bm',
+    ]);
   });
 
-  it('skips when one of the two layers is empty', () => {
+  it('emits nothing when one of the two layers is empty', () => {
     const stack = projectStackForRules([
       cell('customerSegment', 'Solo-practice rural vets'),
       cell('businessModel',   '', null),
     ]);
     const cs = deriveCrossLayerCandidates({
-      stack, existingRuleIds: new Set(),
+      stack, existingKeys: new Set(),
     });
-    expect(cs.map((c) => c.rule_id)).not.toContain('segmentBudget:cs-bm');
+    expect(sortedIds(cs)).toEqual([]);
   });
 
-  it('dedupes against existing rule_ids', () => {
+  it('dedupes segmentBudget but still emits pricingPain', () => {
     const stack = projectStackForRules([
       cell('customerSegment', 'Solo-practice rural vets'),
       cell('businessModel',   '$80/month SaaS'),
     ]);
     const cs = deriveCrossLayerCandidates({
-      stack, existingRuleIds: new Set(['segmentBudget:cs-bm']),
+      stack,
+      existingKeys: new Set([
+        dedupKey({ channel: 'cross_layer', source_layer_id: 'customerSegment', cross_source_layer_id: 'businessModel', rule_id: 'segmentBudget:cs-bm' })!,
+      ]),
     });
-    expect(cs.map((c) => c.rule_id)).not.toContain('segmentBudget:cs-bm');
+    expect(sortedIds(cs)).toEqual(['pricingPain:bm-ps']);
   });
 
-  it('fires problemDoNothing when competitiveMarket mentions a workaround', () => {
+  it('fires only problemDoNothing when competitiveMarket mentions a workaround', () => {
     const stack = projectStackForRules([
       cell('problem',           'Vets manually reconcile schedules'),
       cell('competitiveMarket', 'Spreadsheets, email, do nothing'),
     ]);
     const cs = deriveCrossLayerCandidates({
-      stack, existingRuleIds: new Set(),
+      stack, existingKeys: new Set(),
     });
-    expect(cs.map((c) => c.rule_id)).toContain('problemDoNothing:p-cm');
+    expect(sortedIds(cs)).toEqual(['problemDoNothing:p-cm']);
   });
 });

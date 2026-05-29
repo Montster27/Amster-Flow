@@ -2,11 +2,12 @@
 // Founder fills what they have, picks sources, leaves blanks. Stage gates
 // update live as sources change.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useVenture, useLayerStack } from '../hooks/useVenture';
 import { LayerRow } from '../components/LayerRow';
-import { GateMeter, PageShell, VentureHeader } from '../components/atoms';
+import { PageShell, VentureHeader } from '../components/atoms';
+import { StageGatesPanel } from '../components/StageGatesPanel';
 import { PK_LAYERS } from '../lib/layers';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
@@ -20,10 +21,21 @@ export default function DoorBPage() {
     rows, stack, loading, error, gates, stage, stageBefore, filled, totalLayers, saveLayer,
   } = useLayerStack(projectId);
 
-  // Mark door choice on first save if not already set.
+  // Mark door choice on first save if not already set. The ref guard stops a
+  // burst of layer edits from each firing the effect (before `venture` reflects
+  // the write) and stacking up duplicate door_choice='B' updates; on failure we
+  // clear it so a later edit can retry.
+  const doorChoiceWriteRef = useRef(false);
   useEffect(() => {
-    if (venture && !venture.door_choice && rows.some((r) => r.claim_text || r.source_value)) {
-      void updateVenture({ door_choice: 'B' });
+    if (
+      !doorChoiceWriteRef.current
+      && venture && !venture.door_choice
+      && rows.some((r) => r.claim_text || r.source_value)
+    ) {
+      doorChoiceWriteRef.current = true;
+      void updateVenture({ door_choice: 'B' }).catch(() => {
+        doorChoiceWriteRef.current = false;
+      });
     }
   }, [venture, rows, updateVenture]);
 
@@ -113,21 +125,11 @@ export default function DoorBPage() {
 
         <aside style={{
           background: '#f4f1ea', borderLeft: '1px solid #ece6d6',
-          padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 12,
+          padding: '20px 18px',
           position: 'sticky', top: 64, alignSelf: 'flex-start',
           height: 'calc(100vh - 64px)', overflow: 'auto',
         }}>
-          <div style={{
-            fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
-            textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
-          }}>Stage gates</div>
-          {gates.map((g) => <GateMeter key={g.id} gate={g} />)}
-          <div style={{
-            fontFamily: FONT_MONO, fontSize: 10, color: '#94a3b8',
-            letterSpacing: '0.08em',
-          }}>
-            {stage ? `Current stage: ${stage.toUpperCase()}` : 'Pre-CPF · keep filling'}
-          </div>
+          <StageGatesPanel gates={gates} stage={stage} />
         </aside>
       </div>
     </PageShell>

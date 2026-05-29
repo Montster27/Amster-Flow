@@ -113,6 +113,9 @@ export default function PitchPage() {
           justifyContent: 'space-between', borderRight: '1px solid #ece6d6',
         }}>
           <div>
+            {/* Sprint 3 T13 — drop L-numbers from beat headers. The beat label
+                (Who / What hurts / How much) carries the meaning; layer numbers
+                are out of narrative order here and read as clutter. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <span style={{
                 fontFamily: FONT_MONO, fontSize: 11, color: '#0f766e',
@@ -122,7 +125,7 @@ export default function PitchPage() {
               <span style={{
                 fontFamily: FONT_MONO, fontSize: 11, color: '#94a3b8',
                 letterSpacing: '0.12em',
-              }}>L{String(layer.n).padStart(2, '0')} · {layer.name}</span>
+              }}>{layer.name}</span>
             </div>
 
             <div style={{
@@ -217,58 +220,70 @@ export default function PitchPage() {
             fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
             textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
           }}>Up next</div>
-          {BEATS.slice(idx + 1, idx + 5).map((b) => {
-            const BL = PK_LAYER_BY_ID[b.layerId];
-            const bcell = stack[b.layerId];
-            const btier = pkTier(b.layerId, bcell?.source_value);
+          {/* Sprint 3 T13 — show only the immediate next beat in detail; the
+              remaining beats collapse to a count so the founder's attention
+              stays on what's coming next, not the whole remaining run. */}
+          {(() => {
+            const remaining = BEATS.slice(idx + 1);
+            if (remaining.length === 0) {
+              return (
+                <div style={{
+                  fontFamily: FONT_MONO, fontSize: 11, color: '#94a3b8',
+                  letterSpacing: '0.08em',
+                }}>End of pitch.</div>
+              );
+            }
+            const nextBeat = remaining[0];
+            const BL = PK_LAYER_BY_ID[nextBeat.layerId];
+            const bcell = stack[nextBeat.layerId];
+            const btier = pkTier(nextBeat.layerId, bcell?.source_value);
             const heat = btier < 3;
+            const extra = remaining.length - 1;
             return (
-              <button
-                key={b.layerId}
-                type="button"
-                onClick={() => setIdx(BEATS.findIndex((x) => x.layerId === b.layerId))}
-                style={{
-                  textAlign: 'left',
-                  padding: '12px 14px', background: '#fff',
-                  border: heat ? '1px solid #fde68a' : '1px solid #e8dfc9',
-                  borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', flexDirection: 'column', gap: 6,
-                }}
-              >
-                <div style={{
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between', gap: 8,
-                }}>
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700,
-                    color: '#0f766e', letterSpacing: '0.08em',
-                  }}>{b.label}</span>
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 9.5, color: '#94a3b8',
-                    letterSpacing: '0.08em',
-                  }}>L{String(BL.n).padStart(2, '0')}</span>
-                </div>
-                <div style={{
-                  fontSize: 12.5, color: '#0b1220', lineHeight: 1.4,
-                  overflow: 'hidden', textOverflow: 'ellipsis',
-                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                  fontWeight: 500,
-                }}>{bcell?.claim_text || BL.q}</div>
-                {heat && (
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 9, color: '#92400e',
-                    letterSpacing: '0.08em', fontWeight: 700,
-                  }}>EXPECT PUSHBACK</span>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIdx(BEATS.findIndex((x) => x.layerId === nextBeat.layerId))}
+                  style={{
+                    textAlign: 'left',
+                    padding: '12px 14px', background: '#fff',
+                    border: heat ? '1px solid #fde68a' : '1px solid #e8dfc9',
+                    borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}
+                >
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', gap: 8,
+                  }}>
+                    <span style={{
+                      fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700,
+                      color: '#0f766e', letterSpacing: '0.08em',
+                    }}>{nextBeat.label}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 12.5, color: '#0b1220', lineHeight: 1.4,
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    fontWeight: 500,
+                  }}>{bcell?.claim_text || BL.q}</div>
+                  {heat && (
+                    <span style={{
+                      fontFamily: FONT_MONO, fontSize: 9, color: '#92400e',
+                      letterSpacing: '0.08em', fontWeight: 700,
+                    }}>EXPECT PUSHBACK</span>
+                  )}
+                </button>
+                {extra > 0 && (
+                  <div style={{
+                    fontFamily: FONT_MONO, fontSize: 11, color: '#64748b',
+                    letterSpacing: '0.08em', fontWeight: 500,
+                    padding: '2px 4px',
+                  }}>+ {extra} more {extra === 1 ? 'beat' : 'beats'}</div>
                 )}
-              </button>
+              </>
             );
-          })}
-          {idx + 1 >= BEATS.length && (
-            <div style={{
-              fontFamily: FONT_MONO, fontSize: 11, color: '#94a3b8',
-              letterSpacing: '0.08em',
-            }}>End of pitch.</div>
-          )}
+          })()}
         </aside>
       </div>
     </PageShell>

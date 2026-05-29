@@ -6,24 +6,17 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayerStack, useVenture } from '../hooks/useVenture';
 import { GateBadge, PageShell, TierLadder, VentureHeader } from '../components/atoms';
+import { StageGatesPanel } from '../components/StageGatesPanel';
 import { PromptsPanel } from '../components/PromptsPanel';
 import { IndustrySwitcher } from '../components/IndustrySwitcher';
 import { layersFor } from '../lib/industryVariants';
 import { PK_GATES, PK_LAYER_BY_ID, pkTier } from '../lib/layers';
-import { lookupPushback } from '../lib/voice';
+import { lookupPushback, numberWord } from '../lib/voice';
 import { deriveAllPrompts, type ActivePrompt } from '../lib/prompts';
 import type { Industry, LayerStateRow } from '../lib/layers';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
-
-// 1-10 spelled out; bare number after. Lowercase so it slots into mid-sentence
-// templates ("and one layer is on tests"). Templates handle their own
-// sentence-initial capitalization.
-function numberWord(n: number): string {
-  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  return n >= 0 && n <= 10 ? words[n] : String(n);
-}
 
 // Returns the single CPF requirement that's exactly one tier short — i.e. one
 // source upgrade on this layer would clear CPF. Null if zero or more than one
@@ -103,6 +96,26 @@ function deriveStateLine(args: {
 
   // Rule 6 — fallback (partial, mixed sources, not yet at a gate)
   return `Filled ${numberWord(filled)} of 16 layers. Keep going — the gates don't move until the sources do.`;
+}
+
+// Identical aria-label format for all 16 dashboard cards (Sprint 2 T2).
+// Order: layer number → name → star count → source → tier → flags.
+function dashboardCardAriaLabel(args: {
+  layerN: number;
+  layerName: string;
+  tier: number;
+  source: string | null | undefined;
+  isCritical: boolean;
+  heat: boolean;
+}): string {
+  const parts = [
+    `L${String(args.layerN).padStart(2, '0')} ${args.layerName}`,
+    `${args.tier} of 5 stars`,
+    `source: ${args.source ?? 'no source'}`,
+    args.isCritical ? 'investor-critical' : 'thoughtfulness',
+  ];
+  if (args.heat) parts.push('heat flag');
+  return parts.join(', ');
 }
 
 // Map a prompt to a featured "next move" view. Keeps the prompt's locked
@@ -327,7 +340,7 @@ export default function V3DashboardPage() {
           flagsCount={flagsCount}
           flagsExpanded={flagsExpanded}
           onToggleFlags={() => setFlagsExpanded((v) => !v)}
-          onOpenLayer={(layerId) => navigate(`/v3/door-b/${projectId}#${layerId}`)}
+          onOpenLayer={(layerId) => navigate(`/v3/layer/${projectId}/${layerId}`)}
           onOpenPitch={() => navigate(`/v3/pitch/${projectId}`)}
           hasFilled={filled > 0}
         />
@@ -336,7 +349,7 @@ export default function V3DashboardPage() {
           <>
             <PromptsPanel
               prompts={prompts}
-              onOpenLayer={(layerId) => navigate(`/v3/door-b/${projectId}#${layerId}`)}
+              onOpenLayer={(layerId) => navigate(`/v3/layer/${projectId}/${layerId}`)}
             />
             {pressLayer && pressLine && (
               <div style={{
@@ -356,7 +369,7 @@ export default function V3DashboardPage() {
                 }}>&ldquo;{pressLine}&rdquo;</div>
                 <button
                   type="button"
-                  onClick={() => navigate(`/v3/door-b/${projectId}#${pressLayer.id}`)}
+                  onClick={() => navigate(`/v3/layer/${projectId}/${pressLayer.id}`)}
                   style={{
                     padding: '7px 12px', background: '#b45309', color: '#fff',
                     border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -396,11 +409,18 @@ export default function V3DashboardPage() {
           </div>
         </div>
 
+        {/* 2-column layout: 16-card grid on the left, Stage Gates panel on the
+            right. Gates panel collapses cleared gates so attention slides to
+            the next un-cleared one (Sprint 2 T7). */}
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 12,
+          display: 'grid', gridTemplateColumns: '1fr 320px',
+          gap: 22, alignItems: 'start',
         }}>
-          {layers.map((L) => {
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 12,
+          }}>
+            {layers.map((L) => {
             const cell = stack[L.id];
             const isCrit = L.cat === 'critical';
             const tier = pkTier(L.id, cell?.source_value);
@@ -409,13 +429,21 @@ export default function V3DashboardPage() {
               <button
                 key={L.id}
                 type="button"
-                onClick={() => navigate(`/v3/door-b/${projectId}#${L.id}`)}
+                onClick={() => navigate(`/v3/layer/${projectId}/${L.id}`)}
+                aria-label={dashboardCardAriaLabel({
+                  layerN: L.n, layerName: L.name, tier,
+                  source: cell?.source_value, isCritical: isCrit, heat,
+                })}
                 style={{
-                  textAlign: 'left', padding: '12px 14px', minHeight: 110,
+                  textAlign: 'left', padding: '12px 14px 12px 11px', minHeight: 110,
                   background: isCrit ? '#fff' : '#fbfaf7',
                   border: heat ? '1px solid #fcd34d'
                     : isCrit ? '1px solid #0f766e'
                     : '1px solid #e8dfc9',
+                  // 4px left-edge tier band — solid teal for investor-critical,
+                  // dashed slate for thoughtfulness. Solid-vs-dashed differs in
+                  // monochrome so the indicator doesn't rely on color alone.
+                  borderLeft: isCrit ? '4px solid #0f766e' : '4px dashed #94a3b8',
                   boxShadow: heat ? '0 0 0 3px rgba(251,191,36,0.18)'
                     : isCrit ? '0 0 0 3px rgba(15,118,110,0.06)'
                     : 'none',
@@ -464,6 +492,21 @@ export default function V3DashboardPage() {
               </button>
             );
           })}
+          </div>
+
+          <aside style={{
+            position: 'sticky', top: 80, alignSelf: 'start',
+            padding: '18px 18px',
+            background: '#fff', border: '1px solid #e8dfc9',
+            borderRadius: 12,
+          }}>
+            <StageGatesPanel
+              gates={gates}
+              stage={stage}
+              onLayerClick={(layerId) => navigate(`/v3/layer/${projectId}/${layerId}`)}
+              collapseCleared
+            />
+          </aside>
         </div>
       </div>
     </PageShell>

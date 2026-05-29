@@ -16,7 +16,8 @@ import {
   PK_LAYER_BY_ID, PK_SOURCES, type SourceId,
 } from '../lib/layers';
 import {
-  assumptionTier, type AssumptionRow, type AssumptionState, type AssumptionCandidate,
+  assumptionTier, canTransition,
+  type AssumptionRow, type AssumptionState, type AssumptionCandidate,
 } from '../lib/assumptions';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
@@ -155,7 +156,7 @@ export default function AssumptionsPage() {
             fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
             textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
             marginBottom: 10,
-          }}>+ Direct authoring (channel 1)</div>
+          }}>+ Direct authoring</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 10 }}>
             <textarea
               value={draft.text}
@@ -224,7 +225,7 @@ export default function AssumptionsPage() {
               <div style={{
                 fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
                 textTransform: 'uppercase', color: '#92400e', fontWeight: 700,
-              }}>⚠ Cross-layer flags (channel 3)</div>
+              }}>⚠ Cross-layer flags</div>
               <span style={{
                 fontFamily: FONT_MONO, fontSize: 10.5, color: '#92400e',
                 letterSpacing: '0.06em',
@@ -257,7 +258,7 @@ export default function AssumptionsPage() {
               <div style={{
                 fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
                 textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
-              }}>Candidates from filled layers (channel 2)</div>
+              }}>Candidates from filled layers</div>
               <span style={{
                 fontFamily: FONT_MONO, fontSize: 10.5, color: '#64748b',
                 letterSpacing: '0.06em',
@@ -389,6 +390,7 @@ function CandidateCard({
         <button
           type="button"
           onClick={onPromote}
+          aria-label={`Add to stack: ${candidate.assumption_text}`}
           style={{
             padding: '7px 12px', background: '#0b1220', color: '#fff',
             border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -398,6 +400,7 @@ function CandidateCard({
         <button
           type="button"
           onClick={onDismiss}
+          aria-label={`Dismiss candidate: ${candidate.assumption_text}`}
           style={{
             padding: '7px 12px', background: 'transparent', color: '#64748b',
             border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12,
@@ -536,7 +539,9 @@ function AssumptionCard({
             <span style={{ flex: 1 }} />
             {!muted && (
               <>
-                {row.state !== 'validated' && (
+                {/* Buttons are gated by canTransition so the UI only offers
+                    state-machine-legal moves (setState rejects the rest). */}
+                {canTransition(row.state, 'validated') && (
                   <button
                     type="button"
                     onClick={() => onStateChange('validated')}
@@ -548,6 +553,21 @@ function AssumptionCard({
                     }}
                   >Validate</button>
                 )}
+                {/* Re-test: move a validated/refined assumption back to active
+                    so it can be re-sourced, killed, or refined. Without this a
+                    validated row would be a dead-end (Kill is illegal from it). */}
+                {row.state !== 'queued' && canTransition(row.state, 'active') && (
+                  <button
+                    type="button"
+                    onClick={() => onStateChange('active')}
+                    title="Reopen for re-testing"
+                    style={{
+                      padding: '4px 9px', background: '#fef3c7', color: '#92400e',
+                      border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+                      fontFamily: FONT_MONO, letterSpacing: '0.04em', fontWeight: 600,
+                    }}
+                  >Re-test</button>
+                )}
                 <button
                   type="button"
                   onClick={onStartEdit}
@@ -558,7 +578,7 @@ function AssumptionCard({
                     letterSpacing: '0.04em', fontWeight: 600,
                   }}
                 >Reframe</button>
-                {row.state !== 'killed' && (
+                {canTransition(row.state, 'killed') && (
                   <button
                     type="button"
                     onClick={() => onStateChange('killed')}
@@ -572,7 +592,9 @@ function AssumptionCard({
                 )}
               </>
             )}
-            {muted && (
+            {/* Reopen only where legal: dismissed → queued. killed is terminal
+                (no transitions out), so killed rows show no action. */}
+            {muted && canTransition(row.state, 'queued') && (
               <button
                 type="button"
                 onClick={() => onStateChange('queued')}

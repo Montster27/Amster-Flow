@@ -144,14 +144,15 @@ export function useLayerStack(projectId: string | null | undefined): UseLayerSta
     if (!projectId) return;
     // Snapshot stage before applying so the UI can detect downgrades
     setStageBefore(currentStage(indexStack(rows)));
-    // Optimistic update
-    const optimistic: LayerStateRow = {
-      ...(rows.find((r) => r.layer_id === layerId) ?? { layer_id: layerId }),
-      ...patch,
-      project_id: projectId,
-      last_updated_at: new Date().toISOString(),
-    };
+    // Optimistic update — build the row from `prev` inside the updater so a
+    // concurrent save to another layer can't be dropped by a stale snapshot.
     setRows((prev) => {
+      const optimistic: LayerStateRow = {
+        ...(prev.find((r) => r.layer_id === layerId) ?? { layer_id: layerId }),
+        ...patch,
+        project_id: projectId,
+        last_updated_at: new Date().toISOString(),
+      };
       const filtered = prev.filter((r) => r.layer_id !== layerId);
       return [...filtered, optimistic];
     });

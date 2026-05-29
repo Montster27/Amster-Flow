@@ -4,7 +4,7 @@
 // Last node ("End user") gets coral and is also locked-but-renameable.
 // Intermediate nodes are neutral and removable.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CORAL, FONT_MONO, HAIR, INK, MUTED, SLATE_FG, TAN, TEAL, TEAL_LITE, CORAL_LITE,
 } from '../../lib/tokens';
@@ -38,6 +38,39 @@ export function ChainNode({
   const [editingName, setEditingName] = useState(false);
   const accent = isFirst ? TEAL : isLast ? CORAL : SLATE_FG;
   const accentBg = isFirst ? TEAL_LITE : isLast ? CORAL_LITE : '#fff';
+
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // When the role menu opens, move focus to the currently-selected item so
+  // keyboard users land inside it (per the ARIA menu pattern).
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const items = menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    if (!items || items.length === 0) return;
+    const idx = Math.max(0, ROLE_OPTIONS.findIndex((o) => o.value === node.role));
+    items[idx]?.focus();
+  }, [dropdownOpen, node.role]);
+
+  // Arrow / Home / End roving + Escape-to-close (returns focus to the toggle).
+  const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    );
+    if (items.length === 0) return;
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'Escape') {
+      e.preventDefault(); onToggleDropdown(); toggleRef.current?.focus();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault(); items[(i + 1) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); items[(i - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault(); items[0].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault(); items[items.length - 1].focus();
+    }
+  };
 
   return (
     <div style={{ position: 'relative', minWidth: 140 }}>
@@ -98,8 +131,11 @@ export function ChainNode({
         )}
 
         <button
+          ref={toggleRef}
           type="button"
           onClick={onToggleDropdown}
+          aria-haspopup="menu"
+          aria-expanded={dropdownOpen}
           style={{
             background: 'transparent', border: 'none', padding: 0,
             textAlign: 'left', cursor: 'pointer',
@@ -115,7 +151,10 @@ export function ChainNode({
 
       {dropdownOpen && (
         <div
+          ref={menuRef}
           role="menu"
+          aria-label={`Change role for ${node.label}`}
+          onKeyDown={onMenuKeyDown}
           style={{
             position: 'absolute', left: 0, right: 0, top: '100%',
             marginTop: 4, borderRadius: 6,

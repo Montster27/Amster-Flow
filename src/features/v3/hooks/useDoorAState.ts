@@ -24,6 +24,9 @@ interface UseDoorAStateResult {
   saving: boolean;
   /** True once the initial fetch has resolved. */
   hydrated: boolean;
+  /** Timestamp of the most-recent successful persist (Sprint 3 T14). Null
+   *  before the first save completes. UI renders "saved · {time} ago". */
+  lastSavedAt: Date | null;
   /** Update part of the state — autosaves on the debounce timer. */
   update: (patch: Partial<DoorAState> | ((prev: DoorAState) => DoorAState)) => void;
   /** Force-flush any pending autosave (call before navigation). */
@@ -37,6 +40,7 @@ export function useDoorAState(projectId: string | null | undefined): UseDoorASta
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Refs that need to stay current across renders without retriggering effects:
@@ -47,6 +51,15 @@ export function useDoorAState(projectId: string | null | undefined): UseDoorASta
   const dirtyRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const lastSavedRef = useRef<string>('');
+  // Tracks mount status so async persist() calls don't setState after the
+  // component unmounts (React warns + the work is wasted). Set true at the
+  // top of the effect body so StrictMode's mount→unmount→remount cycle leaves
+  // it `true`, not stuck `false` after the simulated cleanup.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const refetch = useCallback(async () => {
     if (!projectId) return;
@@ -83,21 +96,24 @@ export function useDoorAState(projectId: string | null | undefined): UseDoorASta
 
   const persist = useCallback(async (snapshot: DoorAState) => {
     if (!projectId) return;
-    setSaving(true);
+    if (mountedRef.current) setSaving(true);
     try {
       const saved = await upsertDoorAState(projectId, snapshot);
       lastSavedRef.current = JSON.stringify(saved);
       dirtyRef.current = false;
+      // Bail before any setState if the component unmounted mid-flight.
+      if (!mountedRef.current) return;
+      setLastSavedAt(new Date());
       // Reconcile state only if no further edits were made in the meantime.
       if (pendingRef.current && JSON.stringify(pendingRef.current) === lastSavedRef.current) {
         setState(saved);
       }
     } catch (e) {
       // On failure, refetch to drop the optimistic write.
-      await refetch();
+      if (mountedRef.current) await refetch();
       throw e;
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }, [projectId, refetch]);
 
@@ -141,20 +157,25 @@ export function useDoorAState(projectId: string | null | undefined): UseDoorASta
   }, [persist]);
 
   // Flush on unmount so navigating away doesn't lose the last debounced write.
+  // Use a raw upsert (not persist()) so the cleanup never touches React state
+  // post-unmount, and depend only on [projectId] so it fires on real unmount /
+  // project switch — not every time persist()'s identity changes.
   useEffect(() => {
     return () => {
       if (timerRef.current != null) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      if (dirtyRef.current && pendingRef.current) {
-        // Fire-and-forget — we can't await in an effect cleanup.
-        void persist(pendingRef.current);
+      if (dirtyRef.current && pendingRef.current && projectId) {
+        dirtyRef.current = false;
+        // Fire-and-forget — can't await in cleanup, so bypass persist() (which
+        // would setState on an unmounting component) and write directly.
+        void upsertDoorAState(projectId, pendingRef.current).catch(() => {});
       }
     };
-  }, [persist]);
+  }, [projectId]);
 
   return useMemo(() => ({
-    state, loading, error, saving, hydrated, update, flush, refetch,
-  }), [state, loading, error, saving, hydrated, update, flush, refetch]);
+    state, loading, error, saving, hydrated, lastSavedAt, update, flush, refetch,
+  }), [state, loading, error, saving, hydrated, lastSavedAt, update, flush, refetch]);
 }

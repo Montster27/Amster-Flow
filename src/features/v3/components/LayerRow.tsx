@@ -27,13 +27,20 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
   const [error, setError] = useState<string | null>(null);
   const claimTimer = useRef<number | null>(null);
   const lastSavedClaim = useRef<string>(row?.claim_text ?? '');
+  // Mirror of `claim` so the sync effect can read the latest local value
+  // without listing `claim` as a dependency (which would re-run it per keystroke).
+  const claimRef = useRef(claim);
+  claimRef.current = claim;
 
   // If the row changes from the outside (initial load, refetch), sync local
-  // state — but only when the outer value differs from what we last saved
-  // (so an optimistic local edit isn't clobbered by an inflight upsert echo).
+  // state — but only when (a) the incoming value differs from what we last
+  // saved AND (b) the user has no unsaved local edits in flight. Without the
+  // second guard, a stack refetch triggered by editing another row could
+  // clobber text the founder is actively typing here.
   useEffect(() => {
     const incoming = row?.claim_text ?? '';
-    if (incoming !== lastSavedClaim.current) {
+    const hasUnsavedEdits = claimRef.current !== lastSavedClaim.current;
+    if (incoming !== lastSavedClaim.current && !hasUnsavedEdits) {
       setClaim(incoming);
       lastSavedClaim.current = incoming;
     }

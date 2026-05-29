@@ -10,7 +10,7 @@
 // the founder's lived sense of the problem). They can upgrade the source
 // on the dashboard later.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BeachheadRadio, CategoryBadge, MentorCallout,
   ParentChip, PillOption, ScoreBar, SourcePicker,
@@ -29,7 +29,10 @@ import {
   type ValueChain,
 } from '../lib/doorAState';
 import type { SourceId } from '../lib/layers';
-import { lookupStepVoice, lookupStepWarning, type StepId } from '../lib/voice';
+import {
+  fewGroupsWarning, fiveGroupsAck,
+  lookupStepVoice, lookupStepWarning, type StepId,
+} from '../lib/voice';
 import {
   AMBER_FG, AMBER_SOFT, FONT_MONO, FONT_SERIF, HAIR, INK, MUTED,
   PAPER, SLATE_FG, STONE, TAN, TEAL, TEAL_LITE,
@@ -79,17 +82,25 @@ const SIZE_OPTIONS: { value: SizeValue; label: string; tip: string }[] = [
 // ── Layout helpers ──
 
 function StepFrame({
-  stepId, title, children, suppressVoice = false,
+  stepId, title, children, suppressVoice = false, voicePosition = 'aside',
 }: {
   stepId: StepId; title: string; children: React.ReactNode;
   /** When true, hide the static voice callout — a reactive card is showing
    *  in the main column and we render at most one card at a time. */
   suppressVoice?: boolean;
+  /** 'aside' (default): voice renders in the right column.
+   *  'inline': step opts to render the voice itself in the main column.
+   *  StepFrame doesn't render voice and switches to a single-column layout
+   *  so the main interaction gets the full content width. */
+  voicePosition?: 'aside' | 'inline';
 }) {
   const voice = lookupStepVoice(stepId);
+  const renderAside = voicePosition === 'aside';
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32,
+      display: 'grid',
+      gridTemplateColumns: renderAside ? '1fr 320px' : '1fr',
+      gap: renderAside ? 32 : 0,
       padding: '32px 40px',
     }}>
       <main style={{ minWidth: 0 }}>
@@ -102,9 +113,11 @@ function StepFrame({
         }}>{title}</h2>
         {children}
       </main>
-      <aside style={{ alignSelf: 'start', position: 'sticky', top: 88 }}>
-        {!suppressVoice && <MentorCallout body={voice} italic />}
-      </aside>
+      {renderAside && (
+        <aside style={{ alignSelf: 'start', position: 'sticky', top: 88 }}>
+          {!suppressVoice && <MentorCallout body={voice} italic />}
+        </aside>
+      )}
     </div>
   );
 }
@@ -209,7 +222,23 @@ export function Step8_1({ state, update, goTo }: StepProps) {
   };
 
   const tooFew = groups.length < 3;
-  const reactiveShowing = tooFew && groups.length > 0;
+
+  // Sprint 3 T2 — fire a one-shot acknowledgment card the moment the founder
+  // crosses 5 groups. Yields back to the static voice after a short interval
+  // so we stay within the one-card-at-a-time rule from Sprint 1 T4.
+  const [showAck, setShowAck] = useState(false);
+  const prevCountRef = useRef(groups.length);
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = groups.length;
+    if (prev < 5 && groups.length >= 5) {
+      setShowAck(true);
+      const t = setTimeout(() => setShowAck(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [groups.length]);
+
+  const reactiveShowing = (tooFew && groups.length > 0) || showAck;
 
   return (
     <StepFrame stepId="l8.1" title="List all the groups who might need this product." suppressVoice={reactiveShowing}>
@@ -273,11 +302,17 @@ export function Step8_1({ state, update, goTo }: StepProps) {
         )}
       </ul>
 
-      {tooFew && groups.length > 0 && (
+      {showAck && (
+        <div style={{ marginBottom: 20 }} aria-live="polite">
+          <MentorCallout body={fiveGroupsAck()} italic />
+        </div>
+      )}
+
+      {!showAck && tooFew && groups.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <MentorCallout
             tone="amber"
-            body={lookupStepWarning('l8.1.few_groups') ?? ''}
+            body={fewGroupsWarning(groups.length)}
           />
         </div>
       )}
@@ -407,7 +442,7 @@ function ParentGroupSubdivideRow({
               fontSize: 11, color: SLATE_FG, fontFamily: FONT_MONO,
               letterSpacing: '0.04em', textDecoration: 'underline',
             }}
-          >{indivisibleMode ? 'cancel' : 'mark indivisible'}</button>
+          >{indivisibleMode ? 'cancel' : 'mark indivisible…'}</button>
         )}
       </div>
 
@@ -797,8 +832,13 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
   const tooStrong = state.l9.painRating === 'critical';
 
   return (
-    <StepFrame stepId="l9.2" title="How acute is this pain — really?" suppressVoice={tooStrong}>
+    <StepFrame stepId="l9.2" title="How acute is this pain — really?" voicePosition="inline">
       <BeachheadFixedHeader state={state} />
+      {!tooStrong && (
+        <div style={{ marginBottom: 18 }}>
+          <MentorCallout body={lookupStepVoice('l9.2')} italic />
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
         {PAIN_OPTIONS.map((o) => {
           const on = state.l9.painRating === o.value;
@@ -899,7 +939,12 @@ export function Step9_3({ state, update, goTo, saveLayer }: StepProps) {
         review them on the <strong style={{ color: INK }}>Assumption stack</strong> when you graduate.
       </div>
       <StepSourcePicker layerId="solution" state={state} update={update} />
-      <NavRow onBack={() => goTo('l9.2')} onNext={onNext} nextLabel="Continue → adoption cost" />
+      <NavRow
+        onBack={() => goTo('l9.2')}
+        onNext={onNext}
+        nextLabel="Continue → adoption cost"
+        disabled={solution.trim().length === 0}
+      />
     </StepFrame>
   );
 }
@@ -914,10 +959,48 @@ const VERDICT_OPTIONS: { value: AdoptionVerdict; label: string }[] = [
   { value: 'close-call',        label: 'Close call' },
 ];
 
-export function Step9_4({ state, update, goTo }: StepProps) {
+export function Step9_4({ state, update, goTo, createDirectAssumption }: StepProps) {
   const closeCall = isCloseCall(state.l9);
   const warning = lookupStepWarning('l9.4.close_call');
   const reactiveShowing = closeCall && Boolean(warning);
+
+  // Sprint 3 T5 — required-field validation on Continue. Verdict is required;
+  // the one-liners are flagged when blank but not hard-blocking (founder may
+  // legitimately not have a tight one-line read yet).
+  const [attemptedAdvance, setAttemptedAdvance] = useState(false);
+  const verdictMissing = state.l9.verdict === null;
+  const benefitMissing = state.l9.benefitOneLine.trim().length === 0;
+  const costMissing = state.l9.costOneLine.trim().length === 0;
+  const showValidation = attemptedAdvance && (verdictMissing || benefitMissing || costMissing);
+
+  const onAdvance = async () => {
+    if (verdictMissing) {
+      setAttemptedAdvance(true);
+      return;
+    }
+    setAttemptedAdvance(false);
+    // Sprint 3 T11 — queue the close-call Discovery assumption here, on advance,
+    // rather than from an effect that fired the instant the verdict was picked.
+    // The old effect read benefit/cost *before* the founder had typed them and a
+    // ref guard then blocked it from ever re-queuing with the real text — so the
+    // assumption permanently read "(unstated)". Reading the values at advance
+    // time captures whatever the founder actually entered, and mirrors the L9.2
+    // critical-pain queue-on-continue pattern.
+    if (state.l9.verdict === 'close-call') {
+      const benefit = state.l9.benefitOneLine.trim();
+      const cost = state.l9.costOneLine.trim();
+      try {
+        await createDirectAssumption({
+          layerId: 'solution',
+          text: `Adoption cost is a close call: benefit "${benefit || '(unstated)'}" vs cost "${cost || '(unstated)'}"`,
+          notes: 'Auto-queued from L9.4 — needs Discovery against beachhead users to verify benefit lands in the first 30 seconds.',
+        });
+      } catch {
+        // Best-effort; never block navigation on assumption-queue failure.
+      }
+    }
+    goTo('l10.1');
+  };
 
   return (
     <StepFrame stepId="l9.4" title="What does the user have to give up to use this?" suppressVoice={reactiveShowing}>
@@ -949,8 +1032,10 @@ export function Step9_4({ state, update, goTo }: StepProps) {
             value={state.l9.benefitOneLine}
             onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, benefitOneLine: e.target.value } }))}
             placeholder="In the user's terms…"
+            aria-invalid={attemptedAdvance && benefitMissing}
             style={{
-              width: '100%', padding: '8px 10px', border: `1px solid ${TAN}`,
+              width: '100%', padding: '8px 10px',
+              border: `1px solid ${attemptedAdvance && benefitMissing ? AMBER_FG : TAN}`,
               borderRadius: 4, fontSize: 13, fontFamily: 'inherit', background: '#fff',
             }}
           />
@@ -965,8 +1050,10 @@ export function Step9_4({ state, update, goTo }: StepProps) {
             value={state.l9.costOneLine}
             onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, costOneLine: e.target.value } }))}
             placeholder="What the user gives up…"
+            aria-invalid={attemptedAdvance && costMissing}
             style={{
-              width: '100%', padding: '8px 10px', border: `1px solid ${TAN}`,
+              width: '100%', padding: '8px 10px',
+              border: `1px solid ${attemptedAdvance && costMissing ? AMBER_FG : TAN}`,
               borderRadius: 4, fontSize: 13, fontFamily: 'inherit', background: '#fff',
             }}
           />
@@ -1016,7 +1103,41 @@ export function Step9_4({ state, update, goTo }: StepProps) {
         </div>
       )}
 
-      <NavRow onBack={() => goTo('l9.3')} onNext={() => goTo('l10.1')} nextLabel="Continue → value chain" />
+      {/* Sprint 3 T11 — close-call consequence card.
+          MONTY REVIEW — provisional copy below; the L9.2 critical-pain pattern
+          is the template (claim → consequence → queued). Replace verbatim if
+          Monty rewrites. The assumption is queued on Continue (see onAdvance
+          above), capturing the final benefit/cost the founder entered. */}
+      {closeCall && (
+        <div style={{ marginBottom: 16 }} aria-live="polite">
+          <MentorCallout body={
+            <>
+              <strong>Queued to the assumption stack:</strong>{' '}
+              Close-call adoption cost is the most common reason early traction
+              fades. We&apos;ll test whether your benefit lands with your beachhead
+              in the first thirty seconds.
+            </>
+          } />
+        </div>
+      )}
+
+      {showValidation && (
+        <div role="alert" style={{
+          marginBottom: 14, padding: '10px 12px', borderRadius: 6,
+          background: AMBER_SOFT, border: `1px solid ${AMBER_FG}`,
+          fontSize: 12.5, color: AMBER_FG, lineHeight: 1.45,
+        }}>
+          {verdictMissing
+            ? 'Pick a verdict before continuing — Clearly worth it, Probably worth it, or Close call.'
+            : 'Benefit and Cost one-liners are blank. They\'re how your beachhead will hear the pitch — fill them in or come back to L9.4 later.'}
+        </div>
+      )}
+
+      <NavRow
+        onBack={() => goTo('l9.3')}
+        onNext={onAdvance}
+        nextLabel="Continue → value chain"
+      />
     </StepFrame>
   );
 }
@@ -1202,15 +1323,18 @@ export function Step10_2({ state, update, goTo }: StepProps) {
   const nodes = nodesOrderedFn(chain);
   const price = state.l10.margins.priceUnits;
 
+  // Sprint 3 T7 — compute markup rows even without a price entered. The
+  // page promises "Industry-typical markups are pre-filled where we can",
+  // so the table must be visible at load with defaults showing. Sell-price
+  // cells stay null until the founder fills in a unit price.
   const computed = useMemo(() => {
-    if (price == null) return [];
-    let running = price;
-    const out: { fromId: string; toId: string; price: number; markupPct: number }[] = [];
+    let running: number | null = price;
+    const out: { fromId: string; toId: string; price: number | null; markupPct: number }[] = [];
     for (let i = 0; i < nodes.length - 1; i++) {
       const fromId = nodes[i].id, toId = nodes[i + 1].id;
       const est = state.l10.margins.estimates.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
       const markupPct = est?.markupPct ?? defaultMarkupFor(nodes[i + 1].role);
-      const next = running * (1 + markupPct / 100);
+      const next = running != null ? running * (1 + markupPct / 100) : null;
       out.push({ fromId, toId, price: next, markupPct });
       running = next;
     }
@@ -1266,7 +1390,7 @@ export function Step10_2({ state, update, goTo }: StepProps) {
         <span style={{ fontSize: 12, color: MUTED }}>per unit</span>
       </div>
 
-      {price != null && nodes.length > 1 && (
+      {nodes.length > 1 && (
         <div style={{
           padding: 16, marginBottom: 16, borderRadius: 8,
           border: `1px solid ${TAN}`, background: '#fff',
@@ -1308,8 +1432,11 @@ export function Step10_2({ state, update, goTo }: StepProps) {
                         }}
                       />
                     </td>
-                    <td style={{ padding: '8px 4px', textAlign: 'right', fontFamily: FONT_MONO, color: INK }}>
-                      {row.price.toFixed(2)}
+                    <td style={{
+                      padding: '8px 4px', textAlign: 'right', fontFamily: FONT_MONO,
+                      color: row.price == null ? MUTED : INK,
+                    }}>
+                      {row.price == null ? '—' : row.price.toFixed(2)}
                     </td>
                   </tr>
                 );
@@ -1434,6 +1561,8 @@ export function Step10_3({ state, update, goTo, saveLayer }: StepProps) {
 }
 
 function BMCard({ label, tip, on, onToggle }: { label: string; tip: string; on: boolean; onToggle: () => void }) {
+  // Sprint 3 T12 — these were reading as display tiles. Adding a hover lift
+  // + drop shadow so the founder sees them as click targets at a glance.
   return (
     <button
       type="button"
@@ -1444,6 +1573,17 @@ function BMCard({ label, tip, on, onToggle }: { label: string; tip: string; on: 
         border: `2px solid ${on ? TEAL : TAN}`,
         background: on ? TEAL_LITE : '#fff',
         cursor: 'pointer', fontFamily: 'inherit',
+        transition: 'transform .12s, box-shadow .12s, border-color .12s',
+      }}
+      onMouseEnter={(e) => {
+        if (!on) {
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(11,18,32,0.06)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '';
       }}
     >
       <div style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{label}</div>
@@ -1459,20 +1599,48 @@ function BMCard({ label, tip, on, onToggle }: { label: string; tip: string; on: 
 const TAG_OPTIONS: { value: CompetitorTag; label: string }[] = [
   { value: 'direct',         label: 'Direct' },
   { value: 'indirect',       label: 'Indirect' },
-  { value: 'status-quo',     label: 'Status quo' },
+  { value: 'status-quo',     label: 'Status quo / Do nothing' },
   { value: 'diy-workaround', label: 'DIY workaround' },
 ];
+
+// Sprint 3 T6 — substrings that strongly imply "they live with it" / status-
+// quo competition. Case-insensitive substring match. The mentor card on this
+// step actively tells the founder this is the most common competitor; defaulting
+// these to 'direct' contradicts that lesson.
+const DO_NOTHING_PATTERNS: readonly string[] = [
+  'do nothing', 'suck it up', 'live with it', 'keep flying', 'keep using',
+  'stay on', 'status quo', 'tolerate', 'put up with', 'deal with it',
+  'nothing changes',
+];
+
+function inferCompetitorTag(name: string, fallback: CompetitorTag): CompetitorTag {
+  const n = name.toLowerCase();
+  if (DO_NOTHING_PATTERNS.some((p) => n.includes(p))) return 'status-quo';
+  return fallback;
+}
 
 export function Step10_4({ state, update, goTo, saveLayer, onGraduate }: StepProps) {
   const [draft, setDraft] = useState('');
   const [draftTag, setDraftTag] = useState<CompetitorTag>('direct');
 
+  // Auto-suggest 'status-quo' as the user types if the draft text matches a
+  // do-nothing pattern. Founder can still override by clicking the dropdown.
+  const draftIsDoNothing = useMemo(
+    () => DO_NOTHING_PATTERNS.some((p) => draft.toLowerCase().includes(p)),
+    [draft],
+  );
+  useEffect(() => {
+    if (draftIsDoNothing && draftTag === 'direct') setDraftTag('status-quo');
+  }, [draftIsDoNothing, draftTag]);
+
   const add = () => {
     const name = draft.trim();
     if (!name) return;
-    const c: Competitor = { id: uid('c'), name, tag: draftTag };
+    const tag = inferCompetitorTag(name, draftTag);
+    const c: Competitor = { id: uid('c'), name, tag };
     update((prev) => ({ ...prev, l10: { ...prev.l10, competitors: [...prev.l10.competitors, c] } }));
     setDraft('');
+    setDraftTag('direct');
   };
 
   const remove = (id: string) =>
@@ -1595,34 +1763,72 @@ function NavRow({
   nextLabel: string;
   disabled?: boolean;
 }) {
+  // Every step (and the terminal graduate action) routes its "Next" through
+  // here. Previously `void onNext()` dropped any rejected promise on the floor,
+  // so a failed layer save / graduation looked like a dead button. Now we await
+  // and surface the error: `busy` blocks double-submits while the save is in
+  // flight, and the mounted ref keeps the success path — which usually
+  // navigates away and unmounts this row — from setting state post-unmount.
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const handleNext = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onNext();
+      if (mountedRef.current) setBusy(false);
+    } catch (e) {
+      if (!mountedRef.current) return;
+      setError(e instanceof Error ? e.message : 'Something went wrong saving this step.');
+      setBusy(false);
+    }
+  };
+
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      paddingTop: 16, marginTop: 8, borderTop: `1px solid ${TAN}`,
-    }}>
-      {onBack ? (
+    <div style={{ marginTop: 8, paddingTop: 16, borderTop: `1px solid ${TAN}` }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              padding: '9px 14px', background: 'transparent',
+              border: `1px solid ${STONE}`, borderRadius: 6,
+              fontSize: 12.5, color: SLATE_FG, cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >← Back</button>
+        ) : <span />}
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => { void handleNext(); }}
+          disabled={disabled || busy}
           style={{
-            padding: '9px 14px', background: 'transparent',
-            border: `1px solid ${STONE}`, borderRadius: 6,
-            fontSize: 12.5, color: SLATE_FG, cursor: 'pointer',
-            fontFamily: 'inherit',
+            padding: '10px 18px', background: INK, color: '#fff',
+            border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
+            cursor: (disabled || busy) ? 'not-allowed' : 'pointer',
+            opacity: (disabled || busy) ? 0.5 : 1, fontFamily: 'inherit',
           }}
-        >← Back</button>
-      ) : <span />}
-      <button
-        type="button"
-        onClick={() => { void onNext(); }}
-        disabled={disabled}
-        style={{
-          padding: '10px 18px', background: INK, color: '#fff',
-          border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.5 : 1, fontFamily: 'inherit',
-        }}
-      >{nextLabel}</button>
+        >{busy ? 'Saving…' : nextLabel}</button>
+      </div>
+      {error && (
+        <div role="alert" style={{
+          marginTop: 10, padding: '8px 12px', borderRadius: 6,
+          background: AMBER_SOFT, border: `1px solid ${AMBER_FG}`,
+          fontSize: 12.5, color: AMBER_FG, lineHeight: 1.45,
+        }}>
+          Couldn&apos;t save this step: {error}. Your work is still here — try again.
+        </div>
+      )}
     </div>
   );
 }

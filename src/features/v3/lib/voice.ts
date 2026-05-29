@@ -43,7 +43,9 @@ export const OPENING: Readonly<Record<Intensity, OpeningCopy>> = Object.freeze({
     closer: 'Sources are how I score you. Be honest with them.',
   },
   sharp: {
-    kicker: 'Read this',
+    // Sprint 3 T9 — eyebrow intentionally blank. The page title commands
+    // attention on its own; "READ THIS" was redundant pressure.
+    kicker: '',
     title: 'No skipping.',
     lede: 'You think you have an idea. You probably have an assumption stack with three honest data points and a lot of hope.',
     body: [
@@ -184,7 +186,6 @@ export const STEP_VOICE: Readonly<Record<StepId, string>> = Object.freeze({
 export const STEP_WARNING: Readonly<Record<string, string>> = Object.freeze({
   'l9.4.close_call': "Close-call benefits almost never drive switching. Humans don't make small upgrades — they make obvious ones or they stay put. If your honest answer is close call, you have two choices: strengthen the solution until the benefit is obvious, or find a sub-group where the same solution is a clear win because their pain is bigger.",
   'l10.1.direct_b2c': "Most B2B products have intermediate links. Sure you're direct to consumer? You can always come back.",
-  'l8.1.few_groups': "You listed two. That's the shower-thought answer. Most of the interesting beachheads are hiding in the third, fourth, and fifth group you'd think of. Want to try a couple more?",
 });
 
 export function lookupStepVoice(stepId: StepId): string {
@@ -193,4 +194,30 @@ export function lookupStepVoice(stepId: StepId): string {
 
 export function lookupStepWarning(key: string): string | null {
   return STEP_WARNING[key] ?? null;
+}
+
+// ── numberWord ──
+//
+// Spells out 0-10 ("zero", "one", … "ten"); falls back to the digit string for
+// 11+. Lowercase so it can slot into mid-sentence templates. Shared with
+// dashboard state-line copy.
+export function numberWord(n: number): string {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  return n >= 0 && n <= 10 ? words[n] : String(n);
+}
+
+// ── L8.1 reactive copy (dynamic count) ──
+//
+// The "few groups" warning needs to name the actual count the founder has
+// listed. Pre-Sprint-3 this was a static string that always said "two";
+// S3-T1 fixed that to read from the live list length.
+export function fewGroupsWarning(n: number): string {
+  return `You listed ${numberWord(n)}. That's the shower-thought answer. Most of the interesting beachheads are hiding in the third, fourth, and fifth group you'd think of. Want to try a couple more?`;
+}
+
+// MONTY REVIEW — line below is provisional Sprint 3 copy (S3-T2). Direct voice;
+// fires once when the founder crosses 5 groups on L8.1 and then yields back to
+// the static voice card. Replace verbatim if Monty rewrites.
+export function fiveGroupsAck(): string {
+  return 'Good. Five is enough to score. The third and fourth are usually the ones you didn\'t expect.';
 }

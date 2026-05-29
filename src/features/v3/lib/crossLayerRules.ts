@@ -11,6 +11,7 @@
 //   - predicate    : (stack) → boolean — does this rule fire?
 //   - derive       : (stack) → { assumption_text, notes }
 
+import { dedupKey } from './assumptions';
 import type { AssumptionCandidate } from './assumptions';
 import type { RuleStackSnapshot } from './assumptions';
 
@@ -112,12 +113,20 @@ const RULES: CrossLayerRule[] = [
 
 export function deriveCrossLayerCandidates(args: {
   stack: RuleStackSnapshot;
-  existingRuleIds: ReadonlySet<string>;
+  existingKeys: ReadonlySet<string>;
 }): AssumptionCandidate[] {
-  const { stack, existingRuleIds } = args;
+  const { stack, existingKeys } = args;
   const out: AssumptionCandidate[] = [];
   for (const rule of RULES) {
-    if (existingRuleIds.has(rule.id)) continue;
+    // Composite dedup key (source + cross-source + rule_id) matching the DB
+    // partial unique index — see dedupKey() in assumptions.ts.
+    const key = dedupKey({
+      channel: 'cross_layer',
+      source_layer_id: rule.layers[0],
+      cross_source_layer_id: rule.layers[1],
+      rule_id: rule.id,
+    });
+    if (key && existingKeys.has(key)) continue;
     if (!rule.predicate(stack)) continue;
     const { assumption_text, notes } = rule.derive(stack);
     out.push({

@@ -65,6 +65,10 @@ export default function MiniProcessPage() {
 
         {focusedRun && focusedDef ? (
           <RunDetail
+            // Remount when the focused run changes so notesDraft (seeded from
+            // run.notes via useState) resets instead of leaking the prior run's
+            // draft into a different run.
+            key={focusedRun.id}
             run={focusedRun}
             def={focusedDef}
             onBack={() => navigate(`/v3/mini-process/${projectId}${filterLayerId ? `?layer=${filterLayerId}` : ''}`)}

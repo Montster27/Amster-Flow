@@ -69,21 +69,26 @@ export function TemplateMini({
   onHover: (id: string | null) => void;
   onLoad: () => void;
 }) {
+  // Sprint 3 T12 — hover state is "preview," not "selected." Previously the
+  // filled TEAL_LITE background made hover-and-focus look like a selection,
+  // and a focused-after-click button could appear highlighted alongside a
+  // hovered sibling. Now hover changes only the border + shadow, never the
+  // fill — so a "selected"-looking style is unambiguously reserved for
+  // genuine state (which these starter templates never have).
   return (
     <button
       type="button"
       onMouseEnter={() => onHover(tmpl.id)}
       onMouseLeave={() => onHover(null)}
-      onFocus={() => onHover(tmpl.id)}
-      onBlur={() => onHover(null)}
       onClick={onLoad}
       style={{
         width: '100%', textAlign: 'left',
         padding: 12, borderRadius: 6,
         border: `1px solid ${hovered ? TEAL : TAN}`,
-        background: hovered ? TEAL_LITE : '#fff',
+        background: '#fff',
+        boxShadow: hovered ? `0 0 0 2px ${TEAL_LITE}` : 'none',
         cursor: 'pointer', fontFamily: 'inherit',
-        transition: 'background .12s, border-color .12s',
+        transition: 'border-color .12s, box-shadow .12s',
       }}
     >
       <div style={{
