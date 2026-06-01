@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
@@ -31,6 +31,21 @@ import { OrganizationSettingsPage } from './pages/OrganizationSettingsPage'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
+// V3 functional app — auth-gated, lazy-loaded.
+const V3EntryPage      = lazy(() => import('./features/v3/pages/EntryPage'))
+const V3OnboardingPage = lazy(() => import('./features/v3/pages/OnboardingPage'))
+const V3DoorAPage      = lazy(() => import('./features/v3/pages/DoorAPage'))
+const V3DoorBPage      = lazy(() => import('./features/v3/pages/DoorBPage'))
+const V3DashboardPage  = lazy(() => import('./features/v3/pages/DashboardPage'))
+const V3LayerDetailPage = lazy(() => import('./features/v3/pages/LayerDetailPage'))
+const V3PitchPage      = lazy(() => import('./features/v3/pages/PitchPage'))
+const V3AssumptionsPage = lazy(() => import('./features/v3/pages/AssumptionsPage'))
+const V3MiniProcessPage = lazy(() => import('./features/v3/pages/MiniProcessPage'))
+
+const v3Suspense = (el: React.ReactNode) => (
+  <Suspense fallback={<div style={{padding:40}}>Loading…</div>}>{el}</Suspense>
+)
+
 // Initialize Sentry error tracking
 initSentry();
 
@@ -56,6 +71,80 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/terms" element={<TermsOfServicePage />} />
+
+                  {/* V3 functional app — auth-gated */}
+                  <Route
+                    path="/v3"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3EntryPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/onboarding/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3OnboardingPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/door-a/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DoorAPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/door-b/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DoorBPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/dashboard/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3DashboardPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/layer/:projectId/:layerId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3LayerDetailPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/pitch/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3PitchPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/assumptions/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3AssumptionsPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/v3/mini-process/:projectId"
+                    element={
+                      <ProtectedRoute>
+                        {v3Suspense(<V3MiniProcessPage />)}
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* Protected routes */}
                   <Route

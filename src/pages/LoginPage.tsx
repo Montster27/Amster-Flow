@@ -76,7 +76,7 @@ export function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">PivotKit</h1>
-          <p className="text-gray-600">Sign in to start building your Lean Canvas</p>
+          <p className="text-gray-600">Sign in to PivotKit.</p>
         </div>
 
         {/* Auth Card */}
