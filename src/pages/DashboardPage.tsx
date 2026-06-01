@@ -537,6 +537,15 @@ export function DashboardPage() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              {/* Opt-in preview of the new v3 UI. Plain link to the separate
+                  /v3 route; the old UI stays the default. */}
+              <button
+                onClick={() => navigate('/v3')}
+                title="Preview the new v3 experience"
+                className="px-2.5 py-1 text-xs font-semibold rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                v3
+              </button>
               <span className="text-sm text-gray-600">{user?.email}</span>
               <button
                 onClick={() => navigate('/team')}
