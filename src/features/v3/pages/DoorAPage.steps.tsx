@@ -20,14 +20,19 @@ import {
   type ChainTemplate,
 } from '../components/valueChain';
 import {
-  computeBeachheadScore, emptyRoute, isCloseCall,
-  nodesOrdered as nodesOrderedFn, normalizedScore, topRankedSubgroup,
+  addPain, beachheadSegmentLabel, computeBeachheadScore, deletePain, editPain, emptyRoute,
+  getPains, getPrimaryPain, getSolutionRow, isCloseCall, MAX_PAINS,
+  nodesOrdered as nodesOrderedFn, normalizedScore, painLabel,
+  painLayerEvidenceStar, promotePrimary, setSolutionRow, solutionLayerClaim, topRankedSubgroup,
   type AdoptionVerdict, type BusinessModelId, type ChainNode as ChainNodeT,
   type ChainRole, type Competitor, type CompetitorTag,
-  type DoorAState, type DoorASourceId, type PainValue,
-  type ParentGroup, type ReachValue, type SizeValue, type SubGroup,
+  type DoorAState, type DoorASourceId, type EvidenceStar, type Pain,
+  type PainSeverity, type PainValue,
+  type ParentGroup, type ReachValue, type SizeValue, type SolutionRow, type SubGroup,
   type ValueChain, type ValueRoute,
 } from '../lib/doorAState';
+import { deriveAssumption, rebuildDerivedAssumptions } from '../lib/deriveAssumption';
+import { pkTier, PK_LAYER_BY_ID } from '../lib/layers';
 import type { SourceId } from '../lib/layers';
 import {
   fewGroupsWarning, fiveGroupsAck,
@@ -78,6 +83,28 @@ const SIZE_OPTIONS: { value: SizeValue; label: string; tip: string }[] = [
   { value: 'real-market',  label: 'Real market',  tip: 'Tens of thousands to a few hundred thousand. Most beachheads land here.' },
   { value: 'large-market', label: 'Large market', tip: 'Millions. Almost never the right starting place.' },
 ];
+
+// ── L11 pain-scale option labels + evidence mapping ──
+
+const SEVERITY_OPTIONS: { value: PainSeverity; label: string; tip: string }[] = [
+  { value: 'high', label: 'High', tip: "They're losing real money / time / sleep over it and actively hunting for a fix." },
+  { value: 'med',  label: 'Med',  tip: 'A meaningful drag — saves real time or money — but they live with it today.' },
+  { value: 'low',  label: 'Low',  tip: "Convenience or polish. They'd take a fix if it were free." },
+];
+
+// Per-pain evidence reuses the "How do you know?" SourcePicker. painScale's
+// per-layer source→tier map (lib/layers) is a clean bijection over ★1–★5, so a
+// pain's evidenceStar and the picked source are two views of one value. These
+// convert between them via pkTier so the picker, the per-pain star, and the
+// layer roll-up all stay in lockstep with the canonical tier config.
+const EVIDENCE_SOURCES: SourceId[] = ['logical', 'experience', 'research', 'interviews', 'prototype'];
+function sourceForStar(star: EvidenceStar): SourceId {
+  return EVIDENCE_SOURCES.find((s) => pkTier('painScale', s) === star) ?? 'logical';
+}
+function starForSource(src: SourceId): EvidenceStar {
+  const t = pkTier('painScale', src);
+  return (t >= 1 && t <= 5 ? t : 1) as EvidenceStar;
+}
 
 // ── Layout helpers ──
 
@@ -802,113 +829,486 @@ export function Step9_1({ state, update, goTo, saveLayer }: StepProps) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// L9.2 — Pain scale + justification
+// L11 (step l9.2) — Pain scale: 1 required primary pain + up to 2 more
 // ──────────────────────────────────────────────────────────────────
+//
+// Reads/writes flow through the stable multi-pain model in lib/doorAState
+// (getPains / getPrimaryPain / addPain / editPain / promotePrimary /
+// deletePain). Each pain carries its own text, severity, and evidence star;
+// the layer's star is the MIN evidence across pains (painLayerEvidenceStar) so
+// a strong primary can't mask a weak secondary. Only the primary is required.
+
+function PainRow({
+  pain, label, attemptedAdvance, onText, onSeverity, onEvidence, onMakePrimary, onDelete,
+}: {
+  pain: Pain;
+  label: string;
+  /** A blocked Continue happened — flag the primary's empty text. */
+  attemptedAdvance: boolean;
+  onText: (text: string) => void;
+  onSeverity: (severity: PainSeverity) => void;
+  onEvidence: (star: EvidenceStar) => void;
+  onMakePrimary: () => void;
+  onDelete: () => void;
+}) {
+  const primary = pain.isPrimary;
+  // Only the primary pain is required; flag empty text after a blocked advance.
+  const invalid = primary && attemptedAdvance && pain.text.trim().length === 0;
+  return (
+    <div style={{
+      padding: 16, marginBottom: 12, borderRadius: 8, background: '#fff',
+      border: `1px solid ${primary ? TEAL : TAN}`,
+      borderLeft: `3px solid ${primary ? TEAL : TAN}`,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 10, marginBottom: 10,
+      }}>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+          textTransform: 'uppercase', fontWeight: 700,
+          color: primary ? TEAL : MUTED,
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>{label}</span>
+          {primary && (
+            <>
+              <span aria-hidden style={{ color: STONE }}>·</span>
+              <span>Primary</span>
+              <span aria-hidden style={{ color: STONE }}>·</span>
+              <span style={{ color: AMBER_FG }}>Required</span>
+            </>
+          )}
+        </span>
+        {/* Non-primary rows carry make-primary + delete; the primary carries
+            neither (deletePain refuses the primary while others exist — promote
+            another first). */}
+        {!primary && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={onMakePrimary}
+              style={{
+                background: 'transparent', border: `1px solid ${TAN}`,
+                borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.08em',
+                textTransform: 'uppercase', fontWeight: 600, color: SLATE_FG,
+              }}
+            >Make primary</button>
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Delete ${label}`}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                fontSize: 16, color: SLATE_FG, opacity: 0.6, lineHeight: 1,
+              }}
+            >×</button>
+          </div>
+        )}
+      </div>
+
+      <input
+        value={pain.text}
+        onChange={(e) => onText(e.target.value)}
+        placeholder={primary
+          ? 'The one pain this venture exists to kill…'
+          : 'Another pain worth noting (optional)…'}
+        aria-label={`${label} description`}
+        aria-invalid={invalid}
+        style={{
+          width: '100%', padding: '10px 12px',
+          border: `1px solid ${invalid ? AMBER_FG : TAN}`, borderRadius: 6,
+          fontSize: 14, fontFamily: 'inherit', color: INK,
+          background: '#fff', outline: 'none', marginBottom: 14,
+        }}
+      />
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          fontFamily: FONT_MONO, fontSize: 10.5, color: '#64748b',
+          letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600,
+          marginBottom: 8,
+        }}>Severity</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {SEVERITY_OPTIONS.map((o) => (
+            <PillOption
+              key={o.value}
+              selected={pain.severity === o.value}
+              label={o.label}
+              tip={o.tip}
+              onClick={() => onSeverity(o.value)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Evidence reuses the "How do you know?" SourcePicker; the picked source
+          maps 1:1 onto this pain's evidence star (★1 logical → ★5 prototype). */}
+      <SourcePicker
+        value={sourceForStar(pain.evidenceStar)}
+        layerId="painScale"
+        onChange={(src) => { if (src) onEvidence(starForSource(src)); }}
+      />
+    </div>
+  );
+}
 
 export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption }: StepProps) {
+  const pains = getPains(state);
+  const primary = getPrimaryPain(state);
+  const minStar = painLayerEvidenceStar(state);
+  const [attemptedAdvance, setAttemptedAdvance] = useState(false);
+
+  // Always land on at least one (blank) primary pain so the required row is
+  // present to type into. Idempotent + StrictMode-safe: the guard runs inside
+  // the functional updater, so a double-invoked effect can't mint two pains.
+  useEffect(() => {
+    update((prev) => (prev.pains.length === 0
+      ? addPain(prev, { text: '', severity: 'med', evidenceStar: 1 })
+      : prev));
+  }, [update]);
+
+  // Keep the layer's staged source in lockstep with the live roll-up
+  // (MIN evidence star), so the StepRail / foundation counter show the same
+  // star this step will persist on Continue. Guarded to avoid a write loop.
+  useEffect(() => {
+    if (pains.length === 0) return;
+    const src = sourceForStar(minStar as EvidenceStar);
+    if (state.draftSources.painScale !== src) {
+      update((prev) => ({
+        ...prev,
+        draftSources: { ...prev.draftSources, painScale: src },
+      }));
+    }
+  }, [minStar, pains.length, state.draftSources.painScale, update]);
+
+  const primaryText = primary?.text.trim() ?? '';
+  const remaining = MAX_PAINS - pains.length;
+  const tooStrong = primary?.severity === 'high';
+
   const onNext = async () => {
-    const rating = state.l9.painRating;
-    if (rating) {
-      await saveLayer('painScale', {
-        claim_text: `${rating} — ${state.l9.painJustification.trim()}`.slice(0, 500),
-        source_value: state.draftSources.painScale ?? 'experience',
-      });
-      // Critical claims become explicit Discovery targets.
-      if (rating === 'critical' && state.l9.painJustification.trim().length > 0) {
-        try {
-          await createDirectAssumption({
-            layerId: 'painScale',
-            text: `Pain is Critical for the beachhead: "${state.l9.painJustification.trim().slice(0, 200)}"`,
-            notes: 'Auto-queued from L9.2 — needs 5 interviews to validate.',
-          });
-        } catch {
-          // Best-effort; don't block navigation on assumption-write failure.
-        }
+    // Only the primary pain gates the step. Pains 2 & 3 are nudge-not-block.
+    if (primaryText.length === 0) {
+      setAttemptedAdvance(true);
+      return;
+    }
+    setAttemptedAdvance(false);
+
+    const moreCount = pains.length - 1;
+    const claim = moreCount > 0
+      ? `${primaryText} (+${moreCount} more pain${moreCount === 1 ? '' : 's'})`
+      : primaryText;
+    await saveLayer('painScale', {
+      claim_text: claim.slice(0, 500),
+      // L11 roll-up: the weakest pain's evidence sets the layer star.
+      source_value: sourceForStar((minStar || 1) as EvidenceStar),
+    });
+
+    // Preserve the "everybody says it's the worst" guard-rail: a High-severity
+    // primary becomes an explicit Discovery target.
+    if (primary && primary.severity === 'high') {
+      try {
+        await createDirectAssumption({
+          layerId: 'painScale',
+          text: `Pain is High-severity for the beachhead: "${primaryText.slice(0, 200)}"`,
+          notes: 'Auto-queued from L11 — needs 5 interviews in the beachhead to validate.',
+        });
+      } catch {
+        // Best-effort; never block navigation on an assumption-write failure.
       }
     }
     goTo('l9.3');
   };
 
-  const tooStrong = state.l9.painRating === 'critical';
-
   return (
-    <StepFrame stepId="l9.2" title="How acute is this pain — really?" voicePosition="inline">
+    <StepFrame stepId="l9.2" title="What's the pain — and how do you know?" voicePosition="inline">
       <BeachheadFixedHeader state={state} />
       {!tooStrong && (
         <div style={{ marginBottom: 18 }}>
           <MentorCallout body={lookupStepVoice('l9.2')} italic />
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-        {PAIN_OPTIONS.map((o) => {
-          const on = state.l9.painRating === o.value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => update((prev) => ({ ...prev, l9: { ...prev.l9, painRating: on ? null : o.value } }))}
-              style={{
-                textAlign: 'left', padding: '12px 16px',
-                border: `2px solid ${on ? TEAL : TAN}`,
-                background: on ? TEAL_LITE : '#fff',
-                borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 600, color: INK }}>{o.label}</div>
-              <div style={{ fontSize: 12.5, color: SLATE_FG, marginTop: 2 }}>{o.tip}</div>
-            </button>
-          );
-        })}
-      </div>
+      <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0 }}>
+        Lead with the one pain this venture exists to kill — that's the primary, and the only
+        one you must fill in. Add up to two more if your beachhead carries them; each pain gets
+        its own severity and its own evidence.
+      </p>
 
-      {state.l9.painRating && (
-        <>
-          <label style={{
-            display: 'block', marginBottom: 6,
-            fontFamily: FONT_MONO, fontSize: 10.5, color: SLATE_FG,
-            letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
-          }}>One sentence: why this rating?</label>
-          <textarea
-            value={state.l9.painJustification}
-            onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, painJustification: e.target.value } }))}
-            placeholder="Why is this Critical and not Useful?"
-            style={{
-              width: '100%', minHeight: 80, padding: '10px 12px',
-              border: `1px solid ${TAN}`, borderRadius: 6,
-              fontSize: 13.5, lineHeight: 1.55, fontFamily: 'inherit',
-              color: INK, background: '#fff', resize: 'vertical', outline: 'none',
-              marginBottom: 16,
-            }}
-          />
-        </>
-      )}
+      {pains.map((p) => (
+        <PainRow
+          key={p.id}
+          pain={p}
+          label={painLabel(p)}
+          attemptedAdvance={attemptedAdvance}
+          onText={(text) => update((prev) => editPain(prev, p.id, { text }))}
+          onSeverity={(severity) => update((prev) => editPain(prev, p.id, { severity }))}
+          onEvidence={(evidenceStar) => update((prev) => editPain(prev, p.id, { evidenceStar }))}
+          onMakePrimary={() => update((prev) => promotePrimary(prev, p.id))}
+          onDelete={() => update((prev) => deletePain(prev, p.id))}
+        />
+      ))}
+
+      {/* Add-a-pain — enabled while there's a free slot (≤ MAX_PAINS). */}
+      <button
+        type="button"
+        onClick={() => {
+          if (pains.length < MAX_PAINS) {
+            update((prev) => addPain(prev, { text: '', severity: 'med', evidenceStar: 1 }));
+          }
+        }}
+        disabled={remaining <= 0}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          padding: '9px 14px', marginBottom: 18,
+          background: 'transparent',
+          border: `1px dashed ${remaining > 0 ? TEAL : STONE}`,
+          borderRadius: 8, cursor: remaining > 0 ? 'pointer' : 'not-allowed',
+          opacity: remaining > 0 ? 1 : 0.55, fontFamily: 'inherit',
+          color: remaining > 0 ? INK : MUTED, fontSize: 13, fontWeight: 500,
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1, color: remaining > 0 ? TEAL : MUTED }}>+</span>
+        Add a pain
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10.5, color: MUTED, letterSpacing: '0.06em',
+        }}>
+          {remaining > 0
+            ? `${remaining} slot${remaining === 1 ? '' : 's'} left · ${MAX_PAINS} max`
+            : `${MAX_PAINS} max`}
+        </span>
+      </button>
+
+      {/* Layer roll-up readout — the weakest pain sets the L11 star. */}
+      <div style={{
+        display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
+        padding: '10px 14px', marginBottom: 18, borderRadius: 6,
+        background: PAPER, border: `1px solid ${TAN}`,
+      }}>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10, color: SLATE_FG,
+          letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
+        }}>L11 layer star</span>
+        <span aria-label={`${minStar} of 5 stars`} style={{
+          fontFamily: FONT_MONO, fontSize: 13,
+          color: minStar >= 2 ? TEAL : MUTED, letterSpacing: '0.06em',
+        }}>{'★'.repeat(minStar)}{'☆'.repeat(5 - minStar)}</span>
+        <span style={{ fontSize: 12, color: MUTED }}>
+          your weakest pain&apos;s evidence — a strong primary won&apos;t mask a thin secondary
+        </span>
+      </div>
 
       {tooStrong && (
         <div style={{ marginBottom: 16 }}>
           <MentorCallout
             tone="amber"
-            body="Everybody rates their problem Critical the first time. About one in twenty actually has a Critical problem. We'll queue this as a Discovery assumption to test against 5 interviews in your beachhead."
+            body="Everybody rates their main pain High the first time. About one in twenty actually has a High-severity problem. We'll queue this as a Discovery assumption to test against 5 interviews in your beachhead."
           />
         </div>
       )}
 
-      <StepSourcePicker layerId="painScale" state={state} update={update} />
+      {attemptedAdvance && primaryText.length === 0 && (
+        <div role="alert" style={{
+          marginBottom: 14, padding: '10px 12px', borderRadius: 6,
+          background: AMBER_SOFT, border: `1px solid ${AMBER_FG}`,
+          fontSize: 12.5, color: AMBER_FG, lineHeight: 1.45,
+        }}>
+          Name the primary pain before continuing — it&apos;s the one required field on this
+          step. Pains 2 and 3 are optional.
+        </div>
+      )}
+
       <NavRow onBack={() => goTo('l9.1')} onNext={onNext} nextLabel="Continue → solution" />
     </StepFrame>
   );
 }
 
 // ──────────────────────────────────────────────────────────────────
-// L9.3 — Solution + extracted assumptions
+// L09 (step l9.3) — Pain-anchored solution
 // ──────────────────────────────────────────────────────────────────
+//
+// The solution ANSWERS the L11 pains: one row per pain (read via getPains in
+// stable order, keyed by stable painId — never index/text). Each row pairs the
+// read-only pain with a solution input + its own evidence, and renders the
+// derived assumption inline. An unaddressed pain is a visible dashed gap, never
+// hidden. L09 has NO hard gate — the primary-pain gate already lives at L11
+// (l9.2) — so Continue stays live even with coverage gaps.
+
+/** "L09 · Solution"-style badge for a layer id, read from the canonical layer
+ *  config so it stays in lockstep with the StepRail's layer labels. */
+function layerBadgeLabel(layerId: string): string {
+  const L = PK_LAYER_BY_ID[layerId];
+  return L ? `L${String(L.n).padStart(2, '0')} · ${L.name}` : layerId;
+}
+
+const solutionInputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 12px',
+  border: `1px solid ${TAN}`, borderRadius: 6,
+  fontSize: 14, fontFamily: 'inherit', color: INK,
+  background: '#fff', outline: 'none',
+};
+
+function SolutionRowCard({
+  pain, label, row, segment, onText, onEvidence,
+}: {
+  pain: Pain;
+  label: string;
+  row: SolutionRow | undefined;
+  segment: string;
+  onText: (text: string) => void;
+  onEvidence: (star: EvidenceStar) => void;
+}) {
+  const primary = pain.isPrimary;
+  const solutionText = row?.solutionText ?? '';
+  const filled = solutionText.trim().length > 0;
+  // Pains live in the L11 pain-scale collection, so every row's source layer is
+  // L11 · Pain Scale (the model carries no discrete L10/Problem pains yet).
+  const derived = deriveAssumption({ segment, pain, solution: row });
+
+  return (
+    <div style={{
+      padding: 16, marginBottom: 12, borderRadius: 8,
+      background: filled ? '#fff' : PAPER,
+      border: filled ? `1px solid ${primary ? TEAL : TAN}` : `1px dashed ${STONE}`,
+      borderLeft: filled ? `3px solid ${primary ? TEAL : TAN}` : `3px dashed ${STONE}`,
+    }}>
+      {/* Read-only pain header: PAIN-N · source layer · Primary */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap',
+      }}>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+          textTransform: 'uppercase', fontWeight: 700, color: primary ? TEAL : MUTED,
+        }}>{label}</span>
+        <span aria-hidden style={{ color: STONE }}>·</span>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.10em',
+          textTransform: 'uppercase', color: MUTED,
+        }}>{layerBadgeLabel('painScale')}</span>
+        {primary && (
+          <>
+            <span aria-hidden style={{ color: STONE }}>·</span>
+            <span style={{
+              fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+              textTransform: 'uppercase', fontWeight: 700, color: TEAL,
+            }}>Primary</span>
+          </>
+        )}
+      </div>
+      <p style={{
+        margin: 0, marginBottom: 12, fontSize: 14, lineHeight: 1.5, fontWeight: 500,
+        color: pain.text.trim() ? INK : MUTED,
+      }}>
+        {pain.text.trim() || 'Unnamed pain — name it on L11.'}
+      </p>
+
+      {/* Solution input — always present so any pain can be addressed here. */}
+      <input
+        value={solutionText}
+        onChange={(e) => onText(e.target.value)}
+        placeholder={primary
+          ? 'How does the product kill this pain for the beachhead?'
+          : 'How does the product address this pain? (optional)'}
+        aria-label={`Solution for ${label}`}
+        style={{ ...solutionInputStyle, marginBottom: filled ? 14 : 10 }}
+      />
+
+      {filled ? (
+        <>
+          {/* Evidence reuses the same "How do you know?" SourcePicker as the
+              pain screen; the picked source maps 1:1 onto this solution's star. */}
+          <SourcePicker
+            value={sourceForStar(row?.evidenceStar ?? 1)}
+            layerId="painScale"
+            onChange={(src) => { if (src) onEvidence(starForSource(src)); }}
+          />
+          {derived && (
+            <div style={{
+              marginTop: 12, padding: '10px 12px', borderRadius: 6,
+              background: TEAL_LITE, border: `1px solid ${TEAL}`,
+            }}>
+              <div style={{
+                fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
+                textTransform: 'uppercase', fontWeight: 700, color: TEAL, marginBottom: 4,
+              }}>Derived assumption</div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, color: INK }}>{derived.text}</div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div role="note" style={{
+          fontSize: 12.5, color: MUTED, fontStyle: 'italic', lineHeight: 1.4,
+        }}>
+          no solution mapped yet — this pain is unaddressed
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Coverage nudge (never a gate): N of M beachhead pains addressed + a segmented
+ *  bar, one segment per pain in order, filled when that pain has a solution. */
+function CoverageStrip({ segments }: { segments: boolean[] }) {
+  const total = segments.length;
+  const addressed = segments.filter(Boolean).length;
+  return (
+    <div style={{
+      marginBottom: 18, padding: '10px 14px', borderRadius: 6,
+      background: PAPER, border: `1px solid ${TAN}`,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        gap: 10, marginBottom: 8,
+      }}>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 10, color: SLATE_FG,
+          letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
+        }}>Coverage</span>
+        <span style={{ fontSize: 12.5, color: addressed === total ? TEAL : MUTED }}>
+          {addressed} of {total} beachhead pain{total === 1 ? '' : 's'} addressed
+        </span>
+      </div>
+      <div
+        role="img"
+        aria-label={`${addressed} of ${total} beachhead pains addressed`}
+        style={{ display: 'flex', gap: 6 }}
+      >
+        {segments.map((on, i) => (
+          <div key={i} style={{ flex: 1, height: 8, borderRadius: 4, background: on ? TEAL : TAN }} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Step9_3({ state, update, goTo, saveLayer }: StepProps) {
-  const solution = state.l9.solution;
+  const pains = getPains(state);
+  const segment = beachheadSegmentLabel(state);
+  const segments = pains.map(
+    (p) => (getSolutionRow(state, p.id)?.solutionText ?? '').trim().length > 0,
+  );
+
+  // Keep the persisted derived-assumption snapshot in lockstep with the live
+  // pains + rows + segment — the same guarded pattern Step9_2 uses to sync
+  // draftSources. Returning `prev` unchanged when nothing moved makes this a
+  // no-op (update() skips the autosave on an identical blob), so no write loop;
+  // derivedAssumptions itself is deliberately NOT a dependency.
+  useEffect(() => {
+    update((prev) => {
+      const next = rebuildDerivedAssumptions(prev, beachheadSegmentLabel(prev));
+      return JSON.stringify(prev.derivedAssumptions) === JSON.stringify(next)
+        ? prev
+        : { ...prev, derivedAssumptions: next };
+    });
+  }, [state.pains, state.solutionRows, state.subgroups, state.beachheadId, update]);
 
   const onNext = async () => {
-    if (state.l9.solution.trim()) {
+    // L09 has NO hard gate. Persist a layer claim only when there's content,
+    // and navigate regardless of coverage gaps.
+    const claim = solutionLayerClaim(state);
+    if (claim) {
       await saveLayer('solution', {
-        claim_text: state.l9.solution.trim(),
+        claim_text: claim.slice(0, 500),
         source_value: state.draftSources.solution ?? 'experience',
       });
     }
@@ -916,34 +1316,66 @@ export function Step9_3({ state, update, goTo, saveLayer }: StepProps) {
   };
 
   return (
-    <StepFrame stepId="l9.3" title="Describe your solution — for this beachhead.">
+    <StepFrame stepId="l9.3" title="How does your solution answer each pain?">
       <BeachheadFixedHeader state={state} />
-      <textarea
-        value={solution}
-        onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, solution: e.target.value } }))}
-        placeholder="1–3 sentences. What does the product actually do for this person?"
-        style={{
-          width: '100%', minHeight: 120, padding: '12px 14px',
-          border: `1px solid ${TAN}`, borderRadius: 6,
-          fontSize: 14, lineHeight: 1.55, fontFamily: 'inherit',
-          color: INK, background: '#fff', resize: 'vertical', outline: 'none',
-          marginBottom: 12,
-        }}
-      />
-      <div style={{
-        padding: '10px 12px', marginBottom: 16, borderRadius: 6,
-        background: PAPER, border: `1px solid ${TAN}`,
-        fontSize: 12.5, color: SLATE_FG, lineHeight: 1.5,
-      }}>
-        We&apos;ll generate assumption candidates from your stack on the next screen —
-        review them on the <strong style={{ color: INK }}>Assumption stack</strong> when you graduate.
+
+      {/* Optional one-line summary — carries the existing free-text value. */}
+      <div style={{ marginBottom: 20 }}>
+        <label
+          htmlFor="solution-summary"
+          style={{
+            display: 'block', marginBottom: 6,
+            fontFamily: FONT_MONO, fontSize: 10.5, color: '#64748b',
+            letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600,
+          }}
+        >
+          Describe your solution <span style={{ color: MUTED, fontWeight: 500 }}>· optional summary</span>
+        </label>
+        <input
+          id="solution-summary"
+          value={state.l9.solution}
+          onChange={(e) => update((prev) => ({ ...prev, l9: { ...prev.l9, solution: e.target.value } }))}
+          placeholder="One line: what does the product do for this beachhead?"
+          style={solutionInputStyle}
+        />
       </div>
+
+      <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0, marginBottom: 18 }}>
+        Answer each pain from L11 with the solution that kills it. The primary pain leads;
+        secondary pains are worth answering but optional. Every answered pain becomes a
+        derived assumption you&apos;ll test later.
+      </p>
+
+      {pains.length === 0 ? (
+        <div role="note" style={{
+          padding: '12px 14px', marginBottom: 18, borderRadius: 6,
+          background: AMBER_SOFT, border: `1px solid ${AMBER_FG}`,
+          fontSize: 12.5, color: AMBER_FG, lineHeight: 1.45,
+        }}>
+          No pains yet — name at least your primary pain on <strong>L11</strong> before mapping solutions.
+        </div>
+      ) : (
+        <>
+          {pains.map((p) => (
+            <SolutionRowCard
+              key={p.id}
+              pain={p}
+              label={painLabel(p)}
+              row={getSolutionRow(state, p.id)}
+              segment={segment}
+              onText={(text) => update((prev) => setSolutionRow(prev, p.id, { solutionText: text }))}
+              onEvidence={(evidenceStar) => update((prev) => setSolutionRow(prev, p.id, { evidenceStar }))}
+            />
+          ))}
+          <CoverageStrip segments={segments} />
+        </>
+      )}
+
       <StepSourcePicker layerId="solution" state={state} update={update} />
       <NavRow
         onBack={() => goTo('l9.2')}
         onNext={onNext}
         nextLabel="Continue → adoption cost"
-        disabled={solution.trim().length === 0}
       />
     </StepFrame>
   );

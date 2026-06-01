@@ -4,10 +4,14 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  SCORE_MAX, SCORE_MIN,
-  chainDepth, computeBeachheadScore, emptyDoorAState, emptyRoute,
-  extractAssumptions, findEdge, hydrate, isCloseCall, makeDefaultChain, nodesOrdered,
-  normalizedScore, stepHasDraft, topRankedSubgroup,
+  MAX_PAINS, SCORE_MAX, SCORE_MIN,
+  addPain, beachheadSegmentLabel, chainDepth, computeBeachheadScore, deletePain, editPain,
+  emptyDoorAState, emptyRoute,
+  extractAssumptions, findEdge, getPainById, getPains, getPrimaryPain, getSolutionRow, hydrate,
+  isCloseCall,
+  makeDefaultChain, nodesOrdered, normalizedScore, painLabel, painLayerEvidenceStar,
+  promotePrimary, setSolutionRow, solutionLayerClaim, stepHasDraft,
+  topRankedSubgroup,
   type SubGroup, type ValueChain,
 } from '../lib/doorAState';
 
@@ -243,11 +247,32 @@ describe('stepHasDraft', () => {
     expect(stepHasDraft('l8.3', s)).toBe(true);
   });
 
-  it('l9.2 reflects painRating selection only', () => {
+  it('l9.2 reflects pain text in the L11 pains model (not legacy painRating)', () => {
     const s = emptyDoorAState();
     expect(stepHasDraft('l9.2', s)).toBe(false);
-    s.l9.painRating = 'critical';
-    expect(stepHasDraft('l9.2', s)).toBe(true);
+    // A pain with no text yet still reads as "not started".
+    expect(stepHasDraft('l9.2', addPain(s, { text: '', severity: 'med', evidenceStar: 1 }))).toBe(false);
+    // Once any pain carries text, the step is in progress.
+    expect(stepHasDraft('l9.2', addPain(s, { text: 'deploys take 40 min', severity: 'high', evidenceStar: 2 }))).toBe(true);
+    // Legacy painRating alone no longer drives the draft state — pain now lives in pains[].
+    const legacyOnly = emptyDoorAState();
+    legacyOnly.l9.painRating = 'critical';
+    expect(stepHasDraft('l9.2', legacyOnly)).toBe(false);
+  });
+
+  it('l9.3 reflects either the optional summary or any filled solution row', () => {
+    const s = emptyDoorAState();
+    expect(stepHasDraft('l9.3', s)).toBe(false);
+    // Summary alone marks it in progress.
+    expect(stepHasDraft('l9.3', { ...s, l9: { ...s.l9, solution: 'a one-liner' } })).toBe(true);
+    // A filled solution row also marks it in progress (no summary needed).
+    let withRow = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    withRow = setSolutionRow(withRow, withRow.pains[0].id, { solutionText: 'ship faster' });
+    expect(stepHasDraft('l9.3', withRow)).toBe(true);
+    // An evidence-only row (no solution text) does NOT mark it in progress.
+    let emptyRow = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    emptyRow = setSolutionRow(emptyRow, emptyRow.pains[0].id, { evidenceStar: 5 });
+    expect(stepHasDraft('l9.3', emptyRow)).toBe(false);
   });
 
   it('l10.1 ignores the locked endpoint nodes and the default empty edge', () => {
@@ -363,5 +388,422 @@ describe('hydrate', () => {
     const out = hydrate(blob);
     expect(out.l10.routes.map((r) => r.label)).toEqual(['Direct', 'Via distributor']);
     expect(out.l10.routes[1].margins.priceUnits).toBe(5);
+  });
+});
+
+// ── Pains: stable multi-pain model ──
+
+/** Three pains on a fresh state: a (primary), b, c. */
+const threePains = () => {
+  let s = emptyDoorAState();
+  s = addPain(s, { text: 'a', severity: 'high', evidenceStar: 1 });
+  s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+  s = addPain(s, { text: 'c', severity: 'low', evidenceStar: 3 });
+  return s;
+};
+
+describe('addPain', () => {
+  it('adds the first pain as the sole primary at order 0', () => {
+    const s = addPain(emptyDoorAState(), { text: 'slow onboarding', severity: 'high', evidenceStar: 3 });
+    expect(s.pains).toHaveLength(1);
+    const [p] = s.pains;
+    expect(p).toMatchObject({ text: 'slow onboarding', severity: 'high', evidenceStar: 3, isPrimary: true, order: 0 });
+    expect(p.id).toMatch(/^pain_/);
+    expect(Number.isNaN(Date.parse(p.createdAt))).toBe(false);
+  });
+
+  it('mints a distinct id for each pain', () => {
+    let s = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+    expect(s.pains[0].id).not.toBe(s.pains[1].id);
+  });
+
+  it('leaves the existing primary in place and appends contiguous orders', () => {
+    const s = threePains();
+    const primaryId = s.pains[0].id;
+    expect(s.pains.filter((p) => p.isPrimary)).toHaveLength(1);
+    expect(getPrimaryPain(s)?.id).toBe(primaryId);
+    expect(s.pains.map((p) => p.order)).toEqual([0, 1, 2]);
+  });
+
+  it('rejects a 4th pain (MAX_PAINS = 3)', () => {
+    expect(MAX_PAINS).toBe(3);
+    expect(() => addPain(threePains(), { text: 'd', severity: 'low', evidenceStar: 1 })).toThrow();
+  });
+});
+
+describe('promotePrimary', () => {
+  it('moves primary to the target without touching any id or order', () => {
+    const s = threePains();
+    const idsBefore = s.pains.map((p) => p.id);
+    const ordersBefore = s.pains.map((p) => p.order);
+    const target = s.pains[2].id;
+    const next = promotePrimary(s, target);
+    expect(getPrimaryPain(next)?.id).toBe(target);
+    expect(next.pains.filter((p) => p.isPrimary)).toHaveLength(1);
+    expect(next.pains.map((p) => p.id)).toEqual(idsBefore);
+    expect(next.pains.map((p) => p.order)).toEqual(ordersBefore);
+  });
+
+  it('throws on an unknown id', () => {
+    expect(() => promotePrimary(threePains(), 'pain_nope')).toThrow();
+  });
+
+  it('is idempotent on the current primary', () => {
+    const s = threePains();
+    const cur = getPrimaryPain(s)!.id;
+    const next = promotePrimary(s, cur);
+    expect(getPrimaryPain(next)?.id).toBe(cur);
+    expect(next.pains.filter((p) => p.isPrimary)).toHaveLength(1);
+  });
+});
+
+describe('deletePain', () => {
+  it('refuses to delete the last remaining pain', () => {
+    const s = addPain(emptyDoorAState(), { text: 'only', severity: 'high', evidenceStar: 1 });
+    expect(() => deletePain(s, s.pains[0].id)).toThrow();
+  });
+
+  it('refuses to delete the primary while others exist', () => {
+    const s = threePains();
+    expect(() => deletePain(s, getPrimaryPain(s)!.id)).toThrow();
+  });
+
+  it('deletes a non-primary pain and renumbers orders contiguously', () => {
+    const s = threePains(); // [a*, b, c]
+    const middle = s.pains[1].id;
+    const next = deletePain(s, middle);
+    expect(next.pains).toHaveLength(2);
+    expect(getPainById(next, middle)).toBeUndefined();
+    expect(next.pains.map((p) => p.order)).toEqual([0, 1]);
+  });
+
+  it('allows deleting the old primary once another is promoted', () => {
+    const s = threePains();
+    const oldPrimary = getPrimaryPain(s)!.id;
+    const other = s.pains[1].id;
+    const next = deletePain(promotePrimary(s, other), oldPrimary);
+    expect(getPainById(next, oldPrimary)).toBeUndefined();
+    expect(getPrimaryPain(next)?.id).toBe(other);
+    expect(next.pains.map((p) => p.order)).toEqual([0, 1]);
+  });
+
+  it('throws on an unknown id', () => {
+    expect(() => deletePain(threePains(), 'pain_nope')).toThrow();
+  });
+});
+
+describe('pain selectors', () => {
+  it('getPains returns pains sorted by order regardless of array order', () => {
+    let s = threePains();
+    s = { ...s, pains: [s.pains[2], s.pains[0], s.pains[1]] }; // scramble
+    expect(getPains(s).map((p) => p.order)).toEqual([0, 1, 2]);
+    expect(getPains(s).map((p) => p.text)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('getPrimaryPain is null on an empty collection', () => {
+    expect(getPrimaryPain(emptyDoorAState())).toBeNull();
+  });
+
+  it('getPainById finds by id and returns undefined for a miss', () => {
+    const s = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    expect(getPainById(s, s.pains[0].id)?.text).toBe('a');
+    expect(getPainById(s, 'pain_missing')).toBeUndefined();
+  });
+});
+
+describe('painLabel', () => {
+  it('computes PAIN-1/2/3 from order (1-based, render-time only)', () => {
+    expect(painLabel({ order: 0 })).toBe('PAIN-1');
+    expect(painLabel({ order: 1 })).toBe('PAIN-2');
+    expect(painLabel({ order: 2 })).toBe('PAIN-3');
+  });
+});
+
+describe('hydrate — pains migration', () => {
+  it('migrates a legacy single L9 pain into one primary pain', () => {
+    const out = hydrate({ l9: { painRating: 'critical', painJustification: 'Deploys take 40 minutes' } });
+    expect(out.pains).toHaveLength(1);
+    const [p] = out.pains;
+    expect(p).toMatchObject({
+      text: 'Deploys take 40 minutes', severity: 'high', evidenceStar: 1, isPrimary: true, order: 0,
+    });
+    expect(p.id).toMatch(/^pain_/);
+  });
+
+  it('maps severity from the legacy pain rating', () => {
+    expect(hydrate({ l9: { painRating: 'useful', painJustification: 'x' } }).pains[0].severity).toBe('med');
+    expect(hydrate({ l9: { painRating: 'nice-to-have', painJustification: 'x' } }).pains[0].severity).toBe('low');
+  });
+
+  it('migrates on a rating alone, even with no justification text', () => {
+    const out = hydrate({ l9: { painRating: 'critical' } });
+    expect(out.pains).toHaveLength(1);
+    expect(out.pains[0]).toMatchObject({ text: '', severity: 'high', isPrimary: true });
+  });
+
+  it('mints a STABLE id for the migrated pain across repeated hydrates', () => {
+    const blob = { l9: { painRating: 'critical', painJustification: 'p' } };
+    expect(hydrate(blob).pains[0].id).toBe(hydrate(blob).pains[0].id);
+  });
+
+  it('produces no pains when the founder never recorded one', () => {
+    expect(hydrate({ l9: { problemRestated: 'just a problem' } }).pains).toEqual([]);
+    expect(hydrate(null).pains).toEqual([]);
+    expect(hydrate({}).pains).toEqual([]);
+  });
+
+  it('round-trips an existing pains array, healing order and primary', () => {
+    const blob = {
+      pains: [
+        { id: 'pain_b', text: 'b', severity: 'med', evidenceStar: 2, isPrimary: false, order: 5, createdAt: 'x' },
+        { id: 'pain_a', text: 'a', severity: 'high', evidenceStar: 4, isPrimary: false, order: 2, createdAt: 'x' },
+      ],
+    };
+    const out = hydrate(blob);
+    // Renumbered contiguously by stored order; primary healed to the lowest-order pain.
+    expect(out.pains.map((p) => [p.id, p.order])).toEqual([['pain_a', 0], ['pain_b', 1]]);
+    expect(out.pains.filter((p) => p.isPrimary).map((p) => p.id)).toEqual(['pain_a']);
+  });
+
+  it('keeps the explicit primary when the array already has exactly one', () => {
+    const blob = {
+      pains: [
+        { id: 'pain_a', text: 'a', severity: 'high', evidenceStar: 1, isPrimary: false, order: 0, createdAt: 'x' },
+        { id: 'pain_b', text: 'b', severity: 'low', evidenceStar: 1, isPrimary: true, order: 1, createdAt: 'x' },
+      ],
+    };
+    expect(getPrimaryPain(hydrate(blob))?.id).toBe('pain_b');
+  });
+
+  it('drops pain records lacking a string id (id is the identity)', () => {
+    const blob = {
+      pains: [
+        { text: 'no id', severity: 'high', evidenceStar: 1, isPrimary: true, order: 0, createdAt: 'x' },
+        { id: 'pain_ok', text: 'ok', severity: 'low', evidenceStar: 1, isPrimary: false, order: 1, createdAt: 'x' },
+      ],
+    };
+    const out = hydrate(blob);
+    expect(out.pains.map((p) => p.id)).toEqual(['pain_ok']);
+    expect(getPrimaryPain(out)?.id).toBe('pain_ok'); // primary healed onto the survivor
+  });
+
+  it('prefers an existing pains array over the legacy single-pain fields', () => {
+    const blob = {
+      pains: [{ id: 'pain_x', text: 'new', severity: 'low', evidenceStar: 2, isPrimary: true, order: 0, createdAt: 'x' }],
+      l9: { painRating: 'critical', painJustification: 'old' },
+    };
+    expect(hydrate(blob).pains.map((p) => p.id)).toEqual(['pain_x']);
+  });
+});
+
+// ── editPain (field edits flow through a Sprint 1 mutator) ──
+
+describe('editPain', () => {
+  it('patches text / severity / evidenceStar without touching identity fields', () => {
+    const s = threePains();
+    const target = s.pains[1];
+    const next = editPain(s, target.id, { text: 'edited', severity: 'high', evidenceStar: 5 });
+    const p = getPainById(next, target.id)!;
+    expect(p).toMatchObject({ text: 'edited', severity: 'high', evidenceStar: 5 });
+    // id / order / primary / createdAt are never touched by an edit.
+    expect(p.id).toBe(target.id);
+    expect(p.order).toBe(target.order);
+    expect(p.isPrimary).toBe(target.isPrimary);
+    expect(p.createdAt).toBe(target.createdAt);
+  });
+
+  it('patches a single field and leaves the others as they were', () => {
+    const s = threePains();
+    const target = s.pains[0];
+    const next = editPain(s, target.id, { evidenceStar: 4 });
+    const p = getPainById(next, target.id)!;
+    expect(p.evidenceStar).toBe(4);
+    expect(p.text).toBe(target.text);
+    expect(p.severity).toBe(target.severity);
+  });
+
+  it('leaves the other pains untouched (same refs)', () => {
+    const s = threePains();
+    const next = editPain(s, s.pains[0].id, { text: 'x' });
+    expect(next.pains[1]).toBe(s.pains[1]);
+    expect(next.pains[2]).toBe(s.pains[2]);
+  });
+
+  it('throws on an unknown id', () => {
+    expect(() => editPain(threePains(), 'pain_nope', { text: 'x' })).toThrow();
+  });
+});
+
+// ── painLayerEvidenceStar (L11 roll-up = MIN evidence across all pains) ──
+
+describe('painLayerEvidenceStar', () => {
+  it('is 0 for an empty collection (no pains → no stars yet)', () => {
+    expect(painLayerEvidenceStar(emptyDoorAState())).toBe(0);
+  });
+
+  it('is the single pain\'s star when there is exactly one pain', () => {
+    const s = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 4 });
+    expect(painLayerEvidenceStar(s)).toBe(4);
+  });
+
+  it('takes the MIN across all pains — the weakest pain sets the layer star', () => {
+    let s = emptyDoorAState();
+    s = addPain(s, { text: 'a', severity: 'high', evidenceStar: 5 });
+    s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+    s = addPain(s, { text: 'c', severity: 'low', evidenceStar: 3 });
+    expect(painLayerEvidenceStar(s)).toBe(2);
+  });
+
+  it('a strong primary does not mask a weak secondary', () => {
+    let s = addPain(emptyDoorAState(), { text: 'primary', severity: 'high', evidenceStar: 5 });
+    s = addPain(s, { text: 'weak secondary', severity: 'low', evidenceStar: 1 });
+    expect(getPrimaryPain(s)?.evidenceStar).toBe(5);
+    expect(painLayerEvidenceStar(s)).toBe(1);
+  });
+
+  it('reflects an edit that raises the weakest pain', () => {
+    let s = threePains(); // stars 1, 2, 3 → min 1
+    expect(painLayerEvidenceStar(s)).toBe(1);
+    s = editPain(s, s.pains[0].id, { evidenceStar: 4 });
+    s = editPain(s, s.pains[1].id, { evidenceStar: 5 });
+    s = editPain(s, s.pains[2].id, { evidenceStar: 5 });
+    expect(painLayerEvidenceStar(s)).toBe(4); // weakest is now the primary at ★4
+  });
+});
+
+// ── L09 solution rows: setSolutionRow / getSolutionRow ──
+
+describe('setSolutionRow', () => {
+  it('creates a row on first touch, defaulting the untouched field', () => {
+    const s0 = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    const id = s0.pains[0].id;
+    const s1 = setSolutionRow(s0, id, { solutionText: 'ship faster' });
+    expect(s1.solutionRows).toEqual([{ painId: id, solutionText: 'ship faster', evidenceStar: 1 }]);
+  });
+
+  it('patches an existing row in place without duplicating it', () => {
+    const s0 = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    const id = s0.pains[0].id;
+    let s = setSolutionRow(s0, id, { solutionText: 'v1' });
+    s = setSolutionRow(s, id, { solutionText: 'v2', evidenceStar: 4 });
+    expect(s.solutionRows).toHaveLength(1);
+    expect(getSolutionRow(s, id)).toEqual({ painId: id, solutionText: 'v2', evidenceStar: 4 });
+  });
+
+  it('never mutates the painId and leaves the other rows as they were (same ref)', () => {
+    let s = emptyDoorAState();
+    s = addPain(s, { text: 'a', severity: 'high', evidenceStar: 1 });
+    s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+    const [pa, pb] = s.pains;
+    s = setSolutionRow(s, pa.id, { solutionText: 'A' });
+    s = setSolutionRow(s, pb.id, { solutionText: 'B' });
+    const paRowBefore = getSolutionRow(s, pa.id)!;
+    const after = setSolutionRow(s, pb.id, { solutionText: 'B2' });
+    expect(getSolutionRow(after, pa.id)).toBe(paRowBefore); // untouched row keeps its ref
+    expect(getSolutionRow(after, pb.id)).toEqual({ painId: pb.id, solutionText: 'B2', evidenceStar: 1 });
+  });
+
+  it('throws on an unknown pain id', () => {
+    expect(() => setSolutionRow(emptyDoorAState(), 'pain_nope', { solutionText: 'x' })).toThrow();
+  });
+});
+
+describe('getSolutionRow', () => {
+  it('returns the row for a pain and undefined for a miss', () => {
+    const s0 = addPain(emptyDoorAState(), { text: 'a', severity: 'high', evidenceStar: 1 });
+    const id = s0.pains[0].id;
+    expect(getSolutionRow(s0, id)).toBeUndefined();
+    const s1 = setSolutionRow(s0, id, { solutionText: 'x' });
+    expect(getSolutionRow(s1, id)?.solutionText).toBe('x');
+    expect(getSolutionRow(s1, 'pain_other')).toBeUndefined();
+  });
+});
+
+describe('beachheadSegmentLabel', () => {
+  const withSub = (name: string, locked: boolean) => {
+    const s = emptyDoorAState();
+    s.subgroups = [{ id: 'sg1', parentGroupId: 'p1', name, pain: null, reachability: null, size: null }];
+    if (locked) s.beachheadId = 'sg1';
+    return s;
+  };
+
+  it('falls back to a neutral subject when no beachhead is locked', () => {
+    expect(beachheadSegmentLabel(emptyDoorAState())).toBe('This segment');
+    expect(beachheadSegmentLabel(withSub('Indie iOS devs', false))).toBe('This segment');
+  });
+
+  it('returns the locked beachhead sub-group name', () => {
+    expect(beachheadSegmentLabel(withSub('Indie iOS devs', true))).toBe('Indie iOS devs');
+  });
+
+  it('falls back when the locked beachhead has a blank name', () => {
+    expect(beachheadSegmentLabel(withSub('   ', true))).toBe('This segment');
+  });
+});
+
+describe('solutionLayerClaim', () => {
+  it('prefers the optional one-line summary (trimmed)', () => {
+    const s = emptyDoorAState();
+    s.l9.solution = '  A one-liner.  ';
+    expect(solutionLayerClaim(s)).toBe('A one-liner.');
+  });
+
+  it("falls back to the primary pain's solution when there is no summary", () => {
+    let s = emptyDoorAState();
+    s = addPain(s, { text: 'a', severity: 'high', evidenceStar: 1 }); // primary
+    s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+    s = setSolutionRow(s, s.pains[1].id, { solutionText: 'secondary fix' });
+    s = setSolutionRow(s, s.pains[0].id, { solutionText: 'primary fix' });
+    expect(solutionLayerClaim(s)).toBe('primary fix');
+  });
+
+  it('falls back to the first filled row when the primary is unaddressed', () => {
+    let s = emptyDoorAState();
+    s = addPain(s, { text: 'a', severity: 'high', evidenceStar: 1 }); // primary, unaddressed
+    s = addPain(s, { text: 'b', severity: 'med', evidenceStar: 2 });
+    s = setSolutionRow(s, s.pains[1].id, { solutionText: 'secondary fix' });
+    expect(solutionLayerClaim(s)).toBe('secondary fix');
+  });
+
+  it('is empty when nothing is filled', () => {
+    expect(solutionLayerClaim(emptyDoorAState())).toBe('');
+  });
+});
+
+describe('hydrate — solution rows + derived assumptions', () => {
+  it('seeds empty collections on a fresh / legacy / non-object blob', () => {
+    expect(hydrate({}).solutionRows).toEqual([]);
+    expect(hydrate({}).derivedAssumptions).toEqual([]);
+    expect(hydrate(null).solutionRows).toEqual([]);
+    expect(hydrate(null).derivedAssumptions).toEqual([]);
+  });
+
+  it('round-trips valid rows and drops id-less / duplicate rows, coercing bad types', () => {
+    const out = hydrate({
+      solutionRows: [
+        { painId: 'pain_a', solutionText: 'x', evidenceStar: 3 },
+        { painId: 'pain_a', solutionText: 'dupe', evidenceStar: 1 }, // duplicate painId → dropped
+        { solutionText: 'no id' },                                   // no painId → dropped
+        { painId: 'pain_b', solutionText: 7, evidenceStar: 9 },      // bad types → coerced to '', 1
+      ],
+    });
+    expect(out.solutionRows).toEqual([
+      { painId: 'pain_a', solutionText: 'x', evidenceStar: 3 },
+      { painId: 'pain_b', solutionText: '', evidenceStar: 1 },
+    ]);
+  });
+
+  it('round-trips a derived-assumption snapshot defensively', () => {
+    const out = hydrate({
+      derivedAssumptions: [
+        { painId: 'pain_a', text: 'S will x because y.', evidenceStar: 2, needsRederive: false },
+        { painId: 'pain_b', evidenceStar: 2 },        // no text → dropped
+        { text: 'no painId', evidenceStar: 1 },       // no painId → dropped
+      ],
+    });
+    expect(out.derivedAssumptions).toEqual([
+      { painId: 'pain_a', text: 'S will x because y.', evidenceStar: 2, needsRederive: false },
+    ]);
   });
 });

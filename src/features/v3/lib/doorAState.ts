@@ -141,6 +141,66 @@ export interface L10State {
   competitors: Competitor[];
 }
 
+// ── Pains (stable, multi-pain identity model) ──
+//
+// A venture carries up to MAX_PAINS pains. Each pain's `id` is minted once at
+// creation and never changes — it is the ONLY handle other layers reference.
+// Nothing keys off `text`, `order`, or the computed display label. Exactly one
+// pain is primary whenever the collection is non-empty.
+
+export type PainSeverity = 'high' | 'med' | 'low';
+export type EvidenceStar = 1 | 2 | 3 | 4 | 5;
+
+/** Hard cap on pains per venture. addPain() rejects past this. */
+export const MAX_PAINS = 3;
+
+export interface Pain {
+  /** Stable identity — minted once, never regenerated. The only field other
+   *  layers reference; never key off text, order, or the display label. */
+  id: string;
+  text: string;
+  severity: PainSeverity;
+  /** 1 (weakest) → 5 (strongest) evidence backing this pain. */
+  evidenceStar: EvidenceStar;
+  /** Exactly one pain in a non-empty collection is primary. */
+  isPrimary: boolean;
+  /** 0-based sort order, kept contiguous on add/delete. Drives the computed
+   *  "PAIN-1/2/3" display label — which is never persisted. */
+  order: number;
+  /** ISO-8601 creation timestamp. */
+  createdAt: string;
+}
+
+// ── L09 (Solution) — pain-anchored rows + derived assumptions ──
+//
+// The L09 solution ANSWERS the L11 pains: one solution row per pain, keyed by
+// the pain's stable `painId` (never index/order/text). The founder gives each
+// pain its own solution text and its own evidence star — the latter converts
+// losslessly to/from a SourcePicker source exactly like pain evidence does. A
+// pain with no row (or an empty solutionText) is an unaddressed gap, surfaced
+// on the screen rather than hidden.
+
+export interface SolutionRow {
+  /** The L11 pain this solution answers — the only handle into the row. */
+  painId: string;
+  solutionText: string;
+  /** 1 (weakest) → 5 (strongest) evidence backing THIS solution. */
+  evidenceStar: EvidenceStar;
+}
+
+/** A claim derived from a pain + its solution row, persisted as a snapshot so
+ *  the Assumption stack (a later sprint) can consume it and re-derive a single
+ *  changed pain. Produced by lib/deriveAssumption. `needsRederive` is the
+ *  staleness flag the stack will flip when a source pain changes — this sprint
+ *  always writes a fresh snapshot with it `false`. The doubt-meter STATE LINE
+ *  is a separate concern (Monty's voice, pending review) and is NOT stored. */
+export interface DerivedAssumption {
+  painId: string;
+  text: string;
+  evidenceStar: EvidenceStar;
+  needsRederive: boolean;
+}
+
 // ── Top-level state ──
 
 /** SourceId mirror — kept local so we don't pull the layers module into
@@ -155,6 +215,16 @@ export interface DoorAState {
   subgroups: SubGroup[];
   beachheadId: string | null;
   beachheadJustification: string;
+  /** Stable, multi-pain collection (≤ MAX_PAINS). Pain ids are the cross-layer
+   *  reference key. Empty until the founder records a pain; migrated from the
+   *  legacy single L9 pain (painRating + painJustification) by hydrate(). */
+  pains: Pain[];
+  /** Pain-anchored solution rows (L09), keyed by painId. Empty until the
+   *  founder answers a pain; a pain with no row here is unaddressed. */
+  solutionRows: SolutionRow[];
+  /** Persisted snapshot of the claims derived from `solutionRows` (L09). The
+   *  Assumption stack reads these in a later sprint. See DerivedAssumption. */
+  derivedAssumptions: DerivedAssumption[];
   l9: L9State;
   l10: L10State;
   /** Per-layer source the founder has staged for the contributing Door A
@@ -195,6 +265,9 @@ export function emptyDoorAState(): DoorAState {
     subgroups: [],
     beachheadId: null,
     beachheadJustification: '',
+    pains: [],
+    solutionRows: [],
+    derivedAssumptions: [],
     l9: {
       problemRestated: '',
       painRating: null,
@@ -277,12 +350,324 @@ export function hydrate(raw: unknown): DoorAState {
     beachheadId: typeof r.beachheadId === 'string' ? r.beachheadId : null,
     beachheadJustification: typeof r.beachheadJustification === 'string'
       ? r.beachheadJustification : '',
+    pains: hydratePains(r.pains, r.l9),
+    solutionRows: hydrateSolutionRows(r.solutionRows),
+    derivedAssumptions: hydrateDerivedAssumptions(r.derivedAssumptions),
     l9: { ...seed.l9, ...(r.l9 ?? {}) },
     l10: hydrateL10(r.l10),
     draftSources: (r.draftSources && typeof r.draftSources === 'object')
       ? r.draftSources as Partial<Record<string, DoorASourceId>>
       : seed.draftSources,
   };
+}
+
+// ── Pains: migration, selectors, mutators ──
+//
+// All pure. Mutators return a new DoorAState (compose via the useDoorAState
+// `update(prev => …)` channel) and throw on a rule violation. Every operation
+// preserves the two invariants: ids are stable, and a non-empty collection has
+// exactly one primary.
+
+/** ISO sentinel for a creation time we don't know (malformed/legacy blobs). */
+const EPOCH_ISO = '1970-01-01T00:00:00.000Z';
+
+const SEVERITY_FROM_PAIN_VALUE: Record<PainValue, PainSeverity> = {
+  'critical': 'high',
+  'useful': 'med',
+  'nice-to-have': 'low',
+};
+
+/** Deterministic id for the one pain synthesized from a pre-pains blob. Fixed
+ *  (not random) so repeated hydrate() calls before the first save don't keep
+ *  re-minting it — the id must be stable from the very first read. Mirrors the
+ *  fixed 'route-1' id used by the legacy L10 → routes migration. */
+const LEGACY_PAIN_ID = 'pain_legacy';
+
+function isPainValue(v: unknown): v is PainValue {
+  return v === 'critical' || v === 'useful' || v === 'nice-to-have';
+}
+function isSeverity(v: unknown): v is PainSeverity {
+  return v === 'high' || v === 'med' || v === 'low';
+}
+function isEvidenceStar(v: unknown): v is EvidenceStar {
+  return v === 1 || v === 2 || v === 3 || v === 4 || v === 5;
+}
+
+/** Mint a fresh, stable pain id. (The spec calls for `"pain_" + nanoid()`; we
+ *  follow the repo's existing random-id idiom — cf. uid() in
+ *  DoorAPage.steps.tsx — to avoid adding a dependency.) Called once per pain,
+ *  at creation, and never again. */
+function mintPainId(): string {
+  return `pain_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Re-sort by order and reassign contiguous 0-based orders, so the computed
+ *  "PAIN-1/2/3" labels stay gap-free after add/delete. Returns the same object
+ *  refs where an order is already correct. */
+function renumber(pains: Pain[]): Pain[] {
+  return [...pains]
+    .sort((a, b) => a.order - b.order)
+    .map((p, i) => (p.order === i ? p : { ...p, order: i }));
+}
+
+/** Force exactly one primary in a non-empty collection — heals a blob that
+ *  stored zero or several primaries by handing it to the lowest-order pain. */
+function normalizePrimary(pains: Pain[]): Pain[] {
+  if (pains.length === 0) return pains;
+  if (pains.filter((p) => p.isPrimary).length === 1) return pains;
+  const winnerId = [...pains].sort((a, b) => a.order - b.order)[0].id;
+  return pains.map((p) => ({ ...p, isPrimary: p.id === winnerId }));
+}
+
+/** Hydrate one pain from an untrusted object. Returns null when there's no
+ *  string id — id IS the identity, so a record without one is dropped rather
+ *  than handed a fresh (and therefore unstable) one. */
+function hydratePain(x: unknown, i: number): Pain | null {
+  if (!x || typeof x !== 'object') return null;
+  const o = x as Record<string, unknown>;
+  if (typeof o.id !== 'string') return null;
+  return {
+    id: o.id,
+    text: typeof o.text === 'string' ? o.text : '',
+    severity: isSeverity(o.severity) ? o.severity : 'med',
+    evidenceStar: isEvidenceStar(o.evidenceStar) ? o.evidenceStar : 1,
+    isPrimary: o.isPrimary === true,
+    order: typeof o.order === 'number' ? o.order : i,
+    createdAt: typeof o.createdAt === 'string' ? o.createdAt : EPOCH_ISO,
+  };
+}
+
+/** Build the pains collection. A new-model blob carries a `pains` array; an
+ *  older blob carries a single L9 pain (painRating + painJustification), which
+ *  we migrate into one primary pain (order 0, evidenceStar 1, severity mapped
+ *  from the legacy rating). A blob with neither yields [] — the founder hasn't
+ *  recorded a pain yet. */
+function hydratePains(raw: unknown, legacyL9: unknown): Pain[] {
+  if (Array.isArray(raw)) {
+    const pains = raw
+      .map((x, i) => hydratePain(x, i))
+      .filter((p): p is Pain => p !== null);
+    return normalizePrimary(renumber(pains));
+  }
+  const l9 = (legacyL9 && typeof legacyL9 === 'object')
+    ? legacyL9 as Record<string, unknown> : {};
+  const text = typeof l9.painJustification === 'string' ? l9.painJustification : '';
+  const rating = l9.painRating;
+  // Only synthesize a pain when the founder actually entered legacy pain data.
+  if (text.trim().length === 0 && !isPainValue(rating)) return [];
+  return [{
+    id: LEGACY_PAIN_ID,
+    text,
+    severity: isPainValue(rating) ? SEVERITY_FROM_PAIN_VALUE[rating] : 'med',
+    evidenceStar: 1, // legacy pains carried no evidence rating
+    isPrimary: true,
+    order: 0,
+    createdAt: EPOCH_ISO, // original creation time unknown
+  }];
+}
+
+/** Hydrate the L09 solution rows from an untrusted blob. Drops records without
+ *  a string painId (painId IS the handle) and de-dupes on painId, keeping the
+ *  first. Orphan rows (painId no longer matching a pain) are left inert — the
+ *  screen renders by iterating pains, so they simply don't show; nothing is
+ *  destructively pruned. */
+function hydrateSolutionRows(raw: unknown): SolutionRow[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const rows: SolutionRow[] = [];
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue;
+    const o = x as Record<string, unknown>;
+    if (typeof o.painId !== 'string' || seen.has(o.painId)) continue;
+    seen.add(o.painId);
+    rows.push({
+      painId: o.painId,
+      solutionText: typeof o.solutionText === 'string' ? o.solutionText : '',
+      evidenceStar: isEvidenceStar(o.evidenceStar) ? o.evidenceStar : 1,
+    });
+  }
+  return rows;
+}
+
+/** Hydrate the persisted derived-assumption snapshot. Same painId-keyed,
+ *  de-duped, defensively-typed discipline as the rows. */
+function hydrateDerivedAssumptions(raw: unknown): DerivedAssumption[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: DerivedAssumption[] = [];
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue;
+    const o = x as Record<string, unknown>;
+    if (typeof o.painId !== 'string' || seen.has(o.painId)) continue;
+    if (typeof o.text !== 'string') continue;
+    seen.add(o.painId);
+    out.push({
+      painId: o.painId,
+      text: o.text,
+      evidenceStar: isEvidenceStar(o.evidenceStar) ? o.evidenceStar : 1,
+      needsRederive: o.needsRederive === true,
+    });
+  }
+  return out;
+}
+
+// Selectors ───────────────────────────────────────────────────────────────
+
+/** All pains in display order (by `order`). */
+export function getPains(state: DoorAState): Pain[] {
+  return [...state.pains].sort((a, b) => a.order - b.order);
+}
+
+/** The single primary pain, or null when the collection is empty. */
+export function getPrimaryPain(state: DoorAState): Pain | null {
+  return state.pains.find((p) => p.isPrimary) ?? null;
+}
+
+/** Look up a pain by its stable id. */
+export function getPainById(state: DoorAState, id: string): Pain | undefined {
+  return state.pains.find((p) => p.id === id);
+}
+
+/** Computed display label ("PAIN-1/2/3") from `order`. Render-time only — never
+ *  persist this and never use it as a key. */
+export function painLabel(pain: Pick<Pain, 'order'>): string {
+  return `PAIN-${pain.order + 1}`;
+}
+
+/** L11 layer star roll-up: the evidence star of the *weakest* pain — MIN of
+ *  evidenceStar across the whole collection. A strong primary must not mask a
+ *  weak secondary, so the layer is only as well-evidenced as its flimsiest
+ *  pain. Returns 0 for an empty collection (no pains → no stars yet), mirroring
+ *  pkTier()'s "0 when no source" convention in lib/layers. */
+export function painLayerEvidenceStar(state: DoorAState): number {
+  if (state.pains.length === 0) return 0;
+  return state.pains.reduce((min, p) => Math.min(min, p.evidenceStar), 5);
+}
+
+/** The L09 solution row answering a given pain, or undefined when the founder
+ *  hasn't addressed it yet. Keyed strictly by stable painId. */
+export function getSolutionRow(state: DoorAState, painId: string): SolutionRow | undefined {
+  return state.solutionRows.find((r) => r.painId === painId);
+}
+
+/** The locked beachhead sub-group's name — the `segment` subject in a derived
+ *  assumption ("{segment} will … because …"). Falls back to a neutral subject
+ *  when no beachhead is locked yet, so the claim still reads. */
+export function beachheadSegmentLabel(state: DoorAState): string {
+  const sg = state.subgroups.find((s) => s.id === state.beachheadId);
+  const name = sg?.name.trim();
+  return name && name.length > 0 ? name : 'This segment';
+}
+
+/** Claim text to persist for the L09 (Solution) layer. Prefers the founder's
+ *  optional one-line summary; else falls back to the primary pain's solution,
+ *  else the first filled row — so the layer claim tracks real solution content
+ *  even when the summary is left blank. Empty when nothing is filled. */
+export function solutionLayerClaim(state: DoorAState): string {
+  const summary = state.l9.solution.trim();
+  if (summary) return summary;
+  const primary = getPrimaryPain(state);
+  const primaryRow = primary ? getSolutionRow(state, primary.id) : undefined;
+  if (primaryRow && primaryRow.solutionText.trim()) return primaryRow.solutionText.trim();
+  const firstFilled = state.solutionRows.find((r) => r.solutionText.trim().length > 0);
+  return firstFilled ? firstFilled.solutionText.trim() : '';
+}
+
+// Mutators ──────────────────────────────────────────────────────────────────
+
+/** Append a pain. The first pain added is automatically the primary. Rejects
+ *  once the collection is full (MAX_PAINS). The new id is minted here, once. */
+export function addPain(
+  state: DoorAState,
+  input: { text: string; severity: PainSeverity; evidenceStar: EvidenceStar },
+): DoorAState {
+  if (state.pains.length >= MAX_PAINS) {
+    throw new Error(`Cannot add more than ${MAX_PAINS} pains.`);
+  }
+  const pain: Pain = {
+    id: mintPainId(),
+    text: input.text,
+    severity: input.severity,
+    evidenceStar: input.evidenceStar,
+    isPrimary: state.pains.length === 0,
+    order: state.pains.length,
+    createdAt: new Date().toISOString(),
+  };
+  return { ...state, pains: renumber([...state.pains, pain]) };
+}
+
+/** Make `painId` the primary pain. Flips the isPrimary flag across the
+ *  collection without touching any id or order. Idempotent; throws if the id
+ *  is unknown. */
+export function promotePrimary(state: DoorAState, painId: string): DoorAState {
+  if (!state.pains.some((p) => p.id === painId)) {
+    throw new Error(`Pain not found: ${painId}`);
+  }
+  return {
+    ...state,
+    pains: state.pains.map((p) =>
+      p.isPrimary === (p.id === painId) ? p : { ...p, isPrimary: p.id === painId }),
+  };
+}
+
+/** Delete a pain. Refuses to delete the last remaining pain, and refuses to
+ *  delete the primary while others exist (the caller must promote another
+ *  first). Renumbers the survivors so labels stay contiguous. */
+export function deletePain(state: DoorAState, painId: string): DoorAState {
+  const target = state.pains.find((p) => p.id === painId);
+  if (!target) throw new Error(`Pain not found: ${painId}`);
+  if (state.pains.length === 1) {
+    throw new Error('Cannot delete the last remaining pain.');
+  }
+  if (target.isPrimary) {
+    throw new Error('Promote another pain to primary before deleting the current primary.');
+  }
+  return { ...state, pains: renumber(state.pains.filter((p) => p.id !== painId)) };
+}
+
+/** Patch a pain's founder-editable fields (text / severity / evidenceStar).
+ *  Never touches the stable id, order, isPrimary, or createdAt — promotion and
+ *  deletion are the only ways to move primary or remove a pain. Leaves the
+ *  other pains untouched (same refs). Throws on an unknown id. */
+export function editPain(
+  state: DoorAState,
+  painId: string,
+  patch: Partial<Pick<Pain, 'text' | 'severity' | 'evidenceStar'>>,
+): DoorAState {
+  if (!state.pains.some((p) => p.id === painId)) {
+    throw new Error(`Pain not found: ${painId}`);
+  }
+  return {
+    ...state,
+    pains: state.pains.map((p) => (p.id === painId ? { ...p, ...patch } : p)),
+  };
+}
+
+/** Upsert the L09 solution row for a pain. Patches an existing row in place, or
+ *  creates one (defaulting solutionText '' / evidenceStar 1) on first touch.
+ *  Never mutates `painId` — it is the stable handle — and validates the pain
+ *  exists, mirroring editPain's contract. Leaves the other rows untouched. */
+export function setSolutionRow(
+  state: DoorAState,
+  painId: string,
+  patch: Partial<Pick<SolutionRow, 'solutionText' | 'evidenceStar'>>,
+): DoorAState {
+  if (!state.pains.some((p) => p.id === painId)) {
+    throw new Error(`Pain not found: ${painId}`);
+  }
+  if (state.solutionRows.some((r) => r.painId === painId)) {
+    return {
+      ...state,
+      solutionRows: state.solutionRows.map((r) =>
+        r.painId === painId ? { ...r, ...patch } : r),
+    };
+  }
+  const row: SolutionRow = {
+    painId,
+    solutionText: patch.solutionText ?? '',
+    evidenceStar: patch.evidenceStar ?? 1,
+  };
+  return { ...state, solutionRows: [...state.solutionRows, row] };
 }
 
 // ── L8.3: Triple-filter score math ──
@@ -383,9 +768,15 @@ export function stepHasDraft(stepId: string, state: DoorAState): boolean {
     case 'l9.1':
       return state.l9.problemRestated.trim().length > 0;
     case 'l9.2':
-      return state.l9.painRating !== null;
+      // L11 pain scale now lives in the stable pains[] collection; the step is
+      // "in progress" once any pain carries text. (Legacy painRating/-Justification
+      // remain only as hydrate() migration inputs.)
+      return state.pains.some((p) => p.text.trim().length > 0);
     case 'l9.3':
-      return state.l9.solution.trim().length > 0;
+      // L09 now spans an optional one-line summary plus pain-anchored solution
+      // rows. The step is "in progress" once the founder types into either.
+      return state.l9.solution.trim().length > 0
+        || state.solutionRows.some((r) => r.solutionText.trim().length > 0);
     case 'l9.4':
       return state.l9.adoptionCostNotes.trim().length > 0
         || state.l9.verdict !== null
