@@ -16,17 +16,17 @@ import {
   ParentChip, PillOption, ScoreBar, SourcePicker,
 } from '../components/atoms';
 import {
-  ChainArrow, ChainNode, TemplateMini, CHAIN_TEMPLATES,
+  RouteLane, TemplateMini, CHAIN_TEMPLATES,
   type ChainTemplate,
 } from '../components/valueChain';
 import {
-  computeBeachheadScore, isCloseCall,
+  computeBeachheadScore, emptyRoute, isCloseCall,
   nodesOrdered as nodesOrderedFn, normalizedScore, topRankedSubgroup,
   type AdoptionVerdict, type BusinessModelId, type ChainNode as ChainNodeT,
   type ChainRole, type Competitor, type CompetitorTag,
   type DoorAState, type DoorASourceId, type PainValue,
   type ParentGroup, type ReachValue, type SizeValue, type SubGroup,
-  type ValueChain,
+  type ValueChain, type ValueRoute,
 } from '../lib/doorAState';
 import type { SourceId } from '../lib/layers';
 import {
@@ -1147,18 +1147,33 @@ export function Step9_4({ state, update, goTo, createDirectAssumption }: StepPro
 // ──────────────────────────────────────────────────────────────────
 
 export function Step10_1({ state, update, goTo }: StepProps) {
-  const chain = state.l10.chain;
-  const [openRoleNodeId, setOpenRoleNodeId] = useState<string | null>(null);
+  const routes = state.l10.routes;
+  const multi = routes.length > 1;
+  // Role menu open-state is route-scoped: node ids (n-you, n-end…) repeat
+  // across lanes, so a bare node id would open the menu in every lane at once.
+  const [openRole, setOpenRole] = useState<{ routeId: string; nodeId: string } | null>(null);
   const [hoveredTmpl, setHoveredTmpl] = useState<string | null>(null);
 
-  const nodes = nodesOrderedFn(chain);
-  const isDirectB2C = nodes.length === 2;
+  // The "direct B2C" nudge only applies to a single, direct route. Once a
+  // founder adds a second route they've clearly thought about distribution.
+  const onlyRoute = routes.length === 1 ? routes[0] : null;
+  const isDirectB2C = onlyRoute ? nodesOrderedFn(onlyRoute.chain).length === 2 : false;
   const warning = lookupStepWarning('l10.1.direct_b2c');
   const reactiveShowing = isDirectB2C && Boolean(warning);
 
-  const setChain = (next: ValueChain) => update((prev) => ({ ...prev, l10: { ...prev.l10, chain: next } }));
+  const setRouteChain = (routeId: string, next: ValueChain) =>
+    update((prev) => ({
+      ...prev,
+      l10: {
+        ...prev.l10,
+        routes: prev.l10.routes.map((r) => (r.id === routeId ? { ...r, chain: next } : r)),
+      },
+    }));
 
-  const insertBetween = (fromId: string, toId: string) => {
+  const insertBetween = (routeId: string, fromId: string, toId: string) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
+    const { chain } = route;
     const fromNode = chain.nodes.find((n) => n.id === fromId);
     const toNode = chain.nodes.find((n) => n.id === toId);
     if (!fromNode || !toNode) return;
@@ -1175,10 +1190,13 @@ export function Step10_1({ state, update, goTo }: StepProps) {
         { fromNodeId: fromId, toNodeId: newNode.id },
         { fromNodeId: newNode.id, toNodeId: toId },
       ]);
-    setChain({ nodes: renumbered, edges });
+    setRouteChain(routeId, { nodes: renumbered, edges });
   };
 
-  const removeNode = (id: string) => {
+  const removeNode = (routeId: string, id: string) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
+    const { chain } = route;
     const target = chain.nodes.find((n) => n.id === id);
     if (!target || target.locked) return;
     const prevNode = chain.nodes.find((n) => n.position === target.position - 1);
@@ -1190,43 +1208,47 @@ export function Step10_1({ state, update, goTo }: StepProps) {
     const edges = prevNode && nextNode
       ? [...filtered, { fromNodeId: prevNode.id, toNodeId: nextNode.id }]
       : filtered;
-    setChain({ nodes: nodesAfter, edges });
-    if (openRoleNodeId === id) setOpenRoleNodeId(null);
+    setRouteChain(routeId, { nodes: nodesAfter, edges });
+    setOpenRole((c) => (c?.routeId === routeId && c.nodeId === id ? null : c));
   };
 
-  const rename = (id: string, label: string) =>
-    setChain({
-      ...chain,
-      nodes: chain.nodes.map((n) => (n.id === id ? { ...n, label: label || n.label } : n)),
+  const rename = (routeId: string, id: string, label: string) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
+    setRouteChain(routeId, {
+      ...route.chain,
+      nodes: route.chain.nodes.map((n) => (n.id === id ? { ...n, label: label || n.label } : n)),
     });
-
-  const setRole = (id: string, role: ChainRole) => {
-    setChain({
-      ...chain,
-      nodes: chain.nodes.map((n) => (n.id === id ? { ...n, role } : n)),
-    });
-    setOpenRoleNodeId(null);
   };
 
-  const findEdge = (fromId: string, toId: string) =>
-    chain.edges.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
+  const setRole = (routeId: string, id: string, role: ChainRole) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
+    setRouteChain(routeId, {
+      ...route.chain,
+      nodes: route.chain.nodes.map((n) => (n.id === id ? { ...n, role } : n)),
+    });
+    setOpenRole(null);
+  };
 
-  const setEdgeNote = (fromId: string, toId: string, notes: string) => {
-    const existing = findEdge(fromId, toId);
+  const setEdgeNote = (routeId: string, fromId: string, toId: string, notes: string) => {
+    const route = routes.find((r) => r.id === routeId);
+    if (!route) return;
     const cleaned = notes || undefined;
-    if (existing) {
-      setChain({
-        ...chain,
-        edges: chain.edges.map((e) =>
+    const existing = route.chain.edges.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
+    const edges = existing
+      ? route.chain.edges.map((e) =>
           e.fromNodeId === fromId && e.toNodeId === toId ? { ...e, notes: cleaned } : e,
-        ),
-      });
-    } else {
-      setChain({ ...chain, edges: [...chain.edges, { fromNodeId: fromId, toNodeId: toId, notes: cleaned }] });
-    }
+        )
+      : [...route.chain.edges, { fromNodeId: fromId, toNodeId: toId, notes: cleaned }];
+    setRouteChain(routeId, { ...route.chain, edges });
   };
 
+  // Templates load into the primary route, preserving prior single-route
+  // behavior. Additional routes are grown by hand with the arrow inserts.
   const loadTemplate = (t: ChainTemplate) => {
+    const primaryId = routes[0]?.id;
+    if (!primaryId) return;
     const newNodes: ChainNodeT[] = t.chain.map((c, i) => ({
       id: i === 0 ? 'n-you' : i === t.chain.length - 1 ? 'n-end' : uid('n'),
       label: c.label, role: c.role, position: i,
@@ -1235,47 +1257,72 @@ export function Step10_1({ state, update, goTo }: StepProps) {
     const edges = newNodes.slice(0, -1).map((n, i) => ({
       fromNodeId: n.id, toNodeId: newNodes[i + 1].id,
     }));
-    setChain({ nodes: newNodes, edges });
-    setOpenRoleNodeId(null);
+    setRouteChain(primaryId, { nodes: newNodes, edges });
+    setOpenRole(null);
   };
+
+  const addRoute = () =>
+    update((prev) => ({
+      ...prev,
+      l10: {
+        ...prev.l10,
+        routes: [...prev.l10.routes, emptyRoute(uid('route'), `Route ${prev.l10.routes.length + 1}`)],
+      },
+    }));
+
+  const removeRoute = (routeId: string) => {
+    update((prev) => (prev.l10.routes.length <= 1 ? prev : {
+      ...prev,
+      l10: { ...prev.l10, routes: prev.l10.routes.filter((r) => r.id !== routeId) },
+    }));
+    setOpenRole((c) => (c?.routeId === routeId ? null : c));
+  };
+
+  const renameRoute = (routeId: string, label: string) =>
+    update((prev) => ({
+      ...prev,
+      l10: {
+        ...prev.l10,
+        routes: prev.l10.routes.map((r) => (r.id === routeId ? { ...r, label: label || r.label } : r)),
+      },
+    }));
 
   return (
     <StepFrame stepId="l10.1" title="Where are you in the value chain?" suppressVoice={reactiveShowing}>
       <p style={{ fontSize: 14, color: SLATE_FG, lineHeight: 1.55, marginTop: 0, marginBottom: 16 }}>
         Between you and the person who ultimately uses what you make, how many steps are there?
-        Add a node for each link in the chain.
+        Add a node for each link in the chain. If you reach customers more than one way — say
+        direct <em>and</em> through a distributor — add a route for each.
       </p>
 
-      <div style={{
-        padding: 24, marginBottom: 16, borderRadius: 12,
-        border: `1px solid ${TAN}`, background: '#fff', overflowX: 'auto',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, minWidth: 'max-content' }}>
-          {nodes.map((node, i) => {
-            const isFirst = i === 0;
-            const isLast = i === nodes.length - 1;
-            return (
-              <span key={node.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                <ChainNode
-                  node={node} isFirst={isFirst} isLast={isLast}
-                  dropdownOpen={openRoleNodeId === node.id}
-                  onToggleDropdown={() => setOpenRoleNodeId((c) => (c === node.id ? null : node.id))}
-                  onRename={(s) => rename(node.id, s)}
-                  onChangeRole={(r) => setRole(node.id, r)}
-                  onRemove={() => removeNode(node.id)}
-                />
-                {!isLast && (
-                  <ChainArrow
-                    onInsert={() => insertBetween(node.id, nodes[i + 1].id)}
-                    note={findEdge(node.id, nodes[i + 1].id)?.notes}
-                    onNoteChange={(n) => setEdgeNote(node.id, nodes[i + 1].id, n)}
-                  />
-                )}
-              </span>
-            );
-          })}
-        </div>
-      </div>
+      {routes.map((route) => (
+        <RouteLane
+          key={route.id}
+          route={route}
+          showChrome={multi}
+          openNodeId={openRole?.routeId === route.id ? openRole.nodeId : null}
+          onToggleDropdown={(nodeId) => setOpenRole((c) =>
+            (c && c.routeId === route.id && c.nodeId === nodeId) ? null : { routeId: route.id, nodeId })}
+          onRenameNode={(nodeId, s) => rename(route.id, nodeId, s)}
+          onChangeRole={(nodeId, r) => setRole(route.id, nodeId, r)}
+          onRemoveNode={(nodeId) => removeNode(route.id, nodeId)}
+          onInsert={(fromId, toId) => insertBetween(route.id, fromId, toId)}
+          onNoteChange={(fromId, toId, n) => setEdgeNote(route.id, fromId, toId, n)}
+          onRenameLane={(label) => renameRoute(route.id, label)}
+          onRemoveLane={() => removeRoute(route.id)}
+        />
+      ))}
+
+      <button
+        type="button"
+        onClick={addRoute}
+        style={{
+          marginBottom: 16, padding: '8px 14px', borderRadius: 8,
+          border: `1px dashed ${TEAL}`, background: TEAL_LITE,
+          color: TEAL, cursor: 'pointer', fontFamily: 'inherit',
+          fontSize: 13, fontWeight: 600,
+        }}
+      >+ add another route to market</button>
 
       <div style={{
         display: 'flex', gap: 12, marginBottom: 12,
@@ -1290,7 +1337,7 @@ export function Step10_1({ state, update, goTo }: StepProps) {
           fontFamily: FONT_MONO, fontSize: 10, color: MUTED,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           fontWeight: 600, marginBottom: 8,
-        }}>Load a starting template</div>
+        }}>{multi ? 'Load a starting template into the primary route' : 'Load a starting template'}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
           {CHAIN_TEMPLATES.map((t) => (
             <TemplateMini
@@ -1319,39 +1366,37 @@ export function Step10_1({ state, update, goTo }: StepProps) {
 // ──────────────────────────────────────────────────────────────────
 
 export function Step10_2({ state, update, goTo }: StepProps) {
-  const chain = state.l10.chain;
-  const nodes = nodesOrderedFn(chain);
-  const price = state.l10.margins.priceUnits;
+  const routes = state.l10.routes;
+  const multi = routes.length > 1;
 
-  // Sprint 3 T7 — compute markup rows even without a price entered. The
-  // page promises "Industry-typical markups are pre-filled where we can",
-  // so the table must be visible at load with defaults showing. Sell-price
-  // cells stay null until the founder fills in a unit price.
-  const computed = useMemo(() => {
-    let running: number | null = price;
-    const out: { fromId: string; toId: string; price: number | null; markupPct: number }[] = [];
-    for (let i = 0; i < nodes.length - 1; i++) {
-      const fromId = nodes[i].id, toId = nodes[i + 1].id;
-      const est = state.l10.margins.estimates.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
-      const markupPct = est?.markupPct ?? defaultMarkupFor(nodes[i + 1].role);
-      const next = running != null ? running * (1 + markupPct / 100) : null;
-      out.push({ fromId, toId, price: next, markupPct });
-      running = next;
-    }
-    return out;
-  }, [price, nodes, state.l10.margins.estimates]);
+  const setPrice = (routeId: string, value: number | null) =>
+    update((prev) => ({
+      ...prev,
+      l10: {
+        ...prev.l10,
+        routes: prev.l10.routes.map((r) =>
+          r.id === routeId ? { ...r, margins: { ...r.margins, priceUnits: value } } : r,
+        ),
+      },
+    }));
 
-  const setMarkup = (fromId: string, toId: string, value: number, fromDefault: boolean) => {
-    update((prev) => {
-      const existing = prev.l10.margins.estimates.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
-      const next = existing
-        ? prev.l10.margins.estimates.map((e) =>
-            e.fromNodeId === fromId && e.toNodeId === toId ? { ...e, markupPct: value, fromDefault } : e,
-          )
-        : [...prev.l10.margins.estimates, { fromNodeId: fromId, toNodeId: toId, markupPct: value, fromDefault }];
-      return { ...prev, l10: { ...prev.l10, margins: { ...prev.l10.margins, estimates: next } } };
-    });
-  };
+  const setMarkup = (routeId: string, fromId: string, toId: string, value: number, fromDefault: boolean) =>
+    update((prev) => ({
+      ...prev,
+      l10: {
+        ...prev.l10,
+        routes: prev.l10.routes.map((r) => {
+          if (r.id !== routeId) return r;
+          const existing = r.margins.estimates.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
+          const estimates = existing
+            ? r.margins.estimates.map((e) =>
+                e.fromNodeId === fromId && e.toNodeId === toId ? { ...e, markupPct: value, fromDefault } : e,
+              )
+            : [...r.margins.estimates, { fromNodeId: fromId, toNodeId: toId, markupPct: value, fromDefault }];
+          return { ...r, margins: { ...r.margins, estimates } };
+        }),
+      },
+    }));
 
   return (
     <StepFrame stepId="l10.2" title="Walk the chain — what does each link have to charge?">
@@ -1359,6 +1404,61 @@ export function Step10_2({ state, update, goTo }: StepProps) {
         Enter your unit price. Industry-typical markups are pre-filled where we can; override anything you actually know.
         Every default you keep becomes a Discovery assumption to validate.
       </p>
+
+      {routes.map((route) => (
+        <RouteMarginWalk
+          key={route.id}
+          route={route}
+          showLabel={multi}
+          onSetPrice={(v) => setPrice(route.id, v)}
+          onSetMarkup={(fromId, toId, v, fromDefault) => setMarkup(route.id, fromId, toId, v, fromDefault)}
+        />
+      ))}
+
+      <NavRow onBack={() => goTo('l10.1')} onNext={() => goTo('l10.3')} nextLabel="Continue → business model" />
+    </StepFrame>
+  );
+}
+
+// One route's margin walk: a price box + the per-link markup table. Extracted
+// so the per-route `useMemo` runs at the top level of a component rather than
+// inside a .map() (which would break the Rules of Hooks).
+function RouteMarginWalk({
+  route, showLabel, onSetPrice, onSetMarkup,
+}: {
+  route: ValueRoute;
+  showLabel: boolean;
+  onSetPrice: (value: number | null) => void;
+  onSetMarkup: (fromId: string, toId: string, value: number, fromDefault: boolean) => void;
+}) {
+  const nodes = nodesOrderedFn(route.chain);
+  const price = route.margins.priceUnits;
+
+  // Compute markup rows even without a price entered, so the table is visible
+  // at load with defaults showing. Sell-price cells stay null until a price.
+  const computed = useMemo(() => {
+    let running: number | null = price;
+    const out: { fromId: string; toId: string; price: number | null; markupPct: number }[] = [];
+    for (let i = 0; i < nodes.length - 1; i++) {
+      const fromId = nodes[i].id, toId = nodes[i + 1].id;
+      const est = route.margins.estimates.find((e) => e.fromNodeId === fromId && e.toNodeId === toId);
+      const markupPct = est?.markupPct ?? defaultMarkupFor(nodes[i + 1].role);
+      const next = running != null ? running * (1 + markupPct / 100) : null;
+      out.push({ fromId, toId, price: next, markupPct });
+      running = next;
+    }
+    return out;
+  }, [price, nodes, route.margins.estimates]);
+
+  return (
+    <div style={{ marginBottom: showLabel ? 24 : 0 }}>
+      {showLabel && (
+        <div style={{
+          fontFamily: FONT_MONO, fontSize: 11, fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          color: SLATE_FG, marginBottom: 8,
+        }}>{route.label}</div>
+      )}
 
       <div style={{
         padding: 14, marginBottom: 16, borderRadius: 8,
@@ -1376,10 +1476,7 @@ export function Step10_2({ state, update, goTo }: StepProps) {
           value={price ?? ''}
           onChange={(e) => {
             const v = e.target.value;
-            update((prev) => ({
-              ...prev,
-              l10: { ...prev.l10, margins: { ...prev.l10.margins, priceUnits: v === '' ? null : Number(v) } },
-            }));
+            onSetPrice(v === '' ? null : Number(v));
           }}
           style={{
             padding: '8px 10px', border: `1px solid ${TAN}`, borderRadius: 4,
@@ -1407,7 +1504,7 @@ export function Step10_2({ state, update, goTo }: StepProps) {
               {computed.map((row) => {
                 const fromNode = nodes.find((n) => n.id === row.fromId);
                 const toNode = nodes.find((n) => n.id === row.toId);
-                const est = state.l10.margins.estimates.find((e) => e.fromNodeId === row.fromId && e.toNodeId === row.toId);
+                const est = route.margins.estimates.find((e) => e.fromNodeId === row.fromId && e.toNodeId === row.toId);
                 return (
                   <tr key={`${row.fromId}-${row.toId}`} style={{ borderTop: `1px solid ${HAIR}` }}>
                     <td style={{ padding: '8px 4px', color: INK }}>
@@ -1424,7 +1521,7 @@ export function Step10_2({ state, update, goTo }: StepProps) {
                       <input
                         type="number"
                         value={row.markupPct}
-                        onChange={(e) => setMarkup(row.fromId, row.toId, Number(e.target.value), false)}
+                        onChange={(e) => onSetMarkup(row.fromId, row.toId, Number(e.target.value), false)}
                         style={{
                           width: 64, padding: '4px 6px', textAlign: 'right',
                           border: `1px solid ${TAN}`, borderRadius: 4,
@@ -1445,9 +1542,7 @@ export function Step10_2({ state, update, goTo }: StepProps) {
           </table>
         </div>
       )}
-
-      <NavRow onBack={() => goTo('l10.1')} onNext={() => goTo('l10.3')} nextLabel="Continue → business model" />
-    </StepFrame>
+    </div>
   );
 }
 

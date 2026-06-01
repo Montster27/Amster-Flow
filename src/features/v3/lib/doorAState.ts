@@ -115,13 +115,26 @@ export interface MarginEdgeEstimate {
   fromDefault: boolean;
 }
 
-export interface L10State {
+/** One route to market — a self-contained value chain plus its own margin
+ *  walk. Founders can model several (direct, via distributor, …); each is an
+ *  independent "swim lane". The first route is the primary one. */
+export interface ValueRoute {
+  id: string;
+  /** Editable lane label ("Primary", "Via distributor", …). */
+  label: string;
   chain: ValueChain;
   margins: {
-    /** Founder's intended unit price, in whole units of currency. */
+    /** Founder's intended unit price at the "You" node, in whole units of
+     *  currency. Per-route: a wholesale price to a distributor differs from a
+     *  direct-to-consumer price. */
     priceUnits: number | null;
     estimates: MarginEdgeEstimate[];
   };
+}
+
+export interface L10State {
+  /** Routes to market. Always ≥1; the first is the primary route. */
+  routes: ValueRoute[];
   /** Selected business models (founder can pick more than one). */
   businessModelIds: BusinessModelId[];
   businessModelOther: string;
@@ -137,7 +150,7 @@ export type DoorASourceId =
 
 export interface DoorAState {
   /** Schema version — bump if shape changes incompatibly. */
-  v: 1;
+  v: 2;
   optionSpace: ParentGroup[];
   subgroups: SubGroup[];
   beachheadId: string | null;
@@ -154,9 +167,30 @@ export interface DoorAState {
 
 // ── Defaults / constructors ──
 
+/** A fresh direct chain: You → End user, both locked endpoints. */
+export function makeDefaultChain(): ValueChain {
+  return {
+    nodes: [
+      { id: 'n-you', label: 'You',      role: 'maker',    position: 0, locked: true },
+      { id: 'n-end', label: 'End user', role: 'end-user', position: 1, locked: true },
+    ],
+    edges: [{ fromNodeId: 'n-you', toNodeId: 'n-end' }],
+  };
+}
+
+/** A fresh route to market: a default direct chain with empty margins. */
+export function emptyRoute(id: string, label: string): ValueRoute {
+  return {
+    id,
+    label,
+    chain: makeDefaultChain(),
+    margins: { priceUnits: null, estimates: [] },
+  };
+}
+
 export function emptyDoorAState(): DoorAState {
   return {
-    v: 1,
+    v: 2,
     optionSpace: [],
     subgroups: [],
     beachheadId: null,
@@ -173,19 +207,60 @@ export function emptyDoorAState(): DoorAState {
       verdict: null,
     },
     l10: {
-      chain: {
-        nodes: [
-          { id: 'n-you',  label: 'You',      role: 'maker',    position: 0, locked: true },
-          { id: 'n-end',  label: 'End user', role: 'end-user', position: 1, locked: true },
-        ],
-        edges: [{ fromNodeId: 'n-you', toNodeId: 'n-end' }],
-      },
-      margins: { priceUnits: null, estimates: [] },
+      routes: [emptyRoute('route-1', 'Primary')],
       businessModelIds: [],
       businessModelOther: '',
       competitors: [],
     },
     draftSources: {},
+  };
+}
+
+/** Hydrate one route from an untrusted object. Falls back to a default
+ *  direct chain / empty margins on missing or malformed fields. */
+function hydrateRoute(x: unknown, i: number): ValueRoute {
+  const o = (x && typeof x === 'object') ? x as Record<string, any> : {};
+  const chain: ValueChain =
+    (o.chain && typeof o.chain === 'object'
+      && Array.isArray(o.chain.nodes) && Array.isArray(o.chain.edges))
+      ? { nodes: o.chain.nodes, edges: o.chain.edges }
+      : makeDefaultChain();
+  return {
+    id: typeof o.id === 'string' ? o.id : `route-${i + 1}`,
+    label: typeof o.label === 'string' ? o.label : (i === 0 ? 'Primary' : `Route ${i + 1}`),
+    chain,
+    margins: {
+      priceUnits: typeof o.margins?.priceUnits === 'number' ? o.margins.priceUnits : null,
+      estimates: Array.isArray(o.margins?.estimates) ? o.margins.estimates : [],
+    },
+  };
+}
+
+/** Migrate an L10 blob into current shape. Handles the new `routes[]` form,
+ *  the legacy single `{ chain, margins }` form (wrapped into one primary
+ *  route), and missing/empty input (seed default). */
+function hydrateL10(raw: unknown): L10State {
+  const seed = emptyDoorAState().l10;
+  const r = (raw && typeof raw === 'object') ? raw as Record<string, any> : {};
+
+  let routes: ValueRoute[];
+  if (Array.isArray(r.routes)) {
+    routes = r.routes
+      .filter((x: unknown) => x && typeof x === 'object')
+      .map((x: unknown, i: number) => hydrateRoute(x, i));
+  } else if (r.chain && typeof r.chain === 'object') {
+    // Legacy { chain, margins } → a single primary route.
+    routes = [hydrateRoute({ id: 'route-1', label: 'Primary', chain: r.chain, margins: r.margins }, 0)];
+  } else {
+    routes = seed.routes;
+  }
+  if (routes.length === 0) routes = seed.routes;
+
+  return {
+    routes,
+    businessModelIds: Array.isArray(r.businessModelIds) ? r.businessModelIds : seed.businessModelIds,
+    businessModelOther: typeof r.businessModelOther === 'string' ? r.businessModelOther : seed.businessModelOther,
+    competitors: Array.isArray(r.competitors) ? r.competitors : seed.competitors,
   };
 }
 
@@ -196,19 +271,14 @@ export function hydrate(raw: unknown): DoorAState {
   if (!raw || typeof raw !== 'object') return seed;
   const r = raw as Partial<DoorAState>;
   return {
-    v: 1,
+    v: 2,
     optionSpace: Array.isArray(r.optionSpace) ? r.optionSpace : seed.optionSpace,
     subgroups: Array.isArray(r.subgroups) ? r.subgroups : seed.subgroups,
     beachheadId: typeof r.beachheadId === 'string' ? r.beachheadId : null,
     beachheadJustification: typeof r.beachheadJustification === 'string'
       ? r.beachheadJustification : '',
     l9: { ...seed.l9, ...(r.l9 ?? {}) },
-    l10: {
-      ...seed.l10,
-      ...(r.l10 ?? {}),
-      chain: r.l10?.chain ?? seed.l10.chain,
-      margins: { ...seed.l10.margins, ...(r.l10?.margins ?? {}) },
-    },
+    l10: hydrateL10(r.l10),
     draftSources: (r.draftSources && typeof r.draftSources === 'object')
       ? r.draftSources as Partial<Record<string, DoorASourceId>>
       : seed.draftSources,
@@ -322,13 +392,15 @@ export function stepHasDraft(stepId: string, state: DoorAState): boolean {
         || state.l9.benefitOneLine.trim().length > 0
         || state.l9.costOneLine.trim().length > 0;
     case 'l10.1':
-      // Default chain has the two endpoint nodes; any extra node or any edge
-      // note counts as draft.
-      return state.l10.chain.nodes.length > 2
-        || state.l10.chain.edges.some((e) => (e.notes ?? '').trim().length > 0);
+      // More than one route, or any route extended past its two endpoints, or
+      // any edge note → counts as draft.
+      return state.l10.routes.length > 1
+        || state.l10.routes.some((r) =>
+          r.chain.nodes.length > 2
+          || r.chain.edges.some((e) => (e.notes ?? '').trim().length > 0));
     case 'l10.2':
-      return state.l10.margins.priceUnits !== null
-        || state.l10.margins.estimates.length > 0;
+      return state.l10.routes.some((r) =>
+        r.margins.priceUnits !== null || r.margins.estimates.length > 0);
     case 'l10.3':
       return state.l10.businessModelIds.length > 0
         || state.l10.businessModelOther.trim().length > 0;

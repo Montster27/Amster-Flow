@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   SCORE_MAX, SCORE_MIN,
-  chainDepth, computeBeachheadScore, emptyDoorAState,
-  extractAssumptions, findEdge, hydrate, isCloseCall, nodesOrdered,
+  chainDepth, computeBeachheadScore, emptyDoorAState, emptyRoute,
+  extractAssumptions, findEdge, hydrate, isCloseCall, makeDefaultChain, nodesOrdered,
   normalizedScore, stepHasDraft, topRankedSubgroup,
   type SubGroup, type ValueChain,
 } from '../lib/doorAState';
@@ -185,16 +185,35 @@ describe('extractAssumptions', () => {
 });
 
 describe('emptyDoorAState', () => {
-  it('produces a v=1 blob with the locked endpoint chain', () => {
+  it('produces a v=2 blob with one primary route and the locked endpoint chain', () => {
     const s = emptyDoorAState();
-    expect(s.v).toBe(1);
+    expect(s.v).toBe(2);
     expect(s.optionSpace).toEqual([]);
     expect(s.subgroups).toEqual([]);
     expect(s.beachheadId).toBeNull();
-    expect(s.l10.chain.nodes).toHaveLength(2);
-    expect(s.l10.chain.nodes[0]).toMatchObject({ id: 'n-you', locked: true, position: 0 });
-    expect(s.l10.chain.nodes[1]).toMatchObject({ id: 'n-end', locked: true, position: 1 });
-    expect(s.l10.chain.edges).toEqual([{ fromNodeId: 'n-you', toNodeId: 'n-end' }]);
+    expect(s.l10.routes).toHaveLength(1);
+    const chain = s.l10.routes[0].chain;
+    expect(chain.nodes).toHaveLength(2);
+    expect(chain.nodes[0]).toMatchObject({ id: 'n-you', locked: true, position: 0 });
+    expect(chain.nodes[1]).toMatchObject({ id: 'n-end', locked: true, position: 1 });
+    expect(chain.edges).toEqual([{ fromNodeId: 'n-you', toNodeId: 'n-end' }]);
+    expect(s.l10.routes[0].margins).toEqual({ priceUnits: null, estimates: [] });
+  });
+});
+
+describe('makeDefaultChain / emptyRoute', () => {
+  it('makeDefaultChain is a direct You → End user chain', () => {
+    const c = makeDefaultChain();
+    expect(c.nodes.map((n) => n.id)).toEqual(['n-you', 'n-end']);
+    expect(chainDepth(c)).toBe(0);
+  });
+
+  it('emptyRoute wraps a default chain with empty margins under the given id/label', () => {
+    const r = emptyRoute('route-x', 'Via distributor');
+    expect(r.id).toBe('route-x');
+    expect(r.label).toBe('Via distributor');
+    expect(r.chain.nodes).toHaveLength(2);
+    expect(r.margins).toEqual({ priceUnits: null, estimates: [] });
   });
 });
 
@@ -238,8 +257,21 @@ describe('stepHasDraft', () => {
 
   it('l10.1 flips true when the founder adds an edge note', () => {
     const s = emptyDoorAState();
-    s.l10.chain.edges[0].notes = 'license $1.20/unit';
+    s.l10.routes[0].chain.edges[0].notes = 'license $1.20/unit';
     expect(stepHasDraft('l10.1', s)).toBe(true);
+  });
+
+  it('l10.1 flips true once there is more than one route', () => {
+    const s = emptyDoorAState();
+    s.l10.routes.push(emptyRoute('route-2', 'Route 2'));
+    expect(stepHasDraft('l10.1', s)).toBe(true);
+  });
+
+  it('l10.2 flips true when any route has a price or a markup estimate', () => {
+    const s = emptyDoorAState();
+    expect(stepHasDraft('l10.2', s)).toBe(false);
+    s.l10.routes[0].margins.priceUnits = 9.99;
+    expect(stepHasDraft('l10.2', s)).toBe(true);
   });
 
   it('l10.3 flips true on either business-model selection or other-text', () => {
@@ -255,8 +287,8 @@ describe('stepHasDraft', () => {
 
 describe('hydrate', () => {
   it('returns a fresh empty state for null / non-object input', () => {
-    expect(hydrate(null).v).toBe(1);
-    expect(hydrate(undefined).v).toBe(1);
+    expect(hydrate(null).v).toBe(2);
+    expect(hydrate(undefined).v).toBe(2);
     expect(hydrate('string').optionSpace).toEqual([]);
     expect(hydrate(42).subgroups).toEqual([]);
   });
@@ -266,8 +298,9 @@ describe('hydrate', () => {
     const out = hydrate(partial);
     expect(out.optionSpace).toEqual(partial.optionSpace);
     expect(out.l9.problemRestated).toBe('');
-    expect(out.l10.chain.nodes).toHaveLength(2);
-    expect(out.l10.margins.priceUnits).toBeNull();
+    expect(out.l10.routes).toHaveLength(1);
+    expect(out.l10.routes[0].chain.nodes).toHaveLength(2);
+    expect(out.l10.routes[0].margins.priceUnits).toBeNull();
   });
 
   it('preserves valid existing l9 / l10 sub-fields', () => {
@@ -279,5 +312,56 @@ describe('hydrate', () => {
     expect(out.l9.painRating).toBe('critical');
     expect(out.l9.solution).toBe('something');
     expect(out.l10.businessModelIds).toEqual(['subscription']);
+  });
+
+  it('migrates a legacy single { chain, margins } L10 into one primary route', () => {
+    const legacyChain = {
+      nodes: [
+        { id: 'n-you', label: 'You', role: 'maker', position: 0, locked: true },
+        { id: 'n-mid', label: 'Distributor', role: 'distributor', position: 1, locked: false },
+        { id: 'n-end', label: 'End user', role: 'end-user', position: 2, locked: true },
+      ],
+      edges: [
+        { fromNodeId: 'n-you', toNodeId: 'n-mid', notes: '$1.20/unit' },
+        { fromNodeId: 'n-mid', toNodeId: 'n-end' },
+      ],
+    };
+    const out = hydrate({
+      l10: {
+        chain: legacyChain,
+        margins: {
+          priceUnits: 9.99,
+          estimates: [{ fromNodeId: 'n-you', toNodeId: 'n-mid', markupPct: 15, fromDefault: false }],
+        },
+        businessModelIds: ['subscription'],
+      },
+    });
+    expect(out.l10.routes).toHaveLength(1);
+    expect(out.l10.routes[0].id).toBe('route-1');
+    expect(out.l10.routes[0].chain).toEqual(legacyChain);
+    expect(out.l10.routes[0].margins.priceUnits).toBe(9.99);
+    expect(out.l10.routes[0].margins.estimates).toHaveLength(1);
+    expect(out.l10.businessModelIds).toEqual(['subscription']);
+  });
+
+  it('round-trips a multi-route L10 blob intact', () => {
+    const blob = {
+      l10: {
+        routes: [
+          emptyRoute('route-1', 'Direct'),
+          {
+            id: 'route-2', label: 'Via distributor',
+            chain: makeDefaultChain(),
+            margins: { priceUnits: 5, estimates: [] },
+          },
+        ],
+        businessModelIds: [],
+        businessModelOther: '',
+        competitors: [],
+      },
+    };
+    const out = hydrate(blob);
+    expect(out.l10.routes.map((r) => r.label)).toEqual(['Direct', 'Via distributor']);
+    expect(out.l10.routes[1].margins.priceUnits).toBe(5);
   });
 });
