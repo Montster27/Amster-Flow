@@ -5,10 +5,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayerStack, useVenture } from '../hooks/useVenture';
+import { useMiniProcessRuns, type MiniProcessRunRow } from '../hooks/useMiniProcessRuns';
 import { GateBadge, PageShell, TierLadder, VentureHeader } from '../components/atoms';
 import { StageGatesPanel } from '../components/StageGatesPanel';
 import { PromptsPanel } from '../components/PromptsPanel';
 import { IndustrySwitcher } from '../components/IndustrySwitcher';
+import { findMiniProcess } from '../lib/miniProcesses';
 import { layersFor } from '../lib/industryVariants';
 import { PK_GATES, PK_LAYER_BY_ID, pkTier } from '../lib/layers';
 import { lookupPushback, numberWord } from '../lib/voice';
@@ -245,6 +247,70 @@ function StackSummary({
   );
 }
 
+// In-progress mini-processes surfaced at the top of the hub. Without this, a
+// run started from the catalog (e.g. an interview mini-process) is only
+// resumable from the mini-process page's own "In progress" list — so leaving
+// via the Dashboard button left no trail back to it. Each card deep-links
+// straight into the focused run.
+function ResumeBanner({
+  runs, onResume,
+}: {
+  runs: MiniProcessRunRow[];
+  onResume: (runId: string) => void;
+}) {
+  if (runs.length === 0) return null;
+  return (
+    <section style={{ marginBottom: 18, display: 'grid', gap: 10 }}>
+      {runs.map((r) => {
+        const def = findMiniProcess(r.kind);
+        if (!def) return null;
+        const stepsDone = (r.progress.completedSteps ?? []).length;
+        const captured = r.progress.capturedN ?? 0;
+        const layer = PK_LAYER_BY_ID[def.layerId];
+        return (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onResume(r.id)}
+            aria-label={`Resume ${def.title} mini-process — ${stepsDone} of ${def.steps.length} steps done, ${captured} of ${def.targetN} captured`}
+            style={{
+              textAlign: 'left',
+              padding: '14px 18px', background: '#fff',
+              border: '1.5px solid #0f766e', borderLeft: '3px solid #0f766e',
+              borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'grid', gridTemplateColumns: '1fr auto', gap: 14,
+              alignItems: 'center',
+              boxShadow: '0 0 0 4px rgba(15,118,110,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{
+                fontFamily: FONT_MONO, fontSize: 9.5, color: '#0f766e',
+                letterSpacing: '0.12em', fontWeight: 700, textTransform: 'uppercase',
+              }}>
+                Mini-process in progress · L{String(layer?.n ?? 0).padStart(2, '0')} {layer?.name}
+              </div>
+              <div style={{
+                fontFamily: FONT_SERIF, fontSize: 19, color: '#0b1220',
+                letterSpacing: '-0.008em',
+              }}>{def.title}</div>
+              <div style={{ display: 'flex', gap: 14, fontSize: 11.5, color: '#64748b' }}>
+                <span>Steps: {stepsDone}/{def.steps.length}</span>
+                <span>Captured: {captured}/{def.targetN}</span>
+              </div>
+            </div>
+            <span aria-hidden style={{
+              fontFamily: FONT_MONO, fontSize: 11, color: '#fff',
+              background: '#0f766e', padding: '8px 14px', borderRadius: 6,
+              letterSpacing: '0.06em', fontWeight: 600, whiteSpace: 'nowrap',
+            }}>Resume →</span>
+          </button>
+        );
+      })}
+    </section>
+  );
+}
+
 export default function V3DashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -255,6 +321,11 @@ export default function V3DashboardPage() {
   const prompts = useMemo(
     () => deriveAllPrompts({ stack, rows, stage }),
     [stack, rows, stage],
+  );
+  const { runs: miniRuns } = useMiniProcessRuns(projectId);
+  const inProgressRuns = useMemo(
+    () => miniRuns.filter((r) => r.state === 'in_progress'),
+    [miniRuns],
   );
   const [flagsExpanded, setFlagsExpanded] = useState(false);
 
@@ -314,12 +385,24 @@ export default function V3DashboardPage() {
             <button
               type="button"
               onClick={() => navigate(`/v3/mini-process/${projectId}`)}
+              aria-label={`Mini-processes${inProgressRuns.length > 0 ? `, ${inProgressRuns.length} in progress` : ''}`}
               style={{
                 padding: '7px 12px', background: 'transparent', color: '#475569',
                 border: '1px solid #d6cfb8', borderRadius: 6, fontSize: 12,
                 cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
               }}
-            >Mini-processes</button>
+            >
+              Mini-processes
+              {inProgressRuns.length > 0 && (
+                <span aria-hidden style={{
+                  padding: '1px 6px', borderRadius: 999,
+                  background: '#0f766e', color: '#fff',
+                  fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700,
+                  lineHeight: 1.5,
+                }}>{inProgressRuns.length}</span>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => navigate(`/v3/pitch/${projectId}`)}
@@ -334,6 +417,11 @@ export default function V3DashboardPage() {
       />
 
       <div style={{ padding: '20px 28px' }}>
+        <ResumeBanner
+          runs={inProgressRuns}
+          onResume={(runId) => navigate(`/v3/mini-process/${projectId}?run=${runId}`)}
+        />
+
         <StackSummary
           stateLine={stateLine}
           featured={featured}
