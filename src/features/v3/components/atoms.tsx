@@ -5,7 +5,7 @@ import {
   useEffect, useId, useRef, useState,
   type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode,
 } from 'react';
-import { PK_LAYER_BY_ID, PK_SOURCES, pkTier } from '../lib/layers';
+import { PK_LAYER_BY_ID, PK_SOURCES, pkHidesSource, pkSourcesFor, pkTier } from '../lib/layers';
 import type { LayerCategory, SourceId } from '../lib/layers';
 import type { GateProgress } from '../lib/gates';
 import {
@@ -183,6 +183,9 @@ export function SourcePicker({
   onChange: (id: SourceId | null) => void;
   disabled?: boolean;
 }) {
+  // Aspirational strategy layers (World Impact, Exit) cite no evidence, so the
+  // "How do you know?" picker is suppressed entirely for them.
+  if (pkHidesSource(layerId)) return null;
   return (
     <div>
       <div style={{
@@ -191,7 +194,7 @@ export function SourcePicker({
         marginBottom: 8,
       }}>How do you know?</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {PK_SOURCES.map((s) => {
+        {pkSourcesFor(layerId).map((s) => {
           const on = s.id === value;
           const t = pkTier(layerId, s.id);
           return (

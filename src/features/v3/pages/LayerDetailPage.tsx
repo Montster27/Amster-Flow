@@ -262,26 +262,28 @@ export default function LayerDetailPage() {
           </section>
 
           {/* Source picker */}
-          <section style={{
-            padding: '16px 18px', background: '#fff',
-            border: `1px solid ${TAN}`, borderRadius: 10,
-          }}>
-            <SourcePicker
-              value={row?.source_value ?? null}
-              layerId={layer.id}
-              onChange={(next) => { void onSourceChange(next); }}
-              disabled={saving}
-            />
-            {row?.source_value && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{
-                  fontFamily: FONT_MONO, fontSize: 9.5, color: MUTED,
-                  letterSpacing: '0.06em',
-                }}>CURRENT</span>
-                <SourcePill src={row.source_value} />
-              </div>
-            )}
-          </section>
+          {!layer.hideSource && (
+            <section style={{
+              padding: '16px 18px', background: '#fff',
+              border: `1px solid ${TAN}`, borderRadius: 10,
+            }}>
+              <SourcePicker
+                value={row?.source_value ?? null}
+                layerId={layer.id}
+                onChange={(next) => { void onSourceChange(next); }}
+                disabled={saving}
+              />
+              {row?.source_value && (
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{
+                    fontFamily: FONT_MONO, fontSize: 9.5, color: MUTED,
+                    letterSpacing: '0.06em',
+                  }}>CURRENT</span>
+                  <SourcePill src={row.source_value} />
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Pushback */}
           {pushback && (

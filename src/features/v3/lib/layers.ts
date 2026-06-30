@@ -22,6 +22,11 @@ export interface PkLayer {
   band: LayerBand;
   /** The core question shown to the founder. */
   q: string;
+  /** When true, the layer hides the "How do you know?" source picker — used
+   *  for aspirational strategy layers that have no evidence basis to cite. */
+  hideSource?: boolean;
+  /** Restrict which sources are offered. Defaults to all of PK_SOURCES. */
+  allowedSources?: readonly SourceId[];
 }
 
 export interface PkSource {
@@ -49,12 +54,12 @@ export interface LayerStateRow {
 
 // ── Layers (canonical 16, Software variant) ──
 export const PK_LAYERS: readonly PkLayer[] = [
-  { n: 1,  id: 'worldImpact',       name: 'World Impact',       cat: 'thoughtful', band: 'strategy',  q: 'When you exit, what lasting impact have you made?' },
-  { n: 2,  id: 'exit',              name: 'Exit',               cat: 'thoughtful', band: 'strategy',  q: 'IPO, acquisition, license — what is the end?' },
+  { n: 1,  id: 'worldImpact',       name: 'World Impact',       cat: 'thoughtful', band: 'strategy',  q: 'When you exit, what lasting impact have you made?', hideSource: true },
+  { n: 2,  id: 'exit',              name: 'Exit',               cat: 'thoughtful', band: 'strategy',  q: 'IPO, acquisition, license — what is the end?', hideSource: true },
   { n: 3,  id: 'sectorMapping',     name: 'Sector Mapping',     cat: 'thoughtful', band: 'strategy',  q: 'Players two degrees from where you expect to be.' },
   { n: 4,  id: 'competitiveMarket', name: 'Competitive Market', cat: 'critical',   band: 'critical',  q: 'Who sells the same/similar? What do users do now?' },
-  { n: 5,  id: 'marketExpansion',   name: 'Market Expansion',   cat: 'thoughtful', band: 'strategy',  q: 'Follow-on or complementary products long-term.' },
-  { n: 6,  id: 'company',           name: 'Company',            cat: 'thoughtful', band: 'strategy',  q: 'Size and type of company needed to support this.' },
+  { n: 5,  id: 'marketExpansion',   name: 'Market Expansion',   cat: 'thoughtful', band: 'strategy',  q: 'New revenue streams. Follow-on or complementary products long-term.' },
+  { n: 6,  id: 'company',           name: 'Company',            cat: 'thoughtful', band: 'strategy',  q: 'Size and type of company needed to support this.', allowedSources: ['logical', 'experience', 'research'] },
   { n: 7,  id: 'businessModel',     name: 'Business Model',     cat: 'critical',   band: 'critical',  q: 'How will this make money? How do customers pay?' },
   { n: 8,  id: 'customerSegment',   name: 'Customer Segment',   cat: 'critical',   band: 'critical',  q: 'Smallest cohesive group with the greatest need.' },
   { n: 9,  id: 'solution',          name: 'Solution',           cat: 'critical',   band: 'critical',  q: 'How is the product solving the problem?' },
@@ -78,6 +83,19 @@ export const PK_SOURCES: readonly PkSource[] = [
   { id: 'interviews', label: 'Customer interviews',    short: 'Interviews' },
   { id: 'prototype',  label: 'Prototype tests',        short: 'Prototype' },
 ];
+
+/** Whether a layer should hide the "How do you know?" source picker. */
+export function pkHidesSource(layerId: string): boolean {
+  return PK_LAYER_BY_ID[layerId]?.hideSource ?? false;
+}
+
+/** The sources offered for a layer — all of PK_SOURCES unless the layer
+ *  declares a narrower `allowedSources` set. */
+export function pkSourcesFor(layerId: string): readonly PkSource[] {
+  const allowed = PK_LAYER_BY_ID[layerId]?.allowedSources;
+  if (!allowed) return PK_SOURCES;
+  return PK_SOURCES.filter((s) => allowed.includes(s.id));
+}
 
 // Per-layer source→tier map (brief Mechanic 3). Default mapping if no override.
 const DEFAULT_TIER: Record<SourceId, number> = {

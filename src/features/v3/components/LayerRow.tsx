@@ -134,13 +134,15 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
             }}
           />
 
-          <div style={{ marginTop: 10 }}>
-            <SourcePicker
-              value={row?.source_value ?? null}
-              layerId={layer.id}
-              onChange={(next) => { void onSourceChange(next); }}
-            />
-          </div>
+          {!layer.hideSource && (
+            <div style={{ marginTop: 10 }}>
+              <SourcePicker
+                value={row?.source_value ?? null}
+                layerId={layer.id}
+                onChange={(next) => { void onSourceChange(next); }}
+              />
+            </div>
+          )}
 
           {pushback && (
             <div style={{
