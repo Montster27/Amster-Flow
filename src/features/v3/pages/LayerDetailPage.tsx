@@ -15,6 +15,7 @@ import { useLayerStack, useVenture } from '../hooks/useVenture';
 import {
   CategoryBadge, PageShell, SourcePicker, SourcePill, TierLadder, VentureHeader,
 } from '../components/atoms';
+import { SectorMapPanel } from '../components/SectorMapPanel';
 import { StageGatesPanel } from '../components/StageGatesPanel';
 import { PK_LAYER_BY_ID, pkTier, type SourceId } from '../lib/layers';
 import { lookupPushback } from '../lib/voice';
@@ -175,7 +176,14 @@ export default function LayerDetailPage() {
             </div>
           </div>
 
+          {/* Custom view — dedicated tool in place of the generic claim form */}
+          {layer.customView === 'sectorMap' && projectId && (
+            <SectorMapPanel projectId={projectId} layer={layer} saveLayer={saveLayer} />
+          )}
+
           {/* Claim section — read-only by default, Edit swaps to a textarea */}
+          {layer.customView !== 'sectorMap' && (
+          <>
           <section style={{
             padding: '16px 18px', background: '#fff',
             border: `1px solid ${TAN}`, borderRadius: 10,
@@ -375,6 +383,8 @@ export default function LayerDetailPage() {
               No outstanding assumption candidates from this layer right now.
               Cross-layer flags still live on the Assumption stack page.
             </div>
+          )}
+          </>
           )}
         </main>
 

@@ -1,4 +1,7 @@
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
+import {
+  AMBER_FG, AMBER_LINE, AMBER_SOFT, INK, MUTED, SLATE_FG, STONE, TEAL,
+} from '../../features/v3/lib/tokens';
 
 interface ScopeDefinitionProps {
   onContinue: () => void;
@@ -13,16 +16,16 @@ export const ScopeDefinition = ({ onContinue }: ScopeDefinitionProps) => {
     <div className="max-w-3xl mx-auto p-8">
       <div className="bg-white rounded-lg shadow-md p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+          <h1 className="text-3xl font-bold mb-2 flex items-center gap-2" style={{ color: INK }}>
             <span>🗺️</span> Define Your Map
           </h1>
-          <p className="text-gray-600">Map the relationships in your sector</p>
+          <p style={{ color: SLATE_FG }}>Map the relationships in your sector</p>
         </div>
 
         <div className="space-y-6">
           {/* Sector/Problem Area */}
           <div>
-            <label className="block text-lg font-medium text-gray-800 mb-3 flex items-center gap-2">
+            <label className="block text-lg font-medium mb-3 flex items-center gap-2" style={{ color: INK }}>
               <span>📍</span> Sector or problem area
             </label>
             <input
@@ -30,20 +33,26 @@ export const ScopeDefinition = ({ onContinue }: ScopeDefinitionProps) => {
               value={scope.sector}
               onChange={(e) => updateScope({ sector: e.target.value })}
               placeholder="e.g., Elder care • Student housing • Local food delivery"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+              className="w-full px-4 py-3 border-2 rounded-lg text-lg focus:outline-none"
+              style={{ borderColor: STONE, color: INK }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
             />
           </div>
 
           {/* Core Question */}
           <div>
-            <label className="block text-lg font-medium text-gray-800 mb-3 flex items-center gap-2">
+            <label className="block text-lg font-medium mb-3 flex items-center gap-2" style={{ color: INK }}>
               <span>❓</span> Key question to answer
             </label>
             <textarea
               value={scope.question}
               onChange={(e) => updateScope({ question: e.target.value })}
               placeholder="e.g., Who influences how seniors access healthcare?"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+              className="w-full px-4 py-3 border-2 rounded-lg text-lg focus:outline-none"
+              style={{ borderColor: STONE, color: INK }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
               rows={3}
             />
           </div>
@@ -53,19 +62,18 @@ export const ScopeDefinition = ({ onContinue }: ScopeDefinitionProps) => {
             <button
               onClick={onContinue}
               disabled={!canContinue}
-              className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
-                canContinue
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className="w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all"
+              style={canContinue
+                ? { background: TEAL, color: '#fff' }
+                : { background: '#e2e8f0', color: MUTED, cursor: 'not-allowed' }}
             >
               {canContinue ? 'Continue to Map Actors →' : 'Fill in both fields to continue'}
             </button>
           </div>
 
           {/* Help Text */}
-          <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
-            <p className="text-sm text-blue-800">
+          <div className="mt-6 p-4 rounded" style={{ background: AMBER_SOFT, borderLeft: `4px solid ${AMBER_LINE}` }}>
+            <p className="text-sm" style={{ color: AMBER_FG }}>
               <strong>💡 Tip:</strong> Make your question specific yet broad enough to capture key relationships
             </p>
           </div>

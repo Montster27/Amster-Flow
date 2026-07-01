@@ -27,6 +27,9 @@ export interface PkLayer {
   hideSource?: boolean;
   /** Restrict which sources are offered. Defaults to all of PK_SOURCES. */
   allowedSources?: readonly SourceId[];
+  /** When set, LayerDetailPage renders a dedicated tool in place of the
+   *  generic claim/source form. 'sectorMap' → the Visual Sector Map wizard. */
+  customView?: 'sectorMap';
 }
 
 export interface PkSource {
@@ -56,7 +59,7 @@ export interface LayerStateRow {
 export const PK_LAYERS: readonly PkLayer[] = [
   { n: 1,  id: 'worldImpact',       name: 'World Impact',       cat: 'thoughtful', band: 'strategy',  q: 'When you exit, what lasting impact have you made?', hideSource: true },
   { n: 2,  id: 'exit',              name: 'Exit',               cat: 'thoughtful', band: 'strategy',  q: 'IPO, acquisition, license — what is the end?', hideSource: true },
-  { n: 3,  id: 'sectorMapping',     name: 'Sector Mapping',     cat: 'thoughtful', band: 'strategy',  q: 'Players two degrees from where you expect to be.' },
+  { n: 3,  id: 'sectorMapping',     name: 'Sector Mapping',     cat: 'thoughtful', band: 'strategy',  q: 'Players two degrees from where you expect to be.', hideSource: true, customView: 'sectorMap' },
   { n: 4,  id: 'competitiveMarket', name: 'Competitive Market', cat: 'critical',   band: 'critical',  q: 'Who sells the same/similar? What do users do now?' },
   { n: 5,  id: 'marketExpansion',   name: 'Market Expansion',   cat: 'thoughtful', band: 'strategy',  q: 'New revenue streams. Follow-on or complementary products long-term.' },
   { n: 6,  id: 'company',           name: 'Company',            cat: 'thoughtful', band: 'strategy',  q: 'Size and type of company needed to support this.', allowedSources: ['logical', 'experience', 'research'] },

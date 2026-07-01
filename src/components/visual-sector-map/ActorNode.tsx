@@ -11,6 +11,7 @@ import {
   RISK_COLORS,
   calculateRiskScore,
 } from '../../types/visualSectorMap';
+import { TEAL, SLATE_FG, MUTED, TAN, ERROR_FG } from '../../features/v3/lib/tokens';
 
 interface ActorNodeProps {
   actor: Actor;
@@ -167,7 +168,8 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                       setIsEditing(false);
                     }
                   }}
-                  className={`w-full px-1 py-0.5 border-2 border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${colors.text} font-semibold bg-white`}
+                  className={`w-full px-1 py-0.5 border-2 rounded focus:outline-none ${colors.text} font-semibold bg-white`}
+                  style={{ borderColor: TEAL }}
                   autoFocus
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -179,7 +181,7 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                   {actor.name}
                 </p>
               )}
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs mt-1" style={{ color: SLATE_FG }}>
                 {ACTOR_LABELS[actor.category]}
               </p>
             </div>
@@ -189,7 +191,10 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                className="flex-shrink-0"
+                style={{ color: MUTED }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = SLATE_FG; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
               >
                 ⋮
               </button>
@@ -200,7 +205,8 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
         {/* Context Menu */}
         {showMenu && !readOnly && (
           <div
-            className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border-2 border-gray-200 py-1 z-50 min-w-[180px]"
+            className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border-2 py-1 z-50 min-w-[180px]"
+            style={{ borderColor: TAN }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -208,37 +214,43 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                 setIsEditing(true);
                 setShowMenu(false);
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm flex items-center gap-2"
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               ✏️ Rename
             </button>
 
-            <div className="border-t border-gray-200 my-1" />
+            <div className="my-1" style={{ borderTop: `1px solid ${TAN}` }} />
 
-            <p className="px-4 py-1 text-xs font-medium text-gray-500">Change type:</p>
+            <p className="px-4 py-1 text-xs font-medium" style={{ color: MUTED }}>Change type:</p>
 
             {(['customer', 'provider', 'regulator', 'funder', 'partner', 'influencer'] as ActorCategory[]).map(
               (category) => (
                 <button
                   key={category}
                   onClick={() => handleChangeCategory(category)}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${
-                    actor.category === category ? 'bg-blue-50 font-medium' : ''
-                  }`}
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2"
+                  style={actor.category === category ? { background: '#e6f4f1', fontWeight: 500 } : undefined}
+                  onMouseEnter={(e) => { if (actor.category !== category) e.currentTarget.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { if (actor.category !== category) e.currentTarget.style.background = 'transparent'; }}
                 >
                   {ACTOR_ICONS[category]} {ACTOR_LABELS[category]}
                 </button>
               )
             )}
 
-            <div className="border-t border-gray-200 my-1" />
+            <div className="my-1" style={{ borderTop: `1px solid ${TAN}` }} />
 
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleDelete();
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 font-medium flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2"
+              style={{ color: ERROR_FG }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(190,18,60,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               🗑️ Delete
             </button>

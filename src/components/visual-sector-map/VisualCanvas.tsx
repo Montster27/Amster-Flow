@@ -3,6 +3,7 @@ import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
 import { ActorCategory, Actor, Connection } from '../../types/visualSectorMap';
 import { ActorNode } from './ActorNode';
 import { Inspector } from './Inspector';
+import { TEAL, INK, SLATE_FG, MUTED, STONE } from '../../features/v3/lib/tokens';
 
 interface VisualCanvasProps {
   selectedCategory: ActorCategory;
@@ -82,12 +83,12 @@ export const VisualCanvas = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="relative w-full h-full bg-gradient-to-br" style={{ backgroundImage: `linear-gradient(to bottom right, #fbfaf7, #f4f1ea)` }}>
       {/* Instructions overlay */}
       {actors.length === 0 && !readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-white/90 px-8 py-6 rounded-lg shadow-lg border-2 border-blue-300">
-            <p className="text-lg font-medium text-gray-700 text-center">
+          <div className="bg-white/90 px-8 py-6 rounded-lg shadow-lg border-2" style={{ borderColor: TEAL }}>
+            <p className="text-lg font-medium text-center" style={{ color: SLATE_FG }}>
               👆 Select an actor type above, then click anywhere on the canvas to place it
             </p>
           </div>
@@ -112,9 +113,9 @@ export const VisualCanvas = ({
               <path
                 d="M 40 0 L 0 0 0 40"
                 fill="none"
-                stroke="gray"
+                stroke={STONE}
                 strokeWidth="0.5"
-                opacity="0.1"
+                opacity="0.3"
               />
             </pattern>
           </defs>
@@ -139,7 +140,7 @@ export const VisualCanvas = ({
                       y1={sourceActor.position.y}
                       x2={targetActor.position.x}
                       y2={targetActor.position.y}
-                      stroke="#6366f1"
+                      stroke={TEAL}
                       strokeWidth="2"
                       strokeDasharray="5,5"
                       markerEnd="url(#arrowhead)"
@@ -156,7 +157,7 @@ export const VisualCanvas = ({
                 refY="3"
                 orient="auto"
               >
-                <polygon points="0 0, 10 3, 0 6" fill="#6366f1" />
+                <polygon points="0 0, 10 3, 0 6" fill={TEAL} />
               </marker>
             </defs>
           </svg>
@@ -222,10 +223,11 @@ function NameInputDialog({ category, onSubmit, onCancel }: NameInputDialogProps)
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-lg shadow-xl border-2 border-blue-400 p-4"
+      className="bg-white rounded-lg shadow-xl border-2 p-4"
+      style={{ borderColor: TEAL }}
       onClick={(e) => e.stopPropagation()}
     >
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium mb-2" style={{ color: SLATE_FG }}>
         Actor name:
       </label>
       <input
@@ -245,21 +247,30 @@ function NameInputDialog({ category, onSubmit, onCancel }: NameInputDialogProps)
             ? 'Pharmacy'
             : 'Doctors'
         }`}
-        className="w-64 px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
+        className="w-64 px-3 py-2 border-2 rounded-lg focus:outline-none mb-3"
+        style={{ borderColor: STONE, color: INK }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
         autoFocus
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={!name.trim()}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 rounded-lg font-medium disabled:cursor-not-allowed"
+          style={name.trim() ? { background: TEAL, color: '#fff' } : { background: '#e2e8f0', color: MUTED }}
+          onMouseEnter={(e) => { if (name.trim()) e.currentTarget.style.background = '#0d5c56'; }}
+          onMouseLeave={(e) => { if (name.trim()) e.currentTarget.style.background = TEAL; }}
         >
           Add
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+          className="flex-1 px-4 py-2 bg-white border-2 rounded-lg font-medium"
+          style={{ borderColor: STONE, color: SLATE_FG }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
         >
           Cancel
         </button>

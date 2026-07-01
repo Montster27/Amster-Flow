@@ -8,6 +8,9 @@ import {
   LAYER_LABELS,
 } from '../../types/visualSectorMap';
 import { VisualCanvas } from './VisualCanvas';
+import {
+  TEAL, TEAL_LITE, INK, SLATE_FG, MUTED, TAN, STONE, HAIR, PAPER,
+} from '../../features/v3/lib/tokens';
 
 interface ConnectionManagementProps {
   onContinue: () => void;
@@ -42,28 +45,31 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
   const canContinue = connections.length >= 1; // Need at least 1 connection
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex" style={{ background: PAPER }}>
       {/* Left Panel - Connection Controls */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col relative">
+      <div className="w-96 bg-white border-r flex flex-col relative" style={{ borderColor: TAN }}>
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+        <div className="px-6 py-4 border-b" style={{ borderColor: TAN }}>
+          <h1 className="text-xl font-bold mb-1 flex items-center gap-2" style={{ color: INK }}>
             <span>🔗</span> Connect Actors
           </h1>
-          <p className="text-xs text-gray-600">Map flows and relationships</p>
+          <p className="text-xs" style={{ color: SLATE_FG }}>Map flows and relationships</p>
         </div>
 
         {/* Connection Form - Add padding bottom for fixed footer */}
         <div className="flex-1 overflow-y-auto px-6 py-3 pb-40 space-y-2">
           {/* Source Actor */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-xs font-medium mb-1 flex items-center gap-1" style={{ color: SLATE_FG }}>
               <span>①</span> From
             </label>
             <select
               value={selectedSourceId || ''}
               onChange={(e) => setSelectedSourceId(e.target.value || null)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none"
+              style={{ borderColor: STONE, color: INK }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
             >
               <option value="">-- Choose source --</option>
               {actors.map((actor) => (
@@ -76,13 +82,16 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Target Actor */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-xs font-medium mb-1 flex items-center gap-1" style={{ color: SLATE_FG }}>
               <span>②</span> To
             </label>
             <select
               value={selectedTargetId || ''}
               onChange={(e) => setSelectedTargetId(e.target.value || null)}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none"
+              style={{ borderColor: STONE, color: INK }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
             >
               <option value="">-- Choose target --</option>
               {actors
@@ -97,7 +106,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Connection Type */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-xs font-medium mb-1 flex items-center gap-1" style={{ color: SLATE_FG }}>
               <span>③</span> Type
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -108,10 +117,13 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
                     key={type}
                     onClick={() => setConnectionType(type)}
                     className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all border-2 ${
-                      isSelected
-                        ? 'bg-blue-100 border-blue-400 text-blue-800 shadow-md'
-                        : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                      isSelected ? 'shadow-md' : 'bg-white'
                     }`}
+                    style={isSelected
+                      ? { background: TEAL_LITE, borderColor: TEAL, color: TEAL }
+                      : { borderColor: STONE, color: SLATE_FG }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.borderColor = MUTED; }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.borderColor = STONE; }}
                   >
                     {CONNECTION_ICONS[type]} {CONNECTION_LABELS[type]}
                   </button>
@@ -122,7 +134,7 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Layer */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-xs font-medium mb-1 flex items-center gap-1" style={{ color: SLATE_FG }}>
               <span>④</span> Layer
             </label>
             <div className="space-y-1">
@@ -133,10 +145,13 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
                     key={l}
                     onClick={() => setLayer(l)}
                     className={`w-full px-3 py-1.5 rounded-lg font-medium text-xs transition-all border-2 text-left ${
-                      isSelected
-                        ? 'bg-indigo-100 border-indigo-400 text-indigo-800 shadow-md'
-                        : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                      isSelected ? 'shadow-md' : 'bg-white'
                     }`}
+                    style={isSelected
+                      ? { background: TEAL_LITE, borderColor: TEAL, color: TEAL }
+                      : { borderColor: STONE, color: SLATE_FG }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.borderColor = MUTED; }}
+                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.borderColor = STONE; }}
                   >
                     {LAYER_LABELS[l]}
                   </button>
@@ -147,14 +162,17 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-xs font-medium mb-1 flex items-center gap-1" style={{ color: SLATE_FG }}>
               <span>⑤</span> Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Seniors pay hospitals for healthcare services"
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none text-sm"
+              style={{ borderColor: STONE, color: INK }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = TEAL; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
               rows={2}
             />
           </div>
@@ -164,18 +182,19 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
             onClick={handleAddConnection}
             disabled={!canAddConnection}
             className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              canAddConnection
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              canAddConnection ? 'text-white shadow-lg hover:shadow-xl' : 'cursor-not-allowed'
             }`}
+            style={canAddConnection ? { background: TEAL } : { background: '#e2e8f0', color: MUTED }}
+            onMouseEnter={(e) => { if (canAddConnection) e.currentTarget.style.background = '#0d5c56'; }}
+            onMouseLeave={(e) => { if (canAddConnection) e.currentTarget.style.background = TEAL; }}
           >
             Add Connection
           </button>
 
           {/* Existing Connections List */}
           {connections.length > 0 && (
-            <div className="pt-2 border-t border-gray-200">
-              <h3 className="text-xs font-medium text-gray-700 mb-1">
+            <div className="pt-2 border-t" style={{ borderColor: TAN }}>
+              <h3 className="text-xs font-medium mb-1" style={{ color: SLATE_FG }}>
                 Connections ({connections.length}):
               </h3>
               <div className="space-y-1 max-h-24 overflow-y-auto">
@@ -185,12 +204,13 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
                   return (
                     <div
                       key={conn.id}
-                      className="p-2 bg-gray-50 rounded border border-gray-200 text-xs"
+                      className="p-2 rounded border text-xs"
+                      style={{ background: HAIR, borderColor: TAN }}
                     >
-                      <p className="font-medium">
+                      <p className="font-medium" style={{ color: INK }}>
                         {source?.name} → {target?.name}
                       </p>
-                      <p className="text-gray-600">
+                      <p style={{ color: SLATE_FG }}>
                         {CONNECTION_ICONS[conn.type]} {conn.description}
                       </p>
                     </div>
@@ -202,10 +222,13 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
         </div>
 
         {/* Footer - Fixed at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white px-6 py-3 border-t border-gray-200 space-y-2 shadow-lg">
+        <div className="absolute bottom-0 left-0 right-0 bg-white px-6 py-3 border-t space-y-2 shadow-lg" style={{ borderColor: TAN }}>
           <button
             onClick={onBack}
-            className="w-full px-4 py-2 rounded-lg font-medium text-sm text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
+            className="w-full px-4 py-2 rounded-lg font-medium text-sm bg-white border-2 transition-all"
+            style={{ color: SLATE_FG, borderColor: STONE }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = HAIR; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
           >
             ← Back to Actors
           </button>
@@ -213,10 +236,11 @@ export const ConnectionManagement = ({ onContinue, onBack }: ConnectionManagemen
             onClick={onContinue}
             disabled={!canContinue}
             className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-              canContinue
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              canContinue ? 'text-white shadow-lg hover:shadow-xl' : 'cursor-not-allowed'
             }`}
+            style={canContinue ? { background: TEAL } : { background: '#e2e8f0', color: MUTED }}
+            onMouseEnter={(e) => { if (canContinue) e.currentTarget.style.background = '#0d5c56'; }}
+            onMouseLeave={(e) => { if (canContinue) e.currentTarget.style.background = TEAL; }}
           >
             {canContinue ? 'Continue to Annotations →' : 'Add connections to continue'}
           </button>

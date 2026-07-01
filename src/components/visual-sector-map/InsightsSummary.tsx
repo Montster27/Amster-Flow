@@ -10,6 +10,13 @@ import { exportPdfFromElement } from '../../utils/pdfExport';
 import { ReportLayout } from '../reports/ReportLayout';
 import { ReportSection } from '../reports/ReportSection';
 import { MetricGrid } from '../reports/MetricGrid';
+import {
+  TEAL, TEAL_LITE, TEAL_SOFT, INK, SLATE_FG, MUTED, TAN, STONE, HAIR, PAPER,
+  AMBER_FG, AMBER_SOFT, AMBER_LINE, ERROR_FG,
+} from '../../features/v3/lib/tokens';
+
+const ERROR_SOFT = 'rgba(190,18,60,0.08)';
+const ERROR_LINE = 'rgba(190,18,60,0.3)';
 
 interface InsightsSummaryProps {
   onBack: () => void;
@@ -57,15 +64,15 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
   };
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex" style={{ background: PAPER }}>
       {/* Left Panel - Insights */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-96 bg-white border-r flex flex-col" style={{ borderColor: TAN }}>
         {/* Header */}
-        <div className="px-6 py-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+        <div className="px-6 py-6 border-b" style={{ borderColor: TAN }}>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: INK }}>
             Step 5: Insights & Analysis
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm" style={{ color: SLATE_FG }}>
             Review your sector map and identify key insights.
           </p>
         </div>
@@ -73,14 +80,14 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
         {/* Insights Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Scope Reminder */}
-          <div className="p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
-            <p className="text-sm font-medium text-blue-900 mb-1">Your Question:</p>
-            <p className="text-sm text-blue-800">{scope.question}</p>
+          <div className="p-4 rounded" style={{ background: TEAL_SOFT, borderLeft: `4px solid ${TEAL}` }}>
+            <p className="text-sm font-medium mb-1" style={{ color: INK }}>Your Question:</p>
+            <p className="text-sm" style={{ color: SLATE_FG }}>{scope.question}</p>
           </div>
 
           {/* Layer Controls */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Layer Visibility:</h3>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: INK }}>Layer Visibility:</h3>
             <div className="space-y-2">
               {layers.map((layer) => {
                 const isActive = activeLayers.includes(layer);
@@ -89,10 +96,11 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
                     key={layer}
                     onClick={() => toggleLayer(layer)}
                     className={`w-full px-4 py-3 rounded-lg text-left transition-all border-2 ${
-                      isActive
-                        ? 'bg-indigo-100 border-indigo-400'
-                        : 'bg-white border-gray-300 opacity-50'
+                      isActive ? '' : 'bg-white opacity-50'
                     }`}
+                    style={isActive
+                      ? { background: TEAL_LITE, borderColor: TEAL }
+                      : { borderColor: STONE }}
                   >
                     <div className="flex items-center gap-2">
                       <input
@@ -100,12 +108,13 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
                         checked={isActive}
                         onChange={() => toggleLayer(layer)}
                         className="h-4 w-4"
+                        style={{ accentColor: TEAL }}
                       />
                       <div>
-                        <p className="font-medium text-sm text-gray-800">
+                        <p className="font-medium text-sm" style={{ color: INK }}>
                           {LAYER_LABELS[layer]}
                         </p>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs" style={{ color: SLATE_FG }}>
                           {LAYER_DESCRIPTIONS[layer]}
                         </p>
                       </div>
@@ -118,39 +127,39 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
 
           {/* Analytics */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-800">Map Statistics:</h3>
+            <h3 className="text-sm font-semibold" style={{ color: INK }}>Map Statistics:</h3>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-2xl font-bold text-gray-800">{actors.length}</p>
-                <p className="text-xs text-gray-600">Actors</p>
+              <div className="p-3 rounded-lg border" style={{ background: HAIR, borderColor: TAN }}>
+                <p className="text-2xl font-bold" style={{ color: INK }}>{actors.length}</p>
+                <p className="text-xs" style={{ color: SLATE_FG }}>Actors</p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-2xl font-bold text-gray-800">{connections.length}</p>
-                <p className="text-xs text-gray-600">Connections</p>
+              <div className="p-3 rounded-lg border" style={{ background: HAIR, borderColor: TAN }}>
+                <p className="text-2xl font-bold" style={{ color: INK }}>{connections.length}</p>
+                <p className="text-xs" style={{ color: SLATE_FG }}>Connections</p>
               </div>
-              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <p className="text-2xl font-bold text-red-700">{painPoints.length}</p>
-                <p className="text-xs text-red-700">Pain Points</p>
+              <div className="p-3 rounded-lg border" style={{ background: ERROR_SOFT, borderColor: ERROR_LINE }}>
+                <p className="text-2xl font-bold" style={{ color: ERROR_FG }}>{painPoints.length}</p>
+                <p className="text-xs" style={{ color: ERROR_FG }}>Pain Points</p>
               </div>
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-2xl font-bold text-green-700">{opportunities.length}</p>
-                <p className="text-xs text-green-700">Opportunities</p>
+              <div className="p-3 rounded-lg border" style={{ background: TEAL_LITE, borderColor: TEAL }}>
+                <p className="text-2xl font-bold" style={{ color: TEAL }}>{opportunities.length}</p>
+                <p className="text-xs" style={{ color: TEAL }}>Opportunities</p>
               </div>
             </div>
           </div>
 
           {/* Key Insights */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Key Insights:</h3>
+            <h3 className="text-sm font-semibold" style={{ color: INK }}>Key Insights:</h3>
 
             {/* Most Connected Actors */}
             {topActors.length > 0 && (
-              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                <p className="text-xs font-medium text-purple-900 mb-2">
+              <div className="p-3 rounded-lg border" style={{ background: TEAL_SOFT, borderColor: TEAL }}>
+                <p className="text-xs font-medium mb-2" style={{ color: INK }}>
                   🎯 Most Connected Actors:
                 </p>
-                <ul className="space-y-1 text-xs text-purple-800">
+                <ul className="space-y-1 text-xs" style={{ color: SLATE_FG }}>
                   {topActors.map(({ actor, connections: count }) => (
                     <li key={actor.id}>
                       • <strong>{actor.name}</strong> ({count} connections)
@@ -162,11 +171,11 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
 
             {/* Pain Points Summary */}
             {painPoints.length > 0 && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-xs font-medium text-red-900 mb-2">
+              <div className="p-3 rounded-lg border" style={{ background: ERROR_SOFT, borderColor: ERROR_LINE }}>
+                <p className="text-xs font-medium mb-2" style={{ color: ERROR_FG }}>
                   ⚠️ Critical Pain Points:
                 </p>
-                <ul className="space-y-1 text-xs text-red-800">
+                <ul className="space-y-1 text-xs" style={{ color: ERROR_FG }}>
                   {painPoints.slice(0, 3).map((ann) => (
                     <li key={ann.id}>• {ann.content}</li>
                   ))}
@@ -176,11 +185,11 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
 
             {/* Opportunities Summary */}
             {opportunities.length > 0 && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-xs font-medium text-green-900 mb-2">
+              <div className="p-3 rounded-lg border" style={{ background: TEAL_LITE, borderColor: TEAL }}>
+                <p className="text-xs font-medium mb-2" style={{ color: TEAL }}>
                   💡 Key Opportunities:
                 </p>
-                <ul className="space-y-1 text-xs text-green-800">
+                <ul className="space-y-1 text-xs" style={{ color: TEAL }}>
                   {opportunities.slice(0, 3).map((ann) => (
                     <li key={ann.id}>• {ann.content}</li>
                   ))}
@@ -190,11 +199,11 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
 
             {/* Next Steps */}
             {needsInterview.length > 0 && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs font-medium text-yellow-900 mb-2">
+              <div className="p-3 rounded-lg border" style={{ background: AMBER_SOFT, borderColor: AMBER_LINE }}>
+                <p className="text-xs font-medium mb-2" style={{ color: AMBER_FG }}>
                   📋 Needs Validation ({needsInterview.length}):
                 </p>
-                <p className="text-xs text-yellow-800">
+                <p className="text-xs" style={{ color: AMBER_FG }}>
                   You have {needsInterview.length} item{needsInterview.length !== 1 ? 's' : ''}{' '}
                   that need interview validation.
                 </p>
@@ -204,16 +213,19 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
 
           {/* Export Options */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Export Options:</h3>
+            <h3 className="text-sm font-semibold mb-3" style={{ color: INK }}>Export Options:</h3>
             <div className="space-y-2">
               <button
                 onClick={handleDownloadPdf}
                 disabled={isExporting}
-                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                className="w-full px-4 py-3 text-white rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                style={{ background: TEAL }}
+                onMouseEnter={(e) => { if (!isExporting) e.currentTarget.style.background = '#0d5c56'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = TEAL; }}
               >
                 {isExporting ? 'Exporting PDF...' : 'Download PDF'}
               </button>
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-center" style={{ color: MUTED }}>
                 PDF includes scope, insights, key stats, and a snapshot-ready layout.
               </p>
             </div>
@@ -221,10 +233,13 @@ export const InsightsSummary = ({ onBack }: InsightsSummaryProps) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200">
+        <div className="px-6 py-4 border-t" style={{ borderColor: TAN }}>
           <button
             onClick={onBack}
-            className="w-full px-4 py-2 rounded-lg font-medium text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 transition-all"
+            className="w-full px-4 py-2 rounded-lg font-medium bg-white border-2 transition-all"
+            style={{ color: SLATE_FG, borderColor: STONE }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = HAIR; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
           >
             ← Back to Annotations
           </button>

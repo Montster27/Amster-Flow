@@ -8,6 +8,12 @@ import { Assumption, AssumptionStatus } from '../../types/discovery';
 import type { CanvasArea, PriorityLevel, ConfidenceLevel, AssumptionType } from '../../types/discovery';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import {
+  TEAL, TEAL_LITE, INK, SLATE_FG, MUTED, TAN, STONE, HAIR, ERROR_FG,
+} from '../../features/v3/lib/tokens';
+
+const ERROR_SOFT = 'rgba(190,18,60,0.08)';
+const ERROR_LINE = 'rgba(190,18,60,0.3)';
 
 interface InspectorProps {
   target: Actor | Connection | null;
@@ -19,10 +25,10 @@ interface InspectorProps {
 
 // Status badge styles
 const STATUS_STYLES: Record<AssumptionStatus, { bg: string; text: string; icon: string }> = {
-  untested: { bg: 'bg-gray-100', text: 'text-gray-700', icon: '❓' },
-  testing: { bg: 'bg-blue-100', text: 'text-blue-700', icon: '🔬' },
-  validated: { bg: 'bg-green-100', text: 'text-green-700', icon: '✅' },
-  invalidated: { bg: 'bg-red-100', text: 'text-red-700', icon: '❌' },
+  untested: { bg: HAIR, text: SLATE_FG, icon: '❓' },
+  testing: { bg: TEAL_LITE, text: TEAL, icon: '🔬' },
+  validated: { bg: TEAL_LITE, text: TEAL, icon: '✅' },
+  invalidated: { bg: ERROR_SOFT, text: ERROR_FG, icon: '❌' },
 };
 
 export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: InspectorProps) => {
@@ -329,17 +335,20 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
               <span className="text-2xl">
                 {isActor ? ACTOR_ICONS[actor!.category] : CONNECTION_ICONS[connection!.type]}
               </span>
-              <h3 className="font-bold text-lg text-gray-900">
+              <h3 className="font-bold text-lg" style={{ color: INK }}>
                 {isActor ? actor!.name : `${CONNECTION_LABELS[connection!.type]} Connection`}
               </h3>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm" style={{ color: SLATE_FG }}>
               {isActor ? ACTOR_LABELS[actor!.category] : connection!.description}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className="p-1 rounded transition-colors"
+            style={{ color: SLATE_FG }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = HAIR; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             title="Close"
           >
             <X className="w-5 h-5" />
@@ -355,7 +364,7 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                 <span className="text-lg">⚠️</span>
                 <div>
                   <p className={`font-semibold ${riskColors.text} capitalize`}>{riskLevel} Risk</p>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs" style={{ color: SLATE_FG }}>
                     Score: {calculatedRiskScore.toFixed(1)}/5
                     {hasAssumptions && <span className="ml-1">(auto-calculated)</span>}
                   </p>
@@ -367,14 +376,14 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
           {/* Description */}
           {target.description && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">📝 Description</h4>
-              <p className="text-sm text-gray-600">{target.description}</p>
+              <h4 className="text-sm font-semibold mb-2" style={{ color: SLATE_FG }}>📝 Description</h4>
+              <p className="text-sm" style={{ color: SLATE_FG }}>{target.description}</p>
             </div>
           )}
 
           {/* Linked Assumptions */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: SLATE_FG }}>
               <span>🔗 Linked Assumptions</span>
               {hasAssumptions && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${riskColors.bg} ${riskColors.text}`}>
@@ -383,17 +392,20 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
               )}
             </h4>
             {!hasAssumptions ? (
-              <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                <p className="text-sm text-gray-500">No assumptions linked yet</p>
+              <div className="border-2 border-dashed rounded-lg p-4 text-center" style={{ background: HAIR, borderColor: STONE }}>
+                <p className="text-sm" style={{ color: MUTED }}>No assumptions linked yet</p>
                 {unlinkedAssumptions.length > 0 ? (
                   <button
                     onClick={() => setShowLinkDropdown(!showLinkDropdown)}
-                    className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="mt-2 text-xs font-medium"
+                    style={{ color: TEAL }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#0d5c56'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = TEAL; }}
                   >
                     + Link Assumption
                   </button>
                 ) : (
-                  <p className="mt-2 text-xs text-gray-400 italic">
+                  <p className="mt-2 text-xs italic" style={{ color: MUTED }}>
                     No assumptions available to link
                   </p>
                 )}
@@ -405,33 +417,40 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                   return (
                     <div
                       key={assumption.id}
-                      className="bg-gray-50 border border-gray-200 rounded p-3 hover:bg-gray-100 transition-colors relative group"
+                      className="border rounded p-3 transition-colors relative group"
+                      style={{ background: HAIR, borderColor: TAN }}
                     >
                       <button
                         onClick={() => handleUnlinkAssumption(assumption.id)}
-                        className="absolute top-2 right-2 p-1 bg-white rounded-full border border-gray-300 hover:bg-red-50 hover:border-red-300 transition-colors opacity-0 group-hover:opacity-100"
+                        className="absolute top-2 right-2 p-1 bg-white rounded-full border transition-colors opacity-0 group-hover:opacity-100"
+                        style={{ borderColor: STONE, color: SLATE_FG }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = ERROR_SOFT; e.currentTarget.style.borderColor = ERROR_LINE; e.currentTarget.style.color = ERROR_FG; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = STONE; e.currentTarget.style.color = SLATE_FG; }}
                         title="Unlink assumption"
                       >
-                        <X className="w-3 h-3 text-gray-600 hover:text-red-600" />
+                        <X className="w-3 h-3" />
                       </button>
                       <div className="flex items-start gap-2 mb-2 pr-6">
                         <span className="text-sm">{statusStyle.icon}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700 font-medium line-clamp-2">
+                          <p className="text-sm font-medium line-clamp-2" style={{ color: SLATE_FG }}>
                             {assumption.description}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`px-2 py-0.5 ${statusStyle.bg} ${statusStyle.text} text-xs rounded font-medium capitalize`}>
+                            <span
+                              className="px-2 py-0.5 text-xs rounded font-medium capitalize"
+                              style={{ background: statusStyle.bg, color: statusStyle.text }}
+                            >
                               {assumption.status}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs" style={{ color: MUTED }}>
                               Confidence: {assumption.confidence}/5
                             </span>
                           </div>
                         </div>
                       </div>
                       {assumption.evidence.length > 0 && (
-                        <div className="ml-6 text-xs text-gray-600">
+                        <div className="ml-6 text-xs" style={{ color: SLATE_FG }}>
                           <span className="font-medium">Evidence:</span> {assumption.evidence.length} item{assumption.evidence.length !== 1 ? 's' : ''}
                         </div>
                       )}
@@ -441,7 +460,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                 {unlinkedAssumptions.length > 0 && (
                   <button
                     onClick={() => setShowLinkDropdown(!showLinkDropdown)}
-                    className="w-full text-xs text-blue-600 hover:text-blue-700 font-medium py-2"
+                    className="w-full text-xs font-medium py-2"
+                    style={{ color: TEAL }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#0d5c56'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = TEAL; }}
                   >
                     + Link Another
                   </button>
@@ -451,12 +473,12 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
             {/* Link Dropdown */}
             {showLinkDropdown && unlinkedAssumptions.length > 0 && (
-              <div className="mt-2 bg-white border-2 border-blue-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+              <div className="mt-2 bg-white border-2 rounded-lg p-3 max-h-64 overflow-y-auto" style={{ borderColor: TEAL_LITE }}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-700">Select an assumption to link:</p>
+                  <p className="text-xs font-semibold" style={{ color: SLATE_FG }}>Select an assumption to link:</p>
                   <button
                     onClick={() => setShowLinkDropdown(false)}
-                    className="text-gray-500 hover:text-gray-700"
+                    style={{ color: SLATE_FG }}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -468,15 +490,20 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
                       <button
                         key={assumption.id}
                         onClick={() => handleLinkAssumption(assumption.id)}
-                        className="w-full text-left p-2 rounded hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                        className="w-full text-left p-2 rounded transition-colors border border-transparent"
+                        onMouseEnter={(e) => { e.currentTarget.style.background = TEAL_LITE; e.currentTarget.style.borderColor = TEAL; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
                       >
                         <div className="flex items-start gap-2">
                           <span className="text-xs">{statusStyle.icon}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-700 line-clamp-1">
+                            <p className="text-xs line-clamp-1" style={{ color: SLATE_FG }}>
                               {assumption.description}
                             </p>
-                            <span className={`text-xs px-1 py-0.5 ${statusStyle.bg} ${statusStyle.text} rounded capitalize`}>
+                            <span
+                              className="text-xs px-1 py-0.5 rounded capitalize"
+                              style={{ background: statusStyle.bg, color: statusStyle.text }}
+                            >
                               {assumption.status}
                             </span>
                           </div>
@@ -490,13 +517,16 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
           </div>
 
           {/* Quick Actions */}
-          <div className="pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">⚡ Quick Actions</h4>
+          <div className="pt-4 border-t" style={{ borderColor: TAN }}>
+            <h4 className="text-sm font-semibold mb-2" style={{ color: SLATE_FG }}>⚡ Quick Actions</h4>
             <div className="space-y-2">
               {onEdit && (
                 <button
                   onClick={handleEdit}
-                  className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  className="w-full px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  style={{ background: TEAL_LITE, color: TEAL }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#c9e9e2'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = TEAL_LITE; }}
                 >
                   <span>✏️</span> Edit Details
                 </button>
@@ -504,7 +534,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
 
               <button
                 onClick={handleCreateAssumption}
-                className="w-full px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                className="w-full px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                style={{ background: TEAL_LITE, color: TEAL }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#c9e9e2'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = TEAL_LITE; }}
               >
                 <span>➕</span> Create Assumption
               </button>
@@ -512,7 +545,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
               {hasAssumptions && (
                 <button
                   onClick={handleViewInDiscovery}
-                  className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  className="w-full px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  style={{ background: TEAL_LITE, color: TEAL }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#c9e9e2'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = TEAL_LITE; }}
                 >
                   <span>📊</span> View in Discovery
                 </button>
@@ -521,7 +557,10 @@ export const Inspector = ({ target, targetType, onClose, onDelete, onEdit }: Ins
               {onDelete && (
                 <button
                   onClick={handleDelete}
-                  className="w-full px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  className="w-full px-3 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                  style={{ background: ERROR_SOFT, color: ERROR_FG }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(190,18,60,0.16)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = ERROR_SOFT; }}
                 >
                   <span>🗑️</span> Delete
                 </button>
