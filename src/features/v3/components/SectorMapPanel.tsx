@@ -16,7 +16,7 @@ import { AnnotationManagement } from '../../../components/visual-sector-map/Anno
 import { InsightsSummary } from '../../../components/visual-sector-map/InsightsSummary';
 import type { PkLayer, SourceId } from '../lib/layers';
 import {
-  FONT_MONO, HAIR, INK, MUTED, PAPER, STONE, TAN, TEAL, TEAL_LITE,
+  FONT_MONO, FONT_SANS, HAIR, INK, MUTED, PAPER, STONE, TAN, TAN_DARK, TEAL, TEAL_LITE,
 } from '../lib/tokens';
 
 type Step = 'scope' | 'actors' | 'connections' | 'annotations' | 'insights';
@@ -127,25 +127,26 @@ function SectorMapPanelContent({ projectId, layer, saveLayer }: SectorMapPanelPr
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '5px 10px', borderRadius: 6,
-                  border: `1px solid ${isActive ? TEAL : 'transparent'}`,
+                  border: `1px solid ${isActive ? INK : 'transparent'}`,
                   background: isActive ? TEAL_LITE : 'transparent',
                   cursor: isAccessible ? 'pointer' : 'not-allowed',
-                  fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.04em',
-                  color: isActive ? TEAL : isDone ? INK : MUTED,
+                  fontFamily: FONT_SANS, fontSize: 12, letterSpacing: '0.01em',
+                  color: isActive ? INK : isDone ? TEAL : MUTED,
                   fontWeight: isActive ? 700 : 500,
                 }}
               >
                 <span style={{
                   width: 18, height: 18, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700,
-                  background: isDone ? TEAL : isActive ? TEAL : STONE,
-                  color: isDone || isActive ? '#fff' : INK,
+                  fontFamily: FONT_MONO, fontSize: 10, fontWeight: 700,
+                  background: isDone ? TEAL : isActive ? INK : 'transparent',
+                  border: !isDone && !isActive ? `1.5px solid ${STONE}` : 'none',
+                  color: isDone || isActive ? '#fff' : MUTED,
                 }}>{isDone ? '✓' : s.number}</span>
                 {s.label}
               </button>
               {i < STEPS.length - 1 && (
-                <span style={{ width: 16, height: 1, background: isDone ? TEAL : HAIR }} />
+                <span style={{ width: 16, height: 1, background: isDone ? TEAL : TAN_DARK }} />
               )}
             </div>
           );

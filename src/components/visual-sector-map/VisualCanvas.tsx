@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
-import { ActorCategory, Actor, Connection } from '../../types/visualSectorMap';
+import { ActorCategory, Actor, Connection, EvidenceSource, ACTOR_LABELS } from '../../types/visualSectorMap';
 import { ActorNode } from './ActorNode';
+import { ActorTypeChip } from './ActorTypeChip';
 import { Inspector } from './Inspector';
-import { TEAL, INK, SLATE_FG, MUTED, STONE } from '../../features/v3/lib/tokens';
+import { PK_SOURCES, pkTier } from '../../features/v3/lib/layers';
+import { TEAL, INK, SLATE_FG, MUTED, STONE, FONT_MONO } from '../../features/v3/lib/tokens';
 
 interface VisualCanvasProps {
   selectedCategory: ActorCategory;
@@ -42,7 +44,7 @@ export const VisualCanvas = ({
     setNameInputPosition({ x, y });
   };
 
-  const handleNameSubmit = (name: string) => {
+  const handleNameSubmit = (name: string, source: EvidenceSource | null) => {
     if (!nameInputPosition || !name.trim()) {
       setNameInputPosition(null);
       setNextActorName(null);
@@ -50,7 +52,7 @@ export const VisualCanvas = ({
     }
 
     // Add actor at the clicked position
-    addActor(name.trim(), selectedCategory, nameInputPosition);
+    addActor(name.trim(), selectedCategory, nameInputPosition, source);
 
     // Reset
     setNameInputPosition(null);
@@ -87,9 +89,11 @@ export const VisualCanvas = ({
       {/* Instructions overlay */}
       {actors.length === 0 && !readOnly && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-white/90 px-8 py-6 rounded-lg shadow-lg border-2" style={{ borderColor: TEAL }}>
-            <p className="text-lg font-medium text-center" style={{ color: SLATE_FG }}>
-              👆 Select an actor type above, then click anywhere on the canvas to place it
+          <div className="bg-white/90 px-8 py-6 rounded-lg shadow-lg border-2 flex items-center gap-3 max-w-md" style={{ borderColor: TEAL }}>
+            <ActorTypeChip category={selectedCategory} size={32} />
+            <p className="text-base font-medium text-left" style={{ color: SLATE_FG }}>
+              Click anywhere on the canvas to place a {ACTOR_LABELS[selectedCategory].toLowerCase()} actor —
+              then tell me how you know they belong here.
             </p>
           </div>
         </div>
@@ -208,16 +212,17 @@ export const VisualCanvas = ({
 // Name Input Dialog Component
 interface NameInputDialogProps {
   category: ActorCategory;
-  onSubmit: (name: string) => void;
+  onSubmit: (name: string, source: EvidenceSource | null) => void;
   onCancel: () => void;
 }
 
 function NameInputDialog({ category, onSubmit, onCancel }: NameInputDialogProps) {
   const [name, setName] = useState('');
+  const [source, setSource] = useState<EvidenceSource | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(name);
+    onSubmit(name, source);
   };
 
   return (
@@ -253,6 +258,37 @@ function NameInputDialog({ category, onSubmit, onCancel }: NameInputDialogProps)
         onBlur={(e) => { e.currentTarget.style.borderColor = STONE; }}
         autoFocus
       />
+
+      <div className="mb-3">
+        <p style={{
+          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: MUTED, marginBottom: 6,
+        }}>How you'll know</p>
+        <div className="flex flex-wrap gap-1.5">
+          {PK_SOURCES.map((s) => {
+            const on = s.id === source;
+            const tier = pkTier('sectorMapping', s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSource(on ? null : s.id)}
+                title={`${s.label} — tier ${tier}`}
+                className="px-2 py-1 rounded-full text-xs font-medium"
+                style={on
+                  ? { background: TEAL, color: '#fff' }
+                  : { background: '#f4f1ea', color: SLATE_FG, border: `1px solid ${STONE}` }}
+              >
+                {s.short}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs mt-1.5" style={{ color: MUTED }}>
+          A logical guess earns a low tier — a named contact earns more.
+        </p>
+      </div>
+
       <div className="flex gap-2">
         <button
           type="submit"

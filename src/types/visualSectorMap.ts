@@ -34,6 +34,11 @@ export interface Position {
   y: number;
 }
 
+// How the founder knows this actor belongs in the map — same five-source
+// vocabulary as the PivotKit layer stack (logical/experience/research/
+// interviews/prototype), scoped locally so this file doesn't reach into v3.
+export type EvidenceSource = 'logical' | 'experience' | 'research' | 'interviews' | 'prototype';
+
 export interface Actor {
   id: string;
   name: string;
@@ -45,6 +50,7 @@ export interface Actor {
   linkedAssumptions?: string[]; // Array of assumption IDs - maintained by linking hooks
   riskScore?: number; // 1-5: calculated from linked assumptions' status/confidence
   notes?: string; // Optional notes about this actor
+  source?: EvidenceSource | null; // How the founder knows this actor belongs here
 }
 
 export interface Connection {
@@ -91,6 +97,19 @@ export const ACTOR_COLORS: Record<ActorCategory, { bg: string; border: string; t
   funder: { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-800' },
   partner: { bg: 'bg-pink-100', border: 'border-pink-400', text: 'text-pink-800' },
   influencer: { bg: 'bg-indigo-100', border: 'border-indigo-400', text: 'text-indigo-800' },
+};
+
+// Letter-chip identity for actor categories — PivotKit standard replacement
+// for the emoji icons below. Used by the Actors step (rail, type picker,
+// placed nodes) only; ACTOR_ICONS/ACTOR_COLORS remain for the other steps
+// and Discovery surfaces that haven't been reworked yet.
+export const ACTOR_TYPE_META: Record<ActorCategory, { letter: string; fg: string; bg: string }> = {
+  customer:   { letter: 'C', fg: '#0f766e', bg: '#dcf2ec' },
+  provider:   { letter: 'P', fg: '#b45309', bg: '#fef3c7' },
+  regulator:  { letter: 'R', fg: '#7c3aed', bg: '#ede9fe' },
+  funder:     { letter: 'F', fg: '#0b7285', bg: '#d0f0f5' },
+  partner:    { letter: 'D', fg: '#1d4ed8', bg: '#dbeafe' },
+  influencer: { letter: 'X', fg: '#be123c', bg: '#ffe4e6' },
 };
 
 // Icons for actor categories (emoji)

@@ -49,8 +49,9 @@ export function StageGatesPanel({
         <div style={{
           fontSize: 12, color: MUTED, fontStyle: 'italic', lineHeight: 1.45,
         }}>
-          This layer doesn't contribute to a stage gate directly — it shapes
-          how you tell the story.
+          {restrictToLayer === 'sectorMapping'
+            ? "This layer doesn't gate a stage directly — it shapes how coherent your story looks to an investor. How you'll know: a logical placement earns 1 tier, a named contact earns more."
+            : "This layer doesn't contribute to a stage gate directly — it shapes how you tell the story."}
         </div>
       ) : (
         shown.map((g) => (collapseCleared && g.passed)

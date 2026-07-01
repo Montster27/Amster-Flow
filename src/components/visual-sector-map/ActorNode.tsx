@@ -1,17 +1,18 @@
 import { useState, useRef } from 'react';
+import { Pencil, Trash2, MoreVertical } from 'lucide-react';
 import { useVisualSectorMap } from '../../contexts/VisualSectorMapContext';
 import { useDiscovery } from '../../contexts/DiscoveryContext';
 import {
   Actor,
-  ACTOR_COLORS,
-  ACTOR_ICONS,
+  ACTOR_TYPE_META,
   ActorCategory,
   ACTOR_LABELS,
   getRiskLevel,
   RISK_COLORS,
   calculateRiskScore,
 } from '../../types/visualSectorMap';
-import { TEAL, SLATE_FG, MUTED, TAN, ERROR_FG } from '../../features/v3/lib/tokens';
+import { ActorTypeChip } from './ActorTypeChip';
+import { TEAL, INK, SLATE_FG, MUTED, TAN, ERROR_FG } from '../../features/v3/lib/tokens';
 
 interface ActorNodeProps {
   actor: Actor;
@@ -28,7 +29,7 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
   const dragStartPos = useRef({ x: 0, y: 0 });
   const nodeRef = useRef<HTMLDivElement>(null);
 
-  const colors = ACTOR_COLORS[actor.category];
+  const meta = ACTOR_TYPE_META[actor.category];
 
   // Fetch and calculate real-time risk
   const linkedAssumptionData = actor.linkedAssumptions
@@ -140,7 +141,11 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
 
         {/* Actor Card */}
         <div
-          className={`relative ${colors.bg} ${riskLevel !== 'none' ? riskColors.border : colors.border} border-2 rounded-lg shadow-lg hover:shadow-xl transition-all p-3 min-w-[120px] max-w-[200px] ${riskColors.glow} ${onClick ? 'cursor-pointer' : ''}`}
+          className={`relative border-2 rounded-lg shadow-lg hover:shadow-xl transition-all p-3 min-w-[120px] max-w-[200px] ${riskLevel !== 'none' ? `${riskColors.border} ${riskColors.glow}` : ''} ${onClick ? 'cursor-pointer' : ''}`}
+          style={{
+            background: meta.bg,
+            borderColor: riskLevel !== 'none' ? undefined : meta.fg,
+          }}
           onClick={handleCardClick}
         >
           {/* Assumption Badge */}
@@ -154,7 +159,7 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
           )}
 
           <div className="flex items-start gap-2">
-            <span className="text-2xl flex-shrink-0">{ACTOR_ICONS[actor.category]}</span>
+            <ActorTypeChip category={actor.category} size={28} />
             <div className="flex-1 min-w-0">
               {isEditing ? (
                 <input
@@ -168,14 +173,15 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                       setIsEditing(false);
                     }
                   }}
-                  className={`w-full px-1 py-0.5 border-2 rounded focus:outline-none ${colors.text} font-semibold bg-white`}
-                  style={{ borderColor: TEAL }}
+                  className="w-full px-1 py-0.5 border-2 rounded focus:outline-none font-semibold bg-white"
+                  style={{ borderColor: TEAL, color: meta.fg }}
                   autoFocus
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
                 <p
-                  className={`${colors.text} font-semibold text-sm leading-tight`}
+                  className="font-semibold text-sm leading-tight"
+                  style={{ color: meta.fg }}
                   onDoubleClick={() => !readOnly && setIsEditing(true)}
                 >
                   {actor.name}
@@ -195,8 +201,9 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                 style={{ color: MUTED }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = SLATE_FG; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
+                aria-label="Actor options"
               >
-                ⋮
+                <MoreVertical className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -218,7 +225,7 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
               onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              ✏️ Rename
+              <Pencil className="w-3.5 h-3.5" /> Rename
             </button>
 
             <div className="my-1" style={{ borderTop: `1px solid ${TAN}` }} />
@@ -231,11 +238,14 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
                   key={category}
                   onClick={() => handleChangeCategory(category)}
                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2"
-                  style={actor.category === category ? { background: '#e6f4f1', fontWeight: 500 } : undefined}
+                  style={{
+                    color: INK,
+                    ...(actor.category === category ? { background: '#e6f4f1', fontWeight: 500 } : {}),
+                  }}
                   onMouseEnter={(e) => { if (actor.category !== category) e.currentTarget.style.background = '#f1f5f9'; }}
                   onMouseLeave={(e) => { if (actor.category !== category) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {ACTOR_ICONS[category]} {ACTOR_LABELS[category]}
+                  <ActorTypeChip category={category} size={18} /> {ACTOR_LABELS[category]}
                 </button>
               )
             )}
@@ -252,7 +262,7 @@ export const ActorNode = ({ actor, readOnly = false, onClick }: ActorNodeProps) 
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(190,18,60,0.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              🗑️ Delete
+              <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
           </div>
         )}

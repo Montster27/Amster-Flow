@@ -7,6 +7,7 @@ import {
   ConnectionType,
   AnnotationType,
   AnnotationStatus,
+  EvidenceSource,
   LayerType,
   Position,
   SectorMapScope,
@@ -19,7 +20,7 @@ interface VisualSectorMapState extends VisualSectorMapData {
   updateScope: (scope: Partial<SectorMapScope>) => void;
 
   // Actor actions
-  addActor: (name: string, category: ActorCategory, position: Position) => void;
+  addActor: (name: string, category: ActorCategory, position: Position, source?: EvidenceSource | null) => void;
   updateActor: (id: string, updates: Partial<Actor>) => void;
   moveActor: (id: string, position: Position) => void;
   deleteActor: (id: string) => void;
@@ -89,13 +90,19 @@ export function VisualSectorMapProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Actor actions
-  const addActor = useCallback((name: string, category: ActorCategory, position: Position) => {
+  const addActor = useCallback((
+    name: string,
+    category: ActorCategory,
+    position: Position,
+    source?: EvidenceSource | null,
+  ) => {
     const newActor: Actor = {
       id: generateId(),
       name,
       category,
       position,
       created: new Date().toISOString(),
+      source: source ?? null,
     };
     setActors((prev) => [...prev, newActor]);
   }, []);
