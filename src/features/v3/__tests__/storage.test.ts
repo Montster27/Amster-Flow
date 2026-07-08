@@ -4,7 +4,7 @@
 // with no live database.
 
 import { describe, expect, it } from 'vitest';
-import { isDuplicateKeyError } from '../lib/storage';
+import { isDuplicateKeyError, toError } from '../lib/storage';
 
 // supabase-js throws a PostgrestError, which extends Error and carries the raw
 // Postgres message in `.message`. Reproduce that shape so the test reflects the
@@ -45,11 +45,46 @@ describe('isDuplicateKeyError', () => {
     expect(isDuplicateKeyError('some other failure')).toBe(false);
   });
 
-  it('does not match non-Error objects or nullish values (no string message to read)', () => {
-    // Only Error.message and raw strings are inspected; a bare object stringifies
-    // to "[object Object]" and a plain duplicate-shaped object is not an Error.
+  it('does not match a plain object whose message mentions a duplicate but has no code', () => {
+    // Without a Postgres code, only Error.message and raw strings are inspected;
+    // a bare object stringifies to "[object Object]" and is not an Error.
     expect(isDuplicateKeyError({ message: 'duplicate key' })).toBe(false);
     expect(isDuplicateKeyError(null)).toBe(false);
     expect(isDuplicateKeyError(undefined)).toBe(false);
+  });
+
+  it('matches the real production shape: a plain PostgrestError object with code 23505', () => {
+    // In production supabase-js surfaces `error` as a PLAIN object (not an Error),
+    // so String(e) === "[object Object]" and the message regex never fires — the
+    // reason a promoted duplicate escaped as an unhandled rejection. The SQLSTATE
+    // code is the reliable signal.
+    const e = { code: '23505', details: 'Key (…) already exists.', hint: null, message: '' };
+    expect(isDuplicateKeyError(e)).toBe(true);
+  });
+
+  it('returns false for a plain PostgrestError object with a non-duplicate code', () => {
+    expect(isDuplicateKeyError({ code: '42501', message: 'permission denied' })).toBe(false);
+  });
+});
+
+describe('toError', () => {
+  it('wraps a plain PostgrestError object into a real Error, preserving message + code', () => {
+    const raw = { code: '23505', details: 'dup', hint: 'h', message: 'duplicate key value' };
+    const err = toError(raw) as Error & { code?: string; details?: string; hint?: string };
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('duplicate key value');
+    expect(err.code).toBe('23505');
+    expect(err.details).toBe('dup');
+    expect(err.hint).toBe('h');
+  });
+
+  it('passes Error instances through unchanged', () => {
+    const original = new Error('boom');
+    expect(toError(original)).toBe(original);
+  });
+
+  it('falls back to a generic message when the object has no message', () => {
+    expect(toError({ code: '500' }).message).toBe('Supabase request failed');
+    expect(toError('some string').message).toBe('some string');
   });
 });

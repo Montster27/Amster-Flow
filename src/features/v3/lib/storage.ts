@@ -16,6 +16,33 @@ import type {
 import type { DoorAState } from './doorAState';
 import { hydrate as hydrateDoorAState } from './doorAState';
 
+/**
+ * Supabase / PostgREST returns failures as plain objects
+ * (`{ message, details, hint, code }`), NOT `Error` instances. Throwing them
+ * raw has two nasty consequences:
+ *   1. Any that escape as an unhandled promise rejection surface in Sentry as
+ *      the opaque "Object captured as promise rejection with keys: code,
+ *      details, hint, message" — no message, no stack, ungroupable.
+ *   2. Every `e instanceof Error ? e.message : String(e)` consumer (the hooks'
+ *      error state, isDuplicateKeyError) silently degrades to
+ *      String(e) === "[object Object]".
+ * Wrapping in a real Error that preserves the Postgres `code` fixes both.
+ */
+export function toError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (err && typeof err === 'object') {
+    const e = err as { message?: string; code?: string; details?: string; hint?: string };
+    const error = new Error(e.message ?? 'Supabase request failed') as Error & {
+      code?: string; details?: string; hint?: string;
+    };
+    if (e.code) error.code = e.code;
+    if (e.details) error.details = e.details;
+    if (e.hint) error.hint = e.hint;
+    return error;
+  }
+  return new Error(String(err));
+}
+
 export interface VentureRow {
   project_id: string;
   industry_variant: Industry;
@@ -36,7 +63,7 @@ export async function fetchVenture(projectId: string): Promise<VentureRow | null
     .select('*')
     .eq('project_id', projectId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw toError(error);
   return (data as VentureRow | null) ?? null;
 }
 
@@ -52,7 +79,7 @@ export async function ensureVenture(projectId: string): Promise<VentureRow> {
     .insert({ project_id: projectId })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   return data as VentureRow;
 }
 
@@ -68,7 +95,7 @@ export async function updateVenture(
     .eq('project_id', projectId)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   return data as VentureRow;
 }
 
@@ -79,7 +106,7 @@ export async function fetchLayerStack(projectId: string): Promise<LayerStateRow[
     .from('pivotkit_layer_states')
     .select('*')
     .eq('project_id', projectId);
-  if (error) throw error;
+  if (error) throw toError(error);
   return (data ?? []) as LayerStateRow[];
 }
 
@@ -115,7 +142,7 @@ export async function upsertLayerState(args: {
     .upsert(payload, { onConflict: 'project_id,layer_id' })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   return data as LayerStateRow;
 }
 
@@ -140,7 +167,7 @@ export async function fetchDoorAState(projectId: string): Promise<DoorAState | n
     .select('*')
     .eq('project_id', projectId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw toError(error);
   if (!data) return null;
   const row = data as DoorAStateRow;
   return hydrateDoorAState(row.data);
@@ -156,7 +183,7 @@ export async function upsertDoorAState(
     .upsert(payload, { onConflict: 'project_id' })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   const row = data as DoorAStateRow;
   return hydrateDoorAState(row.data);
 }
@@ -169,7 +196,7 @@ export async function fetchAssumptions(projectId: string): Promise<AssumptionRow
     .select('*')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw toError(error);
   return (data ?? []) as AssumptionRow[];
 }
 
@@ -205,7 +232,7 @@ export async function insertAssumption(input: InsertAssumptionInput): Promise<As
     })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   return data as AssumptionRow;
 }
 
@@ -219,6 +246,11 @@ export async function insertAssumption(input: InsertAssumptionInput): Promise<As
  * (and the shorter "unique constraint" fragment), case-insensitively.
  */
 export function isDuplicateKeyError(e: unknown): boolean {
+  // Postgres unique-violation SQLSTATE. Checking the code is robust even when
+  // the message is unavailable or wrapped; toError() preserves it onto the
+  // thrown Error, and raw PostgrestError objects carry it too.
+  const code = (e as { code?: string } | null | undefined)?.code;
+  if (code === '23505') return true;
   const msg = e instanceof Error ? e.message : String(e);
   return /duplicate key|unique constraint/i.test(msg);
 }
@@ -257,7 +289,7 @@ export async function updateAssumption(
     .eq('id', id)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw toError(error);
   return data as AssumptionRow;
 }
 
@@ -266,7 +298,7 @@ export async function deleteAssumption(id: string): Promise<void> {
     .from('pivotkit_assumptions')
     .delete()
     .eq('id', id);
-  if (error) throw error;
+  if (error) throw toError(error);
 }
 
 // ── pivotkit_audit_log ──
@@ -307,6 +339,6 @@ export async function fetchAuditLog(projectId: string, limit = 100): Promise<Aud
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(limit);
-  if (error) throw error;
+  if (error) throw toError(error);
   return (data ?? []) as AuditLogRow[];
 }

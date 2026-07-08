@@ -349,7 +349,11 @@ export default function LayerDetailPage() {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       type="button"
-                      onClick={() => { void promote(c); }}
+                      onClick={() => {
+                        void promote(c).catch((e) => {
+                          setError(e instanceof Error ? e.message : 'Could not add to stack');
+                        });
+                      }}
                       aria-label={`Add to stack: ${c.assumption_text}`}
                       style={{
                         padding: '6px 12px', background: INK, color: '#fff',
