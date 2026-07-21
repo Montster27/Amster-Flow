@@ -253,9 +253,9 @@ export default function OnboardingPage() {
             />
             <DoorButton
               letter="B"
-              title="I'll dump what I have"
-              desc="All 16 layers visible at once. Fill in what you know. Leave blanks where you don't. Pick a source — that's how I score you. You finish with: a heat-flagged dashboard and an investor pressure test, same as Door A."
-              tag="DOOR B · SNAPSHOT"
+              title="Explore the full stack"
+              desc="Open Questions Up & Down: the whole 16-layer stack as a map, editing one layer at a time. Fill in what you know, leave blanks where you don't, pick a source — that's how I score you. Move up and down between connected layers as your understanding changes."
+              tag="DOOR B · QUESTIONS UP & DOWN"
               minutes="≈ 15 min"
               dark
               onClick={() => { void pickDoor('B'); }}

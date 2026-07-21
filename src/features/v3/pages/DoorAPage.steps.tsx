@@ -115,35 +115,34 @@ function StepFrame({
   /** When true, hide the static voice callout — a reactive card is showing
    *  in the main column and we render at most one card at a time. */
   suppressVoice?: boolean;
-  /** 'aside' (default): voice renders in the right column.
-   *  'inline': step opts to render the voice itself in the main column.
-   *  StepFrame doesn't render voice and switches to a single-column layout
-   *  so the main interaction gets the full content width. */
+  /** 'aside' (default): StepFrame renders the mentor tip, subordinate, at the
+   *  bottom of the column (v3 usability step 1 — the task owns the space above
+   *  the fold; the mentor voice is kept but visually secondary).
+   *  'inline': the step renders the voice itself in-flow (e.g. a reactive
+   *  card), so StepFrame renders none. */
   voicePosition?: 'aside' | 'inline';
 }) {
   const voice = lookupStepVoice(stepId);
-  const renderAside = voicePosition === 'aside';
+  const renderVoice = voicePosition === 'aside' && !suppressVoice;
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: renderAside ? '1fr 320px' : '1fr',
-      gap: renderAside ? 32 : 0,
-      padding: '32px 40px',
-    }}>
-      <main style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          <CategoryBadge cat="critical" />
+    <div style={{ minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <CategoryBadge cat="critical" />
+      </div>
+      <h2 style={{
+        fontFamily: FONT_SERIF, fontSize: 28, lineHeight: 1.15,
+        color: INK, letterSpacing: '-0.012em', margin: 0, marginBottom: 18,
+      }}>{title}</h2>
+      {children}
+      {renderVoice && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{
+            fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+            textTransform: 'uppercase', color: MUTED, fontWeight: 700,
+            marginBottom: 8,
+          }}>Mentor tip</div>
+          <MentorCallout body={voice} italic />
         </div>
-        <h2 style={{
-          fontFamily: FONT_SERIF, fontSize: 30, lineHeight: 1.15,
-          color: INK, letterSpacing: '-0.012em', margin: 0, marginBottom: 20,
-        }}>{title}</h2>
-        {children}
-      </main>
-      {renderAside && (
-        <aside style={{ alignSelf: 'start', position: 'sticky', top: 88 }}>
-          {!suppressVoice && <MentorCallout body={voice} italic />}
-        </aside>
       )}
     </div>
   );
@@ -1088,8 +1087,8 @@ export function Step9_2({ state, update, goTo, saveLayer, createDirectAssumption
         <span style={{
           fontFamily: FONT_MONO, fontSize: 10, color: SLATE_FG,
           letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
-        }}>L11 layer star</span>
-        <span aria-label={`${minStar} of 5 stars`} style={{
+        }}>Evidence strength</span>
+        <span aria-label={`Evidence strength ${minStar} of 5`} style={{
           fontFamily: FONT_MONO, fontSize: 13,
           color: minStar >= 2 ? TEAL : MUTED, letterSpacing: '0.06em',
         }}>{'★'.repeat(minStar)}{'☆'.repeat(5 - minStar)}</span>

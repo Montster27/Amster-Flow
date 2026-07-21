@@ -1,3 +1,8 @@
+// DEPRECATED — replaced by StackWorkspacePage ("Questions Up & Down").
+// The /v3/door-b route now renders StackWorkspacePage; this file is retained
+// (not deleted, per AI_RULES §6.3) as a fallback and is no longer routed. Do
+// not add features here.
+//
 // Door B · Snapshot dump — the 16-layer dashboard with real persistence.
 // Founder fills what they have, picks sources, leaves blanks. Stage gates
 // update live as sources change.

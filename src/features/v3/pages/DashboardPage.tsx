@@ -301,7 +301,7 @@ export default function V3DashboardPage() {
                 border: '1px solid #d6cfb8', borderRadius: 6, fontSize: 12,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
-            >Edit stack</button>
+            >Open Questions Up &amp; Down</button>
             <button
               type="button"
               onClick={() => navigate(`/v3/assumptions/${projectId}`)}
