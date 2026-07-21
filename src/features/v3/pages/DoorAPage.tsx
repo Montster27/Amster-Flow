@@ -253,7 +253,7 @@ function StepRail({
         border: `1px dashed ${TEAL}`,
         fontSize: 11.5, color: INK, lineHeight: 1.5,
       }}>
-        <strong style={{ color: TEAL }}>Graduates at:</strong> all six contributory layers
+        <strong style={{ color: TEAL }}>Ready when:</strong> all six contributory layers
         (customerSegment, problem, painScale, solution, businessModel, competitiveMarket)
         ≥ 2 stars. The full 16-layer stack unlocks then.
       </div>

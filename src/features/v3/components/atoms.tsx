@@ -9,12 +9,59 @@ import { PK_LAYER_BY_ID, PK_SOURCES, pkHidesSource, pkSourcesFor, pkTier } from 
 import type { LayerCategory, SourceId } from '../lib/layers';
 import type { GateProgress } from '../lib/gates';
 import {
-  AMBER_FG, AMBER_LINE, AMBER_SOFT, GOLD, HAIR, INK, MUTED,
+  AMBER_FG, AMBER_LINE, AMBER_SOFT, ERROR_FG, GOLD, HAIR, INK, MUTED,
   SLATE_FG, STONE, TAN, TEAL,
 } from '../lib/tokens';
+import { SAVE_STATUS_COPY } from '../lib/copy';
+import type { SaveState } from '../hooks/useClaimDraft';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
+
+// ── SaveStatus ──
+//
+// One consistent autosave indicator for every editable v3 surface (Finding 12).
+// States: Saving… / Saved just now / Couldn't save — Retry. The status text is
+// announced politely (aria-live) so screen-reader users perceive it; the error
+// carries an assertive alert plus a real Retry button. It never renders a bare
+// "Saved" before persistence actually succeeds — the caller passes 'saved' only
+// after a confirmed write.
+export function SaveStatus({
+  state, onRetry, style,
+}: {
+  state: SaveState;
+  onRetry?: () => void;
+  style?: CSSProperties;
+}) {
+  const base: CSSProperties = {
+    fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: '0.06em',
+    minHeight: 16, display: 'inline-flex', alignItems: 'center', gap: 8,
+    ...style,
+  };
+  if (state === 'error') {
+    return (
+      <span role="alert" style={{ ...base, color: ERROR_FG }}>
+        {SAVE_STATUS_COPY.error}
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{
+              padding: '2px 8px', background: 'transparent', color: ERROR_FG,
+              border: `1px solid ${ERROR_FG}`, borderRadius: 4, cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 10.5, letterSpacing: '0.06em',
+            }}
+          >{SAVE_STATUS_COPY.retry}</button>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span aria-live="polite" style={{ ...base, color: MUTED }}>
+      {state === 'saving' ? SAVE_STATUS_COPY.saving : state === 'saved' ? SAVE_STATUS_COPY.saved : ''}
+    </span>
+  );
+}
 
 // ── useTooltip ──
 //

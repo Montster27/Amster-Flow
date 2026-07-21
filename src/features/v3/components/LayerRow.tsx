@@ -3,8 +3,8 @@
 // auto-save on blur or 1s idle via useClaimDraft), and a SourcePicker.
 
 import { useState } from 'react';
-import { CategoryBadge, SourcePicker, TierLadder } from './atoms';
-import { useClaimDraft } from '../hooks/useClaimDraft';
+import { CategoryBadge, SourcePicker, TierLadder, SaveStatus } from './atoms';
+import { useClaimDraft, type SaveState } from '../hooks/useClaimDraft';
 import { lookupPushback } from '../lib/voice';
 import { pkTier } from '../lib/layers';
 import type { Evaluator, LayerStateRow, PkLayer, SourceId } from '../lib/layers';
@@ -22,7 +22,8 @@ interface Props {
 
 export function LayerRow({ layer, row, evaluator, onSave }: Props) {
   const {
-    claim, setClaim: onClaimChange, flush: flushClaim, saving: claimSaving, error: claimError,
+    claim, setClaim: onClaimChange, flush: flushClaim,
+    saving: claimSaving, error: claimError, status: claimStatus, retry: retryClaim,
   } = useClaimDraft({
     externalClaim: row?.claim_text ?? '',
     saveClaim: (c) => onSave({ claim_text: c }),
@@ -31,6 +32,14 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
   const [sourceError, setSourceError] = useState<string | null>(null);
   const pendingSave = claimSaving || sourceSaving;
   const error = claimError ?? sourceError;
+  // Combined save feedback across the claim + source writes on this row.
+  const saveState: SaveState = pendingSave
+    ? 'saving'
+    : error
+      ? 'error'
+      : claimStatus === 'saved'
+        ? 'saved'
+        : 'idle';
 
   const tier = pkTier(layer.id, row?.source_value);
   const isCrit = layer.cat === 'critical';
@@ -121,12 +130,15 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
             </div>
           )}
 
-          {error && (
-            <div role="alert" style={{
-              marginTop: 8, fontSize: 12, color: '#be123c',
-              fontFamily: FONT_MONO,
-            }}>Save failed: {error}</div>
-          )}
+          <div style={{ marginTop: 8 }}>
+            <SaveStatus
+              state={saveState}
+              onRetry={() => {
+                if (sourceError) { setSourceError(null); void onSourceChange(row?.source_value ?? null); }
+                else void retryClaim();
+              }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, paddingTop: 4 }}>
@@ -134,7 +146,7 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
           <span style={{
             fontFamily: FONT_MONO, fontSize: 10, color: '#94a3b8',
             letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums',
-          }}>{tier}/5{pendingSave ? ' · saving' : ''}</span>
+          }}>{tier}/5</span>
         </div>
       </div>
     </div>

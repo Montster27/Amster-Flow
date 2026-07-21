@@ -67,3 +67,52 @@ describe('useClaimDraft', () => {
     expect(result.current.claim).toBe('my unsaved edit');
   });
 });
+
+// Consistent save states + recoverable failures (Finding 12).
+describe('useClaimDraft — save status, failure and retry', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('starts idle and only reports "saved" after the write actually succeeds', async () => {
+    const saveClaim = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useClaimDraft({ externalClaim: 'loaded', saveClaim, debounceMs: 1000 }));
+
+    // Hydrating from the store is not a save — never show "Saved" for it.
+    expect(result.current.status).toBe('idle');
+
+    act(() => result.current.setClaim('edited'));
+    await act(async () => { await result.current.flush(); });
+    expect(result.current.status).toBe('saved');
+  });
+
+  it('on failure reports an error and preserves the user input', async () => {
+    const saveClaim = vi.fn().mockRejectedValue(new Error('network down'));
+    const { result } = renderHook(() => useClaimDraft({ externalClaim: '', saveClaim, debounceMs: 1000 }));
+
+    act(() => result.current.setClaim('precious text'));
+    await act(async () => { await result.current.flush(); });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toBe('network down');
+    // The draft is NOT reverted — the founder can retry without retyping.
+    expect(result.current.claim).toBe('precious text');
+  });
+
+  it('retry() re-attempts the failed save and recovers to "saved"', async () => {
+    const saveClaim = vi.fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValue(undefined);
+    const { result } = renderHook(() => useClaimDraft({ externalClaim: '', saveClaim, debounceMs: 1000 }));
+
+    act(() => result.current.setClaim('precious text'));
+    await act(async () => { await result.current.flush(); });
+    expect(result.current.status).toBe('error');
+
+    await act(async () => { await result.current.retry(); });
+
+    expect(saveClaim).toHaveBeenCalledTimes(2);
+    expect(saveClaim).toHaveBeenLastCalledWith('precious text');
+    expect(result.current.status).toBe('saved');
+    expect(result.current.error).toBeNull();
+  });
+});

@@ -1,20 +1,42 @@
-// Mini-process runner. Displays the catalog for a layer (or project-wide
-// if no layer specified), tracks per-step progress, captured N, and notes.
-// Completion auto-upgrades the linked layer's source_value.
+// Mini-process runner. Displays the catalog for a layer (or project-wide if no
+// layer specified). Selecting a process opens a READ-ONLY preview — it creates
+// no run and writes no data. A persistent run is created only when the founder
+// chooses "Start tracking this process"; if an active run already exists we open
+// it instead of creating a duplicate. The active-run view tracks per-step
+// progress, captured N, and notes, with autosave feedback. Completion
+// auto-upgrades the linked layer's source_value.
 
-import { useMemo, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useVenture } from '../hooks/useVenture';
-import { useMiniProcessRuns } from '../hooks/useMiniProcessRuns';
-import { PageShell, VentureHeader } from '../components/atoms';
+import { useMiniProcessRuns, type MiniProcessRunRow } from '../hooks/useMiniProcessRuns';
+import { PageShell, SaveStatus, Term, VentureHeader } from '../components/atoms';
+import type { SaveState } from '../hooks/useClaimDraft';
 import {
   findMiniProcess, MINI_PROCESS_CATALOG, miniProcessesForLayer,
   type MiniProcessDefinition,
 } from '../lib/miniProcesses';
+import {
+  effortLevel, sampleSizeLabel, miniProcessSampleUnit, miniProcessMethods,
+} from '../lib/copy';
 import { PK_LAYER_BY_ID } from '../lib/layers';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
+
+// Run-status of a catalog entry, derived from existing run rows (no schema).
+type CatalogStatus = 'recommended' | 'in_progress' | 'completed';
+function catalogStatus(kind: string, runs: MiniProcessRunRow[]): CatalogStatus {
+  if (runs.some((r) => r.kind === kind && r.state === 'in_progress')) return 'in_progress';
+  if (runs.some((r) => r.kind === kind && r.state === 'completed')) return 'completed';
+  return 'recommended';
+}
+
+const STATUS_STYLE: Record<CatalogStatus, { label: string; bg: string; fg: string }> = {
+  recommended: { label: 'Recommended', bg: '#e6f4f1', fg: '#0f766e' },
+  in_progress: { label: 'In progress', bg: '#fef3c7', fg: '#92400e' },
+  completed:   { label: 'Completed',   bg: '#dcfce7', fg: '#065f46' },
+};
 
 export default function MiniProcessPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,13 +48,40 @@ export default function MiniProcessPage() {
 
   const filterLayerId = search.get('layer');
   const focusedRunId = search.get('run');
+  const previewKind = search.get('preview');
 
-  const visibleCatalog = useMemo(() => {
-    return filterLayerId ? miniProcessesForLayer(filterLayerId) : MINI_PROCESS_CATALOG;
-  }, [filterLayerId]);
+  const visibleCatalog = filterLayerId ? miniProcessesForLayer(filterLayerId) : MINI_PROCESS_CATALOG;
 
   const focusedRun = focusedRunId ? runs.find((r) => r.id === focusedRunId) : null;
   const focusedDef = focusedRun ? findMiniProcess(focusedRun.kind) : null;
+  const previewDef = previewKind ? findMiniProcess(previewKind) : null;
+
+  // Autosave feedback for the active run (notes + progress). We keep the last
+  // failed mutation so Retry re-attempts it without losing the founder's input.
+  const [runSaveState, setRunSaveState] = useState<SaveState>('idle');
+  const lastActionRef = useRef<(() => Promise<void>) | null>(null);
+  const trackSave = useCallback(async (thunk: () => Promise<void>) => {
+    lastActionRef.current = thunk;
+    setRunSaveState('saving');
+    try { await thunk(); setRunSaveState('saved'); }
+    catch { setRunSaveState('error'); }
+  }, []);
+
+  const openCatalog = () =>
+    navigate(`/v3/mini-process/${projectId}${filterLayerId ? `?layer=${filterLayerId}` : ''}`);
+  const openRun = (runId: string) =>
+    navigate(`/v3/mini-process/${projectId}?run=${runId}${filterLayerId ? `&layer=${filterLayerId}` : ''}`);
+  const openPreview = (kind: string) =>
+    navigate(`/v3/mini-process/${projectId}?preview=${kind}${filterLayerId ? `&layer=${filterLayerId}` : ''}`);
+
+  // Start (or continue) tracking. Prevents accidental duplicate active runs: if
+  // an in-progress run for this kind already exists, open it instead.
+  const startTracking = async (def: MiniProcessDefinition) => {
+    const existing = runs.find((r) => r.kind === def.kind && r.state === 'in_progress');
+    if (existing) { openRun(existing.id); return; }
+    const r = await start(def);
+    openRun(r.id);
+  };
 
   if (!projectId) return <PageShell><div style={{ padding: 40 }}>Missing project id.</div></PageShell>;
   if (loading || vLoading) return <PageShell><div style={{ padding: 40 }}>Loading…</div></PageShell>;
@@ -71,12 +120,22 @@ export default function MiniProcessPage() {
             key={focusedRun.id}
             run={focusedRun}
             def={focusedDef}
-            onBack={() => navigate(`/v3/mini-process/${projectId}${filterLayerId ? `?layer=${filterLayerId}` : ''}`)}
-            onToggleStep={(i) => { void toggleStepDone(focusedRun.id, i); }}
-            onSetCapturedN={(n) => { void setCapturedN(focusedRun.id, n); }}
-            onSetNotes={(n) => { void setNotes(focusedRun.id, n); }}
+            saveState={runSaveState}
+            onRetrySave={() => { if (lastActionRef.current) void trackSave(lastActionRef.current); }}
+            onBack={openCatalog}
+            onToggleStep={(i) => { void trackSave(() => toggleStepDone(focusedRun.id, i)); }}
+            onSetCapturedN={(n) => { void trackSave(() => setCapturedN(focusedRun.id, n)); }}
+            onSetNotes={(n) => { void trackSave(() => setNotes(focusedRun.id, n)); }}
             onComplete={async () => { await complete(focusedRun.id); }}
-            onAbandon={async () => { await abandon(focusedRun.id); }}
+            onStopTracking={async () => { await abandon(focusedRun.id); openCatalog(); }}
+          />
+        ) : previewDef ? (
+          <ProcessPreview
+            def={previewDef}
+            activeRun={runs.find((r) => r.kind === previewDef.kind && r.state === 'in_progress') ?? null}
+            onStart={() => { void startTracking(previewDef); }}
+            onContinue={(id) => openRun(id)}
+            onBack={openCatalog}
           />
         ) : (
           <>
@@ -98,7 +157,7 @@ export default function MiniProcessPage() {
                       <button
                         key={r.id}
                         type="button"
-                        onClick={() => navigate(`/v3/mini-process/${projectId}?run=${r.id}${filterLayerId ? `&layer=${filterLayerId}` : ''}`)}
+                        onClick={() => openRun(r.id)}
                         style={{
                           textAlign: 'left',
                           padding: '14px 16px', background: '#fff',
@@ -118,7 +177,7 @@ export default function MiniProcessPage() {
                           <span style={{
                             fontFamily: FONT_MONO, fontSize: 9.5, color: '#0f766e',
                             letterSpacing: '0.1em', fontWeight: 700,
-                          }}>RESUME →</span>
+                          }}>CONTINUE →</span>
                         </div>
                         <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
                           {def.tagline}
@@ -160,61 +219,18 @@ export default function MiniProcessPage() {
                 )}
               </div>
               <div style={{ display: 'grid', gap: 10 }}>
-                {visibleCatalog.map((def) => {
-                  const layer = PK_LAYER_BY_ID[def.layerId];
-                  const hasInProgressRun = runs.some(
-                    (r) => r.kind === def.kind && r.state === 'in_progress',
-                  );
-                  return (
-                    <div
-                      key={def.kind}
-                      style={{
-                        padding: '14px 16px', background: '#fff',
-                        border: '1px solid #e8dfc9', borderRadius: 10,
-                        display: 'flex', flexDirection: 'column', gap: 8,
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        gap: 12,
-                      }}>
-                        <div>
-                          <span style={{
-                            fontFamily: FONT_MONO, fontSize: 9.5, color: '#94a3b8',
-                            letterSpacing: '0.08em', fontWeight: 600,
-                          }}>L{String(layer?.n ?? 0).padStart(2, '0')} · {layer?.name}</span>
-                          <div style={{
-                            fontFamily: FONT_SERIF, fontSize: 18, color: '#0b1220',
-                            letterSpacing: '-0.005em', marginTop: 2,
-                          }}>{def.title}</div>
-                        </div>
-                        <span style={{
-                          fontFamily: FONT_MONO, fontSize: 10, color: '#64748b',
-                          letterSpacing: '0.06em',
-                        }}>~{def.timeEstimateMinutes}m · n={def.targetN}</span>
-                      </div>
-                      <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                        {def.tagline}
-                      </div>
-                      <button
-                        type="button"
-                        disabled={hasInProgressRun}
-                        onClick={async () => {
-                          const r = await start(def);
-                          navigate(`/v3/mini-process/${projectId}?run=${r.id}${filterLayerId ? `&layer=${filterLayerId}` : ''}`);
-                        }}
-                        style={{
-                          alignSelf: 'flex-start', padding: '7px 12px',
-                          background: hasInProgressRun ? '#e2e8f0' : '#0b1220',
-                          color: hasInProgressRun ? '#94a3b8' : '#fff',
-                          border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500,
-                          cursor: hasInProgressRun ? 'not-allowed' : 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >{hasInProgressRun ? 'Already running' : 'Start →'}</button>
-                    </div>
-                  );
-                })}
+                {visibleCatalog.map((def) => (
+                  <CatalogCard
+                    key={def.kind}
+                    def={def}
+                    status={catalogStatus(def.kind, runs)}
+                    onView={() => openPreview(def.kind)}
+                    onContinue={() => {
+                      const r = runs.find((x) => x.kind === def.kind && x.state === 'in_progress');
+                      if (r) openRun(r.id);
+                    }}
+                  />
+                ))}
               </div>
             </section>
 
@@ -245,7 +261,7 @@ export default function MiniProcessPage() {
                           letterSpacing: '0.1em', textTransform: 'uppercase',
                           background: r.state === 'completed' ? '#dcfce7' : '#f1f5f9',
                           color: r.state === 'completed' ? '#065f46' : '#94a3b8',
-                        }}>{r.state}</span>
+                        }}>{r.state === 'abandoned' ? 'stopped' : r.state}</span>
                         <span style={{ flex: 1, color: '#0b1220' }}>{def?.title ?? r.kind}</span>
                         <span style={{
                           fontFamily: FONT_MONO, fontSize: 10, color: '#94a3b8',
@@ -264,20 +280,260 @@ export default function MiniProcessPage() {
   );
 }
 
-// ── RunDetail ──
-function RunDetail({
-  run, def, onBack, onToggleStep, onSetCapturedN, onSetNotes, onComplete, onAbandon,
+// ── CatalogCard — a catalog entry: layer, purpose, time, sample, effort, status ──
+function CatalogCard({
+  def, status, onView, onContinue,
 }: {
-  run: { id: string; progress: { completedSteps?: number[]; capturedN?: number }; notes: string | null };
   def: MiniProcessDefinition;
+  status: CatalogStatus;
+  onView: () => void;
+  onContinue: () => void;
+}) {
+  const layer = PK_LAYER_BY_ID[def.layerId];
+  const st = STATUS_STYLE[status];
+  const effort = effortLevel(def.timeEstimateMinutes);
+  const sample = sampleSizeLabel(def.targetN, miniProcessSampleUnit(def.kind));
+  const methods = miniProcessMethods(def.kind);
+  const inProgress = status === 'in_progress';
+
+  return (
+    <div style={{
+      padding: '14px 16px', background: '#fff',
+      border: '1px solid #e8dfc9', borderRadius: 10,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+      }}>
+        <div>
+          <span style={{
+            fontFamily: FONT_MONO, fontSize: 9.5, color: '#94a3b8',
+            letterSpacing: '0.08em', fontWeight: 600,
+          }}>L{String(layer?.n ?? 0).padStart(2, '0')} · {layer?.name}</span>
+          <div style={{
+            fontFamily: FONT_SERIF, fontSize: 18, color: '#0b1220',
+            letterSpacing: '-0.005em', marginTop: 2,
+          }}>{def.title}</div>
+        </div>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 9, fontWeight: 700,
+          padding: '3px 8px', borderRadius: 999, letterSpacing: '0.08em',
+          textTransform: 'uppercase', background: st.bg, color: st.fg,
+          whiteSpace: 'nowrap',
+        }}>{st.label}</span>
+      </div>
+
+      <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+        {def.tagline}
+      </div>
+
+      {/* Facts row: time · sample · effort */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Fact label="Time" value={`~${def.timeEstimateMinutes} min`} />
+        <Fact label="Target" value={sample} />
+        <Fact label="Effort" value={effort} />
+      </div>
+
+      {/* Specialist method glossary — plain-language tooltips */}
+      {methods.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11.5, color: '#64748b' }}>
+          {methods.map((m) => (
+            <Term key={m.term} definition={m.definition}>{m.term}</Term>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={inProgress ? onContinue : onView}
+        style={{
+          alignSelf: 'flex-start', padding: '7px 12px',
+          background: inProgress ? '#0f766e' : 'transparent',
+          color: inProgress ? '#fff' : '#0f766e',
+          border: inProgress ? 'none' : '1px solid #99d3cb',
+          borderRadius: 6, fontSize: 12, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >{inProgress ? 'Continue process →' : 'View process →'}</button>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'baseline', gap: 5,
+      padding: '3px 9px', background: '#f4f1ea', borderRadius: 6,
+      fontSize: 11, color: '#475569',
+    }}>
+      <span style={{
+        fontFamily: FONT_MONO, fontSize: 9, letterSpacing: '0.08em',
+        textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700,
+      }}>{label}</span>
+      <strong style={{ color: '#0b1220', fontWeight: 600 }}>{value}</strong>
+    </span>
+  );
+}
+
+// ── ProcessPreview — read-only overview. Creates no run, writes no data. ──
+function ProcessPreview({
+  def, activeRun, onStart, onContinue, onBack,
+}: {
+  def: MiniProcessDefinition;
+  activeRun: MiniProcessRunRow | null;
+  onStart: () => void;
+  onContinue: (runId: string) => void;
+  onBack: () => void;
+}) {
+  const layer = PK_LAYER_BY_ID[def.layerId];
+  const sample = sampleSizeLabel(def.targetN, miniProcessSampleUnit(def.kind));
+  const effort = effortLevel(def.timeEstimateMinutes);
+  const methods = miniProcessMethods(def.kind);
+
+  return (
+    <section style={{
+      padding: '20px 22px', background: '#fff',
+      border: '1px solid #e8dfc9', borderRadius: 10,
+      display: 'flex', flexDirection: 'column', gap: 14,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <span style={{
+            fontFamily: FONT_MONO, fontSize: 9.5, color: '#94a3b8',
+            letterSpacing: '0.08em', fontWeight: 600,
+          }}>Preview · L{String(layer?.n ?? 0).padStart(2, '0')} · {layer?.name}</span>
+          <h2 style={{
+            margin: '4px 0 0', fontFamily: FONT_SERIF, fontSize: 26, color: '#0b1220',
+            letterSpacing: '-0.012em', fontWeight: 400,
+          }}>{def.title}</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: 'none', border: 'none', color: '#64748b',
+            cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
+          }}
+        >← Back to process catalog</button>
+      </div>
+
+      {/* What it helps you learn (tagline) + why it matters (body) */}
+      <div>
+        <SectionKicker>What this helps you learn</SectionKicker>
+        <div style={{
+          fontFamily: FONT_SERIF, fontSize: 16, color: '#0b1220',
+          lineHeight: 1.55, fontStyle: 'italic',
+        }}>{def.tagline}</div>
+      </div>
+      <div>
+        <SectionKicker>Why it matters</SectionKicker>
+        <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.6 }}>{def.body}</div>
+      </div>
+
+      {/* Facts */}
+      <div style={{
+        padding: '10px 12px', background: '#f4f1ea', borderRadius: 6,
+        fontSize: 12, color: '#475569', lineHeight: 1.5,
+        display: 'flex', gap: 16, flexWrap: 'wrap',
+      }}>
+        <span><strong>Estimated time:</strong> ~{def.timeEstimateMinutes} min</span>
+        <span><strong>Target sample:</strong> {sample}</span>
+        <span><strong>Effort:</strong> {effort}</span>
+        <span><strong>Done when:</strong> {def.definitionOfDone}</span>
+      </div>
+
+      {methods.length > 0 && (
+        <div>
+          <SectionKicker>Methods</SectionKicker>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5, color: '#475569' }}>
+            {methods.map((m) => (
+              <Term key={m.term} definition={m.definition}>{m.term}</Term>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Steps (read-only outline — no checkboxes, no inputs) */}
+      <div>
+        <SectionKicker>Steps</SectionKicker>
+        <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 8 }}>
+          {def.steps.map((s, i) => (
+            <li key={i} style={{ fontSize: 13, color: '#0b1220', lineHeight: 1.5 }}>
+              <strong>{s.title}.</strong>{' '}
+              <span style={{ color: '#475569' }}>{s.prompt}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div>
+        <SectionKicker>Expected output</SectionKicker>
+        <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{def.definitionOfDone}</div>
+      </div>
+
+      {/* Actions — the only place a run gets created. */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderTop: '1px solid #ece6d6', paddingTop: 14 }}>
+        {activeRun ? (
+          <button
+            type="button"
+            onClick={() => onContinue(activeRun.id)}
+            style={primaryBtn}
+          >Continue process →</button>
+        ) : (
+          <button
+            type="button"
+            onClick={onStart}
+            style={primaryBtn}
+          >Start tracking this process</button>
+        )}
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            padding: '9px 14px', background: 'transparent', color: '#64748b',
+            border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >Back to process catalog</button>
+      </div>
+    </section>
+  );
+}
+
+const primaryBtn = {
+  padding: '10px 16px', background: '#0b1220', color: '#fff',
+  border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+  cursor: 'pointer', fontFamily: 'inherit',
+} as const;
+
+function SectionKicker({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+      textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
+      marginBottom: 6,
+    }}>{children}</div>
+  );
+}
+
+// ── RunDetail — the ACTIVE-RUN view. Only rendered for a real ?run= id. ──
+function RunDetail({
+  run, def, saveState, onRetrySave, onBack, onToggleStep, onSetCapturedN,
+  onSetNotes, onComplete, onStopTracking,
+}: {
+  run: MiniProcessRunRow;
+  def: MiniProcessDefinition;
+  saveState: SaveState;
+  onRetrySave: () => void;
   onBack: () => void;
   onToggleStep: (i: number) => void;
   onSetCapturedN: (n: number) => void;
   onSetNotes: (n: string) => void;
   onComplete: () => Promise<void>;
-  onAbandon: () => Promise<void>;
+  onStopTracking: () => Promise<void>;
 }) {
   const [notesDraft, setNotesDraft] = useState(run.notes ?? '');
+  const [confirmStop, setConfirmStop] = useState(false);
   const completedSteps = new Set(run.progress.completedSteps ?? []);
   const captured = run.progress.capturedN ?? 0;
   const allDone = completedSteps.size >= def.steps.length && captured >= def.targetN;
@@ -292,22 +548,33 @@ function RunDetail({
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
             fontFamily: FONT_MONO, fontSize: 9.5, color: '#94a3b8',
             letterSpacing: '0.08em', fontWeight: 600,
-          }}>L{String(layer?.n ?? 0).padStart(2, '0')} · {layer?.name}</span>
+          }}>
+            L{String(layer?.n ?? 0).padStart(2, '0')} · {layer?.name}
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              background: '#fef3c7', color: '#92400e',
+            }}>In progress</span>
+          </span>
           <div style={{
             fontFamily: FONT_SERIF, fontSize: 26, color: '#0b1220',
             letterSpacing: '-0.012em', marginTop: 4,
           }}>{def.title}</div>
         </div>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            background: 'none', border: 'none', color: '#64748b',
-            cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-          }}
-        >← back to catalog</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              background: 'none', border: 'none', color: '#64748b',
+              cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
+            }}
+          >← back to catalog</button>
+          <SaveStatus state={saveState} onRetry={onRetrySave} />
+        </div>
       </div>
 
       <div style={{
@@ -319,19 +586,15 @@ function RunDetail({
       <div style={{
         padding: '10px 12px', background: '#f4f1ea', borderRadius: 6,
         fontSize: 12, color: '#475569', lineHeight: 1.5,
-        display: 'flex', gap: 14,
+        display: 'flex', gap: 14, flexWrap: 'wrap',
       }}>
-        <span><strong>Target N:</strong> {def.targetN}</span>
+        <span><strong>Target:</strong> {sampleSizeLabel(def.targetN, miniProcessSampleUnit(def.kind))}</span>
         <span><strong>Time est:</strong> ~{def.timeEstimateMinutes} min</span>
         <span><strong>Done when:</strong> {def.definitionOfDone}</span>
       </div>
 
       <div>
-        <div style={{
-          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
-          textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
-          marginBottom: 8,
-        }}>Steps</div>
+        <SectionKicker>Steps</SectionKicker>
         <div style={{ display: 'grid', gap: 8 }}>
           {def.steps.map((s, i) => {
             const done = completedSteps.has(i);
@@ -349,6 +612,8 @@ function RunDetail({
                 <button
                   type="button"
                   onClick={() => onToggleStep(i)}
+                  aria-pressed={done}
+                  aria-label={`${done ? 'Mark step not done' : 'Mark step done'}: ${s.title}`}
                   style={{
                     width: 22, height: 22, borderRadius: '50%',
                     border: `1.5px solid ${done ? '#0f766e' : '#cbd5e1'}`,
@@ -373,11 +638,15 @@ function RunDetail({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, alignItems: 'center' }}>
-        <span style={{
-          fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.08em',
-          color: '#64748b', fontWeight: 600,
-        }}>Captured (n)</span>
+        <label
+          htmlFor="mini-process-captured"
+          style={{
+            fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.08em',
+            color: '#64748b', fontWeight: 600,
+          }}
+        >Captured ({miniProcessSampleUnit(def.kind)})</label>
         <input
+          id="mini-process-captured"
           type="number"
           value={captured}
           min={0}
@@ -390,15 +659,12 @@ function RunDetail({
       </div>
 
       <div>
-        <div style={{
-          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
-          textTransform: 'uppercase', color: '#0b1220', fontWeight: 700,
-          marginBottom: 6,
-        }}>Notes</div>
+        <SectionKicker>Notes</SectionKicker>
         <textarea
           value={notesDraft}
           onChange={(e) => setNotesDraft(e.target.value)}
           onBlur={() => { if (notesDraft !== (run.notes ?? '')) onSetNotes(notesDraft); }}
+          aria-label="Notes"
           placeholder="Findings, transcripts, links…"
           style={{
             width: '100%', minHeight: 80, padding: '10px 12px',
@@ -409,7 +675,7 @@ function RunDetail({
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid #ece6d6', paddingTop: 12 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid #ece6d6', paddingTop: 12, flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() => { void onComplete(); }}
@@ -423,15 +689,41 @@ function RunDetail({
         >
           {allDone ? `Complete & upgrade ${layer?.name} →` : 'Mark complete (definition-of-done not yet met)'}
         </button>
-        <button
-          type="button"
-          onClick={() => { void onAbandon(); }}
-          style={{
-            padding: '9px 14px', background: 'transparent', color: '#64748b',
-            border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >Abandon</button>
+        {!confirmStop ? (
+          <button
+            type="button"
+            onClick={() => setConfirmStop(true)}
+            style={{
+              padding: '9px 14px', background: 'transparent', color: '#64748b',
+              border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >Stop tracking</button>
+        ) : (
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#475569' }}>
+              This stops the current run. Existing notes and progress will remain available in its history.
+            </span>
+            <button
+              type="button"
+              onClick={() => { void onStopTracking(); }}
+              style={{
+                padding: '7px 12px', background: 'transparent', color: '#9f1239',
+                border: '1px solid #fda4af', borderRadius: 6, fontSize: 12,
+                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+              }}
+            >Yes, stop tracking</button>
+            <button
+              type="button"
+              onClick={() => setConfirmStop(false)}
+              style={{
+                padding: '7px 12px', background: 'transparent', color: '#64748b',
+                border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >Keep tracking</button>
+          </span>
+        )}
       </div>
     </section>
   );

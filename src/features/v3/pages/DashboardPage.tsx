@@ -64,7 +64,7 @@ function deriveStateLine(args: {
 
   // Rule 1 — empty stack
   if (filled === 0) {
-    return "You haven't filled anything yet. Pick a door and start. The stack doesn't fill itself.";
+    return "You haven't filled anything yet. Pick a starting point and go. The stack doesn't fill itself.";
   }
 
   // Rule 2 — beyond CPF, some layers on prototype tests
@@ -293,6 +293,27 @@ export default function V3DashboardPage() {
               current={industry}
               onChange={(next) => { void updateVenture({ industry_variant: next }); }}
             />
+            {/* Guided work is active → offer to resume it at the stored step.
+                Both views read and write the same saved stack, so switching
+                never discards anything. */}
+            {venture?.door_choice === 'A' && (
+              <button
+                type="button"
+                onClick={() => {
+                  let step: string | null = null;
+                  try {
+                    step = typeof window !== 'undefined'
+                      ? window.localStorage.getItem(`pk.v3.lastStep.${projectId}`) : null;
+                  } catch { /* ignore */ }
+                  navigate(`/v3/door-a/${projectId}${step ? `#${step}` : ''}`);
+                }}
+                style={{
+                  padding: '7px 12px', background: 'transparent', color: '#475569',
+                  border: '1px solid #d6cfb8', borderRadius: 6, fontSize: 12,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >Continue guided flow</button>
+            )}
             <button
               type="button"
               onClick={() => navigate(`/v3/door-b/${projectId}`)}

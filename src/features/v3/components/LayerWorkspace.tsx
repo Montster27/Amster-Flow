@@ -9,7 +9,7 @@
 // and flushes any unsaved text on switch.
 
 import { useRef, useState } from 'react';
-import { SourcePicker, SourcePill, TierLadder, MentorCallout } from './atoms';
+import { SourcePicker, SourcePill, TierLadder, MentorCallout, SaveStatus } from './atoms';
 import { SectorMapPanel } from './SectorMapPanel';
 import { FrameworkDisclosure } from './FrameworkDisclosure';
 import { useClaimDraft } from '../hooks/useClaimDraft';
@@ -80,7 +80,7 @@ export function LayerWorkspace({
   const roleGuidance = perspectiveGuidance(perspective, layer.id);
   const rel = relationsFor(layer.id);
 
-  const { claim, setClaim, saving, error } = useClaimDraft({
+  const { claim, setClaim, status: saveStatus, retry: retrySave } = useClaimDraft({
     externalClaim: row?.claim_text ?? '',
     saveClaim: (c) => saveLayer(layer.id, { claim_text: c }),
   });
@@ -162,17 +162,7 @@ export function LayerWorkspace({
                 background: PAPER, color: INK, resize: 'vertical', outline: 'none',
               }}
             />
-            <div style={{
-              fontFamily: FONT_MONO, fontSize: 10.5, color: MUTED,
-              letterSpacing: '0.06em', minHeight: 14,
-            }} aria-live="polite">
-              {saving ? 'Saving…' : error ? '' : hasClaim || claim.trim() ? 'Saved' : ''}
-            </div>
-            {error && (
-              <div role="alert" style={{ fontSize: 12, color: '#be123c', fontFamily: FONT_MONO }}>
-                Save failed: {error}
-              </div>
-            )}
+            <SaveStatus state={saveStatus} onRetry={() => { void retrySave(); }} />
           </section>
 
           {/* 4. Evidence source */}

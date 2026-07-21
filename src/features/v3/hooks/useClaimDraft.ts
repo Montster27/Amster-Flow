@@ -23,14 +23,21 @@ interface Options {
   debounceMs?: number;
 }
 
+/** Consistent save-feedback states shared across every editable v3 surface. */
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
 interface Result {
   claim: string;
   /** Update the draft and schedule a debounced save. */
   setClaim: (value: string) => void;
   /** Save now if the draft differs from what was last saved. */
   flush: () => Promise<void>;
+  /** Re-attempt the last save after a failure. Keeps the user's input intact. */
+  retry: () => Promise<void>;
   saving: boolean;
   error: string | null;
+  /** Coarse status for the shared SaveStatus indicator. */
+  status: SaveState;
 }
 
 export function useClaimDraft({
@@ -39,6 +46,9 @@ export function useClaimDraft({
   const [claim, setClaimState] = useState(externalClaim);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set only on a *successful* persist — drives the "Saved just now" state.
+  // Never set on initial hydration, so a freshly loaded layer reads 'idle'.
+  const [savedOnce, setSavedOnce] = useState(false);
 
   const timer = useRef<number | null>(null);
   const lastSaved = useRef<string>(externalClaim);
@@ -66,7 +76,10 @@ export function useClaimDraft({
     try {
       await saveClaim(trimmed.length === 0 ? null : trimmed);
       lastSaved.current = trimmed;
+      setSavedOnce(true);
     } catch (e) {
+      // Input is intentionally NOT reverted — the draft stays in `claim` so the
+      // founder can retry without retyping.
       setError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
@@ -85,5 +98,7 @@ export function useClaimDraft({
   flushRef.current = flush;
   useEffect(() => () => { void flushRef.current(); }, []);
 
-  return { claim, setClaim, flush, saving, error };
+  const status: SaveState = saving ? 'saving' : error ? 'error' : savedOnce ? 'saved' : 'idle';
+
+  return { claim, setClaim, flush, retry: flush, saving, error, status };
 }

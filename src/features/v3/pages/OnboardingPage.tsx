@@ -247,7 +247,7 @@ export default function OnboardingPage() {
               letter="A"
               title="Walk me through it"
               desc="Step-by-step. Starts at Customer Segment — that's where investors press first. Six foundation questions over ~20 minutes. You finish with: your full 16-layer stack, a heat map of where your evidence is thinnest, and an investor pressure test of your weakest claims."
-              tag="DOOR A · GUIDED"
+              tag="GUIDED FLOW"
               minutes="≈ 20 min"
               onClick={() => { void pickDoor('A'); }}
             />
@@ -255,7 +255,7 @@ export default function OnboardingPage() {
               letter="B"
               title="Explore the full stack"
               desc="Open Questions Up & Down: the whole 16-layer stack as a map, editing one layer at a time. Fill in what you know, leave blanks where you don't, pick a source — that's how I score you. Move up and down between connected layers as your understanding changes."
-              tag="DOOR B · QUESTIONS UP & DOWN"
+              tag="QUESTIONS UP & DOWN"
               minutes="≈ 15 min"
               dark
               onClick={() => { void pickDoor('B'); }}

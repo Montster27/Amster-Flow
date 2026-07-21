@@ -68,7 +68,7 @@ export default function DoorBPage() {
   return (
     <PageShell>
       <VentureHeader
-        ventureName="Door B · Snapshot dump"
+        ventureName="Questions Up & Down"
         industry={venture?.industry_variant}
         evaluator={venture?.evaluator}
         gates={gates}
