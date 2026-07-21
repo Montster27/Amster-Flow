@@ -14,7 +14,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAssumptions } from '../hooks/useAssumptions';
 import { useDoorAState } from '../hooks/useDoorAState';
 import { useLayerStack, useVenture } from '../hooks/useVenture';
-import { PageShell, VentureHeader } from '../components/atoms';
+import { GateBadge, PageShell, Term, VentureHeader } from '../components/atoms';
+import { FrameworkDisclosure, useFrameworkDisclosure } from '../components/FrameworkDisclosure';
 import { FOUNDATION_QUEUE, PK_LAYER_BY_ID, pkTier } from '../lib/layers';
 import type { SourceId } from '../lib/layers';
 import { stepHasDraft, type DoorAState } from '../lib/doorAState';
@@ -25,6 +26,17 @@ import type { StepId } from '../lib/voice';
 import {
   STEPS, StepView, type StepMeta, type StepProps,
 } from './DoorAPage.steps';
+
+// ── Glossary definitions (plain-language, reused across tooltips) ──
+//
+// Kept here so the framework section and the primary UI cite the same wording
+// for the four terms the v3 usability review flagged as unexplained.
+const DEF_LAYER =
+  'Layer: one building block of your venture’s story — Customer Segment, Problem, Solution, and so on. PivotKit scores each layer on its own.';
+const DEF_EVIDENCE =
+  'Evidence strength: how sure you can be a claim is true, based on where it comes from. A hunch is weak; customer interviews or a working prototype are strong.';
+const DEF_STAGE_GATE =
+  'Stage gate: a checkpoint that clears once its layers have enough evidence. The three gates are Customer–Problem Fit, Problem–Solution Fit, and Business Model Viability.';
 
 // ── Hash <-> step helpers ──
 
@@ -155,11 +167,11 @@ function StepRail({
           fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: '0.14em',
           textTransform: 'uppercase', color: SLATE_FG, fontWeight: 700,
           marginBottom: 8,
-        }}>Door A · Step graph</div>
+        }}>All 12 steps</div>
         <div style={{ fontSize: 11.5, color: SLATE_FG, lineHeight: 1.45 }}>
-          12 steps that fill the six foundation layers. Nudge, don't block — you
-          can skip ahead and come back. Each step contributes a claim to the
-          underlying layer so your gates keep moving.
+          Follow the guided sequence or jump ahead—you can return anytime. Each
+          step adds evidence to one <Term definition={DEF_LAYER}>layer</Term> of
+          your venture, so your progress keeps moving either way.
         </div>
       </div>
 
@@ -241,7 +253,7 @@ function StepRail({
         border: `1px dashed ${TEAL}`,
         fontSize: 11.5, color: INK, lineHeight: 1.5,
       }}>
-        <strong style={{ color: TEAL }}>Graduates at:</strong> all six contributory layers
+        <strong style={{ color: TEAL }}>Ready when:</strong> all six contributory layers
         (customerSegment, problem, painScale, solution, businessModel, competitiveMarket)
         ≥ 2 stars. The full 16-layer stack unlocks then.
       </div>
@@ -282,10 +294,23 @@ function SaveStatePill({ saving, lastSavedAt }: { saving: boolean; lastSavedAt: 
   return null;
 }
 
-// Sprint 3 T10 — foundation star counter with hover/focus tooltip that names
-// each contributing layer and shows its current tier. The Stage Gates panel
-// on the dashboard is the fuller reference — this is the in-flow nudge.
-function FoundationCounter({
+// Section kicker used throughout the framework disclosure.
+function SectionKicker({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+      textTransform: 'uppercase', color: SLATE_FG, fontWeight: 700,
+      marginBottom: 8,
+    }}>{children}</div>
+  );
+}
+
+// Foundation progress — the always-expanded panel that lives inside the
+// framework disclosure. (Replaces the header hover-counter; v3 usability step 1
+// moves layer evidence-strength totals out of the primary view.) Lists each of
+// the six foundation layers with its current evidence strength, in plain
+// language, and states the graduation bar.
+function FoundationPanel({
   cleared, total, stack, draftSources,
 }: {
   cleared: number;
@@ -293,70 +318,96 @@ function FoundationCounter({
   stack: Record<string, { source_value?: string | null } | undefined>;
   draftSources: Partial<Record<string, string>>;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <span style={{ position: 'relative', display: 'inline-block', isolation: 'isolate' }}>
-      <span
-        tabIndex={0}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        style={{
-          cursor: 'help', borderBottom: `1px dotted ${MUTED}`,
-          outline: 'none',
-        }}
+    <div style={{ padding: '14px 16px', borderBottom: `1px solid ${HAIR}` }}>
+      <SectionKicker>Progress</SectionKicker>
+      <div style={{ fontSize: 12.5, color: SLATE_FG, lineHeight: 1.5, marginBottom: 12 }}>
+        <span style={{ color: TEAL, fontWeight: 700 }}>{cleared}</span> of {total}{' '}
+        <Term definition={DEF_LAYER}>layers</Term> now have enough{' '}
+        <Term definition={DEF_EVIDENCE}>evidence strength</Term> to clear. This
+        guided setup finishes when every foundation layer gets there.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {FOUNDATION_QUEUE.map((id) => {
+          const layer = PK_LAYER_BY_ID[id];
+          const src = (draftSources[id] ?? stack[id]?.source_value ?? null) as SourceId | null;
+          const tier = pkTier(id, src);
+          const ok = tier >= 2;
+          return (
+            <div key={id} style={{
+              display: 'flex', justifyContent: 'space-between', gap: 10,
+              alignItems: 'baseline', padding: '4px 0',
+            }}>
+              <span style={{ fontSize: 13, color: ok ? INK : SLATE_FG }}>
+                {ok ? '✓' : '·'} {layer?.name ?? id}
+              </span>
+              <span
+                aria-label={`Evidence strength ${tier} of 5`}
+                style={{
+                  fontFamily: FONT_MONO, fontSize: 12,
+                  color: ok ? TEAL : MUTED, letterSpacing: '0.04em',
+                }}
+              >{renderStars(tier)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Stage-gate panel — CPF / PSF / BMV, moved into the framework disclosure. The
+// acronyms are expanded in the lede and again on each badge's own tooltip.
+function StageGatePanel({ gates }: { gates: Parameters<typeof GateBadge>[0]['gate'][] }) {
+  return (
+    <div style={{ padding: '14px 16px', borderBottom: `1px solid ${HAIR}` }}>
+      <SectionKicker>Stage gates</SectionKicker>
+      <div style={{ fontSize: 12.5, color: SLATE_FG, lineHeight: 1.5, marginBottom: 12 }}>
+        <Term definition={DEF_STAGE_GATE}>Stage gates</Term> are the three
+        checkpoints investors look for: Customer–Problem Fit (CPF),
+        Problem–Solution Fit (PSF), and Business Model Viability (BMV). Hover a
+        badge for what each one still needs.
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {gates.map((g) => <GateBadge key={g.id} gate={g} />)}
+      </div>
+    </div>
+  );
+}
+
+// ── ProgressHeader — the "Step N of 12 · Phase" line that anchors the primary
+// view. Plain language only: no L-numbers, no sub-step codenames. ──
+function ProgressHeader({ index, total, phase }: { index: number; total: number; phase: string }) {
+  const pct = total > 0 ? Math.round((index / total) * 100) : 0;
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap',
+        marginBottom: 8,
+      }}>
+        <span style={{
+          fontFamily: FONT_MONO, fontSize: 11, color: TEAL, fontWeight: 700,
+          letterSpacing: '0.1em', textTransform: 'uppercase',
+        }}>Step {index} of {total}</span>
+        <span style={{
+          fontFamily: FONT_SERIF, fontSize: 16, color: SLATE_FG,
+          letterSpacing: '-0.005em',
+        }}>{phase}</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-valuenow={index}
+        aria-valuemin={1}
+        aria-valuemax={total}
+        aria-label={`Step ${index} of ${total}`}
+        style={{ height: 4, borderRadius: 2, background: TAN, overflow: 'hidden' }}
       >
-        <span style={{ color: TEAL, fontWeight: 700 }}>{cleared}</span>
-        {' / '}{total} layers ≥ 2★
-      </span>
-      {open && (
-        <span
-          role="tooltip"
-          style={{
-            position: 'absolute', right: 0, top: '100%',
-            marginTop: 6, zIndex: 200, width: 280,
-            padding: '10px 12px', borderRadius: 6,
-            background: INK, color: '#f8fafc',
-            fontSize: 11.5, lineHeight: 1.45, textAlign: 'left',
-            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
-            pointerEvents: 'none', textTransform: 'none', letterSpacing: 0,
-            fontWeight: 400,
-          }}
-        >
-          <div style={{
-            fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.12em',
-            color: '#fcd34d', fontWeight: 700, textTransform: 'uppercase',
-            marginBottom: 6,
-          }}>Foundation · {cleared}/{total}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {FOUNDATION_QUEUE.map((id) => {
-              const layer = PK_LAYER_BY_ID[id];
-              const src = (draftSources[id] ?? stack[id]?.source_value ?? null) as SourceId | null;
-              const tier = pkTier(id, src);
-              const ok = tier >= 2;
-              return (
-                <div key={id} style={{
-                  display: 'flex', justifyContent: 'space-between', gap: 10,
-                }}>
-                  <span style={{ color: ok ? '#86efac' : '#cbd5e1' }}>
-                    {ok ? '✓' : '·'} {layer?.name ?? id}
-                  </span>
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 10.5,
-                    color: ok ? '#86efac' : '#94a3b8',
-                  }}>{tier}/5★</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{
-            marginTop: 6, paddingTop: 6, borderTop: '1px solid #334155',
-            color: '#cbd5e1', fontSize: 11,
-          }}>Door A graduates when every layer here clears 2★.</div>
-        </span>
-      )}
-    </span>
+        <div style={{
+          width: `${pct}%`, height: '100%', background: TEAL,
+          transition: 'width .25s ease',
+        }} />
+      </div>
+    </div>
   );
 }
 
@@ -417,8 +468,15 @@ export default function DoorAPage() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // Keep URL hash in sync with current step
-  useEffect(() => { setHash(step); }, [step]);
+  // Keep URL hash in sync with current step, and mirror it to localStorage so
+  // the Questions Up & Down "Continue guided flow" action can restore the exact
+  // step even when the URL hash isn't carried across the navigation.
+  useEffect(() => {
+    setHash(step);
+    if (projectId) {
+      try { window.localStorage.setItem(`pk.v3.lastStep.${projectId}`, step); } catch { /* ignore */ }
+    }
+  }, [step, projectId]);
 
   // Stamp door choice on first visit
   useEffect(() => {
@@ -440,13 +498,18 @@ export default function DoorAPage() {
     navigate(`/v3/dashboard/${projectId}`);
   }, [flush, refetch, updateVenture, navigate, projectId]);
 
-  // Foundation progress (for the header summary)
+  // Foundation progress (for the framework panel)
   const cleared = useMemo(() => {
     return FOUNDATION_QUEUE.reduce((n, layerId) => {
       const t = pkTier(layerId, stack[layerId]?.source_value);
       return n + (t >= 2 ? 1 : 0);
     }, 0);
   }, [stack]);
+
+  // Persisted open/closed state for the "See progress and framework" section.
+  // Keyed per project so the choice survives navigation between guided steps
+  // and page reloads (v3 usability acceptance criterion).
+  const fw = useFrameworkDisclosure(`pk:doorA:${projectId ?? 'unknown'}:framework`);
 
   if (!projectId) {
     return <PageShell><div style={{ padding: 40 }}>Missing project id.</div></PageShell>;
@@ -461,25 +524,23 @@ export default function DoorAPage() {
     onGraduate,
   };
 
+  const meta = STEPS.find((s) => s.id === step);
+  const layer = meta ? PK_LAYER_BY_ID[meta.layerId] : null;
+  const stepIndex = STEPS.findIndex((s) => s.id === step) + 1;
+  const phase = layer?.name ?? meta?.layerId ?? '';
+
   return (
     <PageShell>
       <VentureHeader
-        ventureName="Door A · Guided start"
+        ventureName="Guided setup"
         industry={venture?.industry_variant}
         evaluator={venture?.evaluator}
-        gates={gates}
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{
               fontFamily: FONT_MONO, fontSize: 11, color: SLATE_FG,
               letterSpacing: '0.06em',
             }}>
-              <FoundationCounter
-                cleared={cleared}
-                total={FOUNDATION_QUEUE.length}
-                stack={stack}
-                draftSources={state.draftSources}
-              />
               <SaveStatePill saving={saving} lastSavedAt={lastSavedAt} />
             </span>
             <SwitchToDashboardButton
@@ -489,53 +550,34 @@ export default function DoorAPage() {
         }
       />
 
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 320px',
-        minHeight: 'calc(100vh - 64px)',
-      }}>
-        <div style={{ borderRight: `1px solid ${HAIR}`, background: PAPER }}>
-          {/* Page title rail */}
-          {(() => {
-            const meta = STEPS.find((s) => s.id === step);
-            const layer = meta ? PK_LAYER_BY_ID[meta.layerId] : null;
-            return (
-              <div style={{
-                padding: '14px 40px 0', display: 'flex',
-                alignItems: 'baseline', gap: 12,
-              }}>
-                <span style={{
-                  fontFamily: FONT_MONO, fontSize: 10.5, color: MUTED,
-                  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600,
-                }}>You are here</span>
-                {layer && (
-                  <span style={{
-                    fontFamily: FONT_MONO, fontSize: 11, color: TEAL,
-                    letterSpacing: '0.08em', fontWeight: 700,
-                  }}>L{String(layer.n).padStart(2, '0')}</span>
-                )}
-                <span style={{
-                  fontFamily: FONT_SERIF, fontSize: 17, color: INK,
-                  letterSpacing: '-0.005em',
-                }}>{layer?.name ?? meta?.layerId}</span>
-                {meta && (
-                  <>
-                    <span style={{ color: MUTED, fontSize: 12 }}>·</span>
-                    <span style={{
-                      fontSize: 13, color: SLATE_FG,
-                    }}>{meta.label}</span>
-                  </>
-                )}
-              </div>
-            );
-          })()}
+      {/* Single-column guided flow. The current task owns the space above the
+          fold; the framework (stage gates, evidence-strength totals, the full
+          step list) lives inside the collapsed disclosure below. */}
+      <div style={{ background: PAPER, minHeight: 'calc(100vh - 64px)' }}>
+        <div style={{
+          maxWidth: 760, margin: '0 auto',
+          padding: 'clamp(20px, 4vw, 32px) clamp(16px, 5vw, 40px) 56px',
+        }}>
+          <ProgressHeader index={stepIndex} total={STEPS.length} phase={phase} />
+
           <StepView stepId={step} {...stepProps} />
+
+          <FrameworkDisclosure open={fw.open} onToggle={fw.toggle}>
+            <FoundationPanel
+              cleared={cleared}
+              total={FOUNDATION_QUEUE.length}
+              stack={stack}
+              draftSources={state.draftSources}
+            />
+            <StageGatePanel gates={gates} />
+            <StepRail
+              currentStep={step}
+              onJump={goTo}
+              stack={stack}
+              state={state}
+            />
+          </FrameworkDisclosure>
         </div>
-        <StepRail
-          currentStep={step}
-          onJump={goTo}
-          stack={stack}
-          state={state}
-        />
       </div>
     </PageShell>
   );

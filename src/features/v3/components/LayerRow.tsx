@@ -1,17 +1,16 @@
 // LayerRow — interactive row used by Door B (and the layer detail).
 // Renders the layer name + question, an editable claim textarea (debounced
-// auto-save on blur or 1s idle), and a SourcePicker (instant save).
+// auto-save on blur or 1s idle via useClaimDraft), and a SourcePicker.
 
-import { useEffect, useRef, useState } from 'react';
-import { CategoryBadge, SourcePicker, TierLadder } from './atoms';
+import { useState } from 'react';
+import { CategoryBadge, SourcePicker, TierLadder, SaveStatus } from './atoms';
+import { useClaimDraft, type SaveState } from '../hooks/useClaimDraft';
 import { lookupPushback } from '../lib/voice';
 import { pkTier } from '../lib/layers';
 import type { Evaluator, LayerStateRow, PkLayer, SourceId } from '../lib/layers';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
-
-const SAVE_DEBOUNCE_MS = 1000;
 
 interface Props {
   layer: PkLayer;
@@ -22,71 +21,40 @@ interface Props {
 }
 
 export function LayerRow({ layer, row, evaluator, onSave }: Props) {
-  const [claim, setClaim] = useState(row?.claim_text ?? '');
-  const [pendingSave, setPendingSave] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const claimTimer = useRef<number | null>(null);
-  const lastSavedClaim = useRef<string>(row?.claim_text ?? '');
-  // Mirror of `claim` so the sync effect can read the latest local value
-  // without listing `claim` as a dependency (which would re-run it per keystroke).
-  const claimRef = useRef(claim);
-  claimRef.current = claim;
-
-  // If the row changes from the outside (initial load, refetch), sync local
-  // state — but only when (a) the incoming value differs from what we last
-  // saved AND (b) the user has no unsaved local edits in flight. Without the
-  // second guard, a stack refetch triggered by editing another row could
-  // clobber text the founder is actively typing here.
-  useEffect(() => {
-    const incoming = row?.claim_text ?? '';
-    const hasUnsavedEdits = claimRef.current !== lastSavedClaim.current;
-    if (incoming !== lastSavedClaim.current && !hasUnsavedEdits) {
-      setClaim(incoming);
-      lastSavedClaim.current = incoming;
-    }
-  }, [row?.claim_text]);
+  const {
+    claim, setClaim: onClaimChange, flush: flushClaim,
+    saving: claimSaving, error: claimError, status: claimStatus, retry: retryClaim,
+  } = useClaimDraft({
+    externalClaim: row?.claim_text ?? '',
+    saveClaim: (c) => onSave({ claim_text: c }),
+  });
+  const [sourceSaving, setSourceSaving] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const pendingSave = claimSaving || sourceSaving;
+  const error = claimError ?? sourceError;
+  // Combined save feedback across the claim + source writes on this row.
+  const saveState: SaveState = pendingSave
+    ? 'saving'
+    : error
+      ? 'error'
+      : claimStatus === 'saved'
+        ? 'saved'
+        : 'idle';
 
   const tier = pkTier(layer.id, row?.source_value);
   const isCrit = layer.cat === 'critical';
   const pushback = lookupPushback(layer.id, tier, evaluator);
 
-  const flushClaim = async () => {
-    if (claimTimer.current) {
-      window.clearTimeout(claimTimer.current);
-      claimTimer.current = null;
-    }
-    const trimmed = claim.trim();
-    if (trimmed === lastSavedClaim.current) return;
-    setPendingSave(true); setError(null);
-    try {
-      await onSave({ claim_text: trimmed.length === 0 ? null : trimmed });
-      lastSavedClaim.current = trimmed;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
-    } finally {
-      setPendingSave(false);
-    }
-  };
-
-  const onClaimChange = (v: string) => {
-    setClaim(v);
-    if (claimTimer.current) window.clearTimeout(claimTimer.current);
-    claimTimer.current = window.setTimeout(() => { void flushClaim(); }, SAVE_DEBOUNCE_MS);
-  };
-
   const onSourceChange = async (next: SourceId | null) => {
-    setPendingSave(true); setError(null);
+    setSourceSaving(true); setSourceError(null);
     try {
-      // Save pending claim first if dirty
-      const trimmed = claim.trim();
-      const claimPatch = trimmed !== lastSavedClaim.current
-        ? { claim_text: trimmed.length === 0 ? null : trimmed } : {};
-      await onSave({ ...claimPatch, source_value: next });
-      if (claimPatch.claim_text !== undefined) lastSavedClaim.current = trimmed;
+      // Persist any pending claim first so the source change can't race it.
+      await flushClaim();
+      await onSave({ source_value: next });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setSourceError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
-      setPendingSave(false);
+      setSourceSaving(false);
     }
   };
 
@@ -162,12 +130,15 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
             </div>
           )}
 
-          {error && (
-            <div role="alert" style={{
-              marginTop: 8, fontSize: 12, color: '#be123c',
-              fontFamily: FONT_MONO,
-            }}>Save failed: {error}</div>
-          )}
+          <div style={{ marginTop: 8 }}>
+            <SaveStatus
+              state={saveState}
+              onRetry={() => {
+                if (sourceError) { setSourceError(null); void onSourceChange(row?.source_value ?? null); }
+                else void retryClaim();
+              }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, paddingTop: 4 }}>
@@ -175,7 +146,7 @@ export function LayerRow({ layer, row, evaluator, onSave }: Props) {
           <span style={{
             fontFamily: FONT_MONO, fontSize: 10, color: '#94a3b8',
             letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums',
-          }}>{tier}/5{pendingSave ? ' · saving' : ''}</span>
+          }}>{tier}/5</span>
         </div>
       </div>
     </div>

@@ -9,12 +9,59 @@ import { PK_LAYER_BY_ID, PK_SOURCES, pkHidesSource, pkSourcesFor, pkTier } from 
 import type { LayerCategory, SourceId } from '../lib/layers';
 import type { GateProgress } from '../lib/gates';
 import {
-  AMBER_FG, AMBER_LINE, AMBER_SOFT, GOLD, HAIR, INK, MUTED,
+  AMBER_FG, AMBER_LINE, AMBER_SOFT, ERROR_FG, GOLD, HAIR, INK, MUTED,
   SLATE_FG, STONE, TAN, TEAL,
 } from '../lib/tokens';
+import { SAVE_STATUS_COPY } from '../lib/copy';
+import type { SaveState } from '../hooks/useClaimDraft';
 
 const FONT_MONO = 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace';
 const FONT_SERIF = '"Instrument Serif", Georgia, serif';
+
+// ── SaveStatus ──
+//
+// One consistent autosave indicator for every editable v3 surface (Finding 12).
+// States: Saving… / Saved just now / Couldn't save — Retry. The status text is
+// announced politely (aria-live) so screen-reader users perceive it; the error
+// carries an assertive alert plus a real Retry button. It never renders a bare
+// "Saved" before persistence actually succeeds — the caller passes 'saved' only
+// after a confirmed write.
+export function SaveStatus({
+  state, onRetry, style,
+}: {
+  state: SaveState;
+  onRetry?: () => void;
+  style?: CSSProperties;
+}) {
+  const base: CSSProperties = {
+    fontFamily: FONT_MONO, fontSize: 10.5, letterSpacing: '0.06em',
+    minHeight: 16, display: 'inline-flex', alignItems: 'center', gap: 8,
+    ...style,
+  };
+  if (state === 'error') {
+    return (
+      <span role="alert" style={{ ...base, color: ERROR_FG }}>
+        {SAVE_STATUS_COPY.error}
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{
+              padding: '2px 8px', background: 'transparent', color: ERROR_FG,
+              border: `1px solid ${ERROR_FG}`, borderRadius: 4, cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 10.5, letterSpacing: '0.06em',
+            }}
+          >{SAVE_STATUS_COPY.retry}</button>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span aria-live="polite" style={{ ...base, color: MUTED }}>
+      {state === 'saving' ? SAVE_STATUS_COPY.saving : state === 'saved' ? SAVE_STATUS_COPY.saved : ''}
+    </span>
+  );
+}
 
 // ── useTooltip ──
 //
@@ -453,22 +500,102 @@ export function GateMeterSummary({ gate }: { gate: GateProgress }) {
 // ── CategoryBadge ──
 export function CategoryBadge({ cat }: { cat: LayerCategory }) {
   const isCrit = cat === 'critical';
+  // The badge names a framework concept ("Investor-critical") that shows in the
+  // primary guided view, so it carries a hover/focus/keyboard tooltip that
+  // explains the term in plain language (progressive disclosure — no jargon
+  // left unexplained above the fold).
+  const { open, tooltipId, triggerProps } = useTooltip();
+  const definition = isCrit
+    ? 'Investor-critical: a claim investors press on first. These layers must show real evidence before your venture reads as fundable.'
+    : 'Thoughtfulness: a layer that strengthens your thinking but isn’t one investors gate on first.';
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '4px 9px', borderRadius: 4,
-      background: isCrit ? '#0f766e' : 'transparent',
-      border: isCrit ? '1px solid #0f766e' : '1px solid #cbd5e1',
-      color: isCrit ? '#fff' : '#64748b',
-      fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
-      textTransform: 'uppercase', fontWeight: 700,
-    }}>
-      <span style={{
-        width: 6, height: 6, borderRadius: isCrit ? 0 : '50%',
-        background: isCrit ? '#fcd34d' : 'transparent',
-        border: isCrit ? 'none' : '1px solid #94a3b8',
-      }} />
-      {isCrit ? 'Investor-critical' : 'Thoughtfulness'}
+    <span style={{ position: 'relative', display: 'inline-block', isolation: 'isolate' }}>
+      <span
+        tabIndex={0}
+        aria-describedby={open ? tooltipId : undefined}
+        {...triggerProps}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 9px', borderRadius: 4,
+          background: isCrit ? '#0f766e' : 'transparent',
+          border: isCrit ? '1px solid #0f766e' : '1px solid #cbd5e1',
+          color: isCrit ? '#fff' : '#64748b',
+          fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.14em',
+          textTransform: 'uppercase', fontWeight: 700,
+          cursor: 'help', outline: 'none',
+        }}
+      >
+        <span style={{
+          width: 6, height: 6, borderRadius: isCrit ? 0 : '50%',
+          background: isCrit ? '#fcd34d' : 'transparent',
+          border: isCrit ? 'none' : '1px solid #94a3b8',
+        }} />
+        {isCrit ? 'Investor-critical' : 'Thoughtfulness'}
+      </span>
+      {open && (
+        <span
+          id={tooltipId}
+          role="tooltip"
+          style={{
+            position: 'absolute', left: 0, top: '100%',
+            marginTop: 6, zIndex: 200, width: 250,
+            padding: '8px 10px', borderRadius: 6,
+            background: INK, color: '#f8fafc',
+            fontSize: 11.5, lineHeight: 1.45, textAlign: 'left',
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none', textTransform: 'none', letterSpacing: 0,
+            fontWeight: 400,
+          }}
+        >{definition}</span>
+      )}
+    </span>
+  );
+}
+
+// ── Term — inline glossary trigger with a hover/focus definition ──
+//
+// Progressive-disclosure helper. Wraps a jargon word or acronym in a dotted-
+// underline trigger that reveals a short plain-language definition on hover,
+// focus, or keyboard focus (Escape dismisses via useTooltip). Use it to expand
+// an acronym on first use ("CPF") or gloss a framework term ("Layer", "Stage
+// gate", "Evidence strength") without spending layout on a parenthetical.
+export function Term({
+  children, definition, underline = true,
+}: {
+  children: ReactNode;
+  definition: ReactNode;
+  /** Set false when the caller styles the trigger itself. */
+  underline?: boolean;
+}) {
+  const { open, tooltipId, triggerProps } = useTooltip();
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', isolation: 'isolate' }}>
+      <span
+        tabIndex={0}
+        aria-describedby={open ? tooltipId : undefined}
+        {...triggerProps}
+        style={{
+          cursor: 'help',
+          borderBottom: underline ? `1px dotted ${MUTED}` : undefined,
+          outline: 'none',
+        }}
+      >{children}</span>
+      {open && (
+        <span
+          id={tooltipId}
+          role="tooltip"
+          style={{
+            position: 'absolute', left: 0, top: '100%',
+            marginTop: 6, zIndex: 200, width: 250,
+            padding: '8px 10px', borderRadius: 6,
+            background: INK, color: '#f8fafc',
+            fontSize: 11.5, lineHeight: 1.45, textAlign: 'left',
+            boxShadow: '0 6px 16px rgba(11,18,32,0.18)',
+            pointerEvents: 'none', textTransform: 'none', letterSpacing: 0,
+            fontWeight: 400, fontStyle: 'normal',
+          }}
+        >{definition}</span>
+      )}
     </span>
   );
 }

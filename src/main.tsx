@@ -35,7 +35,9 @@ import './index.css'
 const V3EntryPage      = lazy(() => import('./features/v3/pages/EntryPage'))
 const V3OnboardingPage = lazy(() => import('./features/v3/pages/OnboardingPage'))
 const V3DoorAPage      = lazy(() => import('./features/v3/pages/DoorAPage'))
-const V3DoorBPage      = lazy(() => import('./features/v3/pages/DoorBPage'))
+// Door B's snapshot editor is redesigned as "Questions Up & Down". The old
+// DoorBPage is retained (deprecated) as a fallback but no longer routed.
+const V3StackWorkspacePage = lazy(() => import('./features/v3/pages/StackWorkspacePage'))
 const V3DashboardPage  = lazy(() => import('./features/v3/pages/DashboardPage'))
 const V3LayerDetailPage = lazy(() => import('./features/v3/pages/LayerDetailPage'))
 const V3PitchPage      = lazy(() => import('./features/v3/pages/PitchPage'))
@@ -101,7 +103,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     path="/v3/door-b/:projectId"
                     element={
                       <ProtectedRoute>
-                        {v3Suspense(<V3DoorBPage />)}
+                        {v3Suspense(<V3StackWorkspacePage />)}
                       </ProtectedRoute>
                     }
                   />

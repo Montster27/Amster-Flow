@@ -46,14 +46,18 @@ export const OPENING: Readonly<Record<Intensity, OpeningCopy>> = Object.freeze({
     // Sprint 3 T9 — eyebrow intentionally blank. The page title commands
     // attention on its own; "READ THIS" was redundant pressure.
     kicker: '',
-    title: 'No skipping.',
+    // v3 usability step 1 — the old "No skipping." title contradicted the
+    // guided flow, which lets founders jump ahead and return. Lead with the
+    // honesty ask instead; the sequence-vs-jump wording now lives (non-
+    // contradictorily) in the Door A guided intro.
+    title: 'Start honest.',
     lede: 'You think you have an idea. You probably have an assumption stack with three honest data points and a lot of hope.',
     body: [
       "This tool exists because 95% of teams I've mentored skipped the parts that mattered. The 5% who didn't pivoted early or killed bad ideas fast.",
-      "I'm going to ask you what you know and how you know it. The stars come from how, not what.",
+      "I'm going to ask you what you know and how you know it. Evidence strength comes from how, not what.",
       "If that bothers you, this isn't the tool.",
     ],
-    closer: 'Otherwise — pick a door.',
+    closer: 'Otherwise — pick how you want to start.',
   },
 });
 

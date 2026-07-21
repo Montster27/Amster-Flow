@@ -258,7 +258,7 @@ export default function LayerDetailPage() {
               <div style={{
                 fontSize: 13, color: MUTED, fontStyle: 'italic', lineHeight: 1.5,
               }}>
-                This layer is empty. Click Edit to fill it, or fill it through Door A's guided flow.
+                This layer is empty. Click Edit to fill it, or fill it through the guided flow.
               </div>
             )}
 
